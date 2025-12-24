@@ -1,6 +1,6 @@
 @php
     $photos = $photos ?? [];
-    $disk = env('FILESYSTEM_DISK') === 's3' ? 's3_public' : 'public';
+    $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
 @endphp
 
 @if(count($photos) > 0)

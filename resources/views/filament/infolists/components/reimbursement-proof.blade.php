@@ -1,6 +1,6 @@
 @php
     $proof = $proof ?? null;
-    $disk = env('FILESYSTEM_DISK') === 's3' ? 's3_public' : 'public';
+    $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
 @endphp
 
 @if($proof)

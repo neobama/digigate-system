@@ -53,9 +53,11 @@ class ReimbursementResource extends Resource
                             ->label('Bukti Pembayaran')
                             ->image()
                             ->directory('reimbursements')
-                            ->disk(env('FILESYSTEM_DISK') === 's3' ? 's3_public' : 'public')
+                            ->disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')
+                            ->visibility('public')
                             ->imageEditor()
                             ->maxSize(5120) // 5MB
+                            ->acceptedFileTypes(['image/*'])
                             ->helperText('Upload bukti pembayaran (maks 5MB)'),
                         Forms\Components\Select::make('status')
                             ->label('Status')
@@ -99,8 +101,8 @@ class ReimbursementResource extends Resource
                     ->label('Bukti')
                     ->circular()
                     ->defaultImageUrl(url('/images/placeholder.png'))
-                    ->disk(env('FILESYSTEM_DISK') === 's3' ? 's3_public' : 'public')
-                    ->url(fn ($record) => $record->proof_of_payment ? Storage::disk(env('FILESYSTEM_DISK') === 's3' ? 's3_public' : 'public')->url($record->proof_of_payment) : null)
+                    ->disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')
+                    ->url(fn ($record) => $record->proof_of_payment ? Storage::disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')->url($record->proof_of_payment) : null)
                     ->openUrlInNewTab(),
                 Tables\Columns\BadgeColumn::make('status')
                     ->colors([

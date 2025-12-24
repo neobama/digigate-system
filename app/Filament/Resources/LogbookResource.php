@@ -48,10 +48,12 @@ public static function form(Form $form): Form
                     ->label('Foto Bukti Kerja')
                     ->image()
                     ->directory('logbooks-photos')
-                    ->disk(env('FILESYSTEM_DISK') === 's3' ? 's3_public' : 'public')
+                    ->disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')
+                    ->visibility('public')
                     ->imageEditor()
                     ->multiple()
                     ->maxFiles(10)
+                    ->acceptedFileTypes(['image/*'])
                     ->columnSpanFull(),
             ])->columns(2)
         ]);

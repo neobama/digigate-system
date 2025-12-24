@@ -7,6 +7,7 @@ use Filament\Forms;
 use Filament\Pages\Page;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Storage;
 
 class MyReimbursement extends Page implements Tables\Contracts\HasTable
 {
@@ -38,8 +39,8 @@ class MyReimbursement extends Page implements Tables\Contracts\HasTable
                     ->label('Bukti')
                     ->circular()
                     ->defaultImageUrl(url('/images/placeholder.png'))
-                    ->disk(env('FILESYSTEM_DISK') === 's3' ? 's3_public' : 'public')
-                    ->url(fn ($record) => $record->proof_of_payment ? \Storage::disk(env('FILESYSTEM_DISK') === 's3' ? 's3_public' : 'public')->url($record->proof_of_payment) : null)
+                    ->disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')
+                    ->url(fn ($record) => $record->proof_of_payment ? \Storage::disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')->url($record->proof_of_payment) : null)
                     ->openUrlInNewTab(),
                 Tables\Columns\BadgeColumn::make('status')
                     ->colors([
@@ -90,9 +91,11 @@ class MyReimbursement extends Page implements Tables\Contracts\HasTable
                             ->label('Bukti Pembayaran')
                             ->image()
                             ->directory('reimbursements')
-                            ->disk(env('FILESYSTEM_DISK') === 's3' ? 's3_public' : 'public')
+                            ->disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')
+                            ->visibility('public')
                             ->imageEditor()
                             ->maxSize(5120) // 5MB
+                            ->acceptedFileTypes(['image/*'])
                             ->required()
                             ->helperText('Upload bukti pembayaran (maks 5MB, format: JPG, PNG)'),
                     ])
@@ -100,6 +103,19 @@ class MyReimbursement extends Page implements Tables\Contracts\HasTable
                         $data['employee_id'] = auth()->user()->employee?->id;
                         $data['status'] = 'pending';
                         return $data;
+                    })
+                    ->after(function (Reimbursement $record) {
+                        // Move file to S3 if configured
+                        if (config('filesystems.default') === 's3' && !empty($record->proof_of_payment)) {
+                            if (Storage::disk('public')->exists($record->proof_of_payment)) {
+                                $content = Storage::disk('public')->get($record->proof_of_payment);
+                                $s3Path = Storage::disk('s3_public')->put($record->proof_of_payment, $content, 'public');
+                                if ($s3Path) {
+                                    $record->update(['proof_of_payment' => $s3Path]);
+                                    Storage::disk('public')->delete($record->proof_of_payment); // Delete from local
+                                }
+                            }
+                        }
                     })
                     ->beforeFormFilled(function () {
                         if (!auth()->user()->employee) {
@@ -133,9 +149,11 @@ class MyReimbursement extends Page implements Tables\Contracts\HasTable
                             ->label('Bukti Pembayaran')
                             ->image()
                             ->directory('reimbursements')
-                            ->disk(env('FILESYSTEM_DISK') === 's3' ? 's3_public' : 'public')
+                            ->disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')
+                            ->visibility('public')
                             ->imageEditor()
-                            ->maxSize(5120),
+                            ->maxSize(5120)
+                            ->acceptedFileTypes(['image/*']),
                     ]),
             ]);
     }
