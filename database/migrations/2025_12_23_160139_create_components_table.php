@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('components', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('name'); // Contoh: Processor i7 11700K, RAM DDR4, dsb.
             $table->string('sn')->unique();
             $table->string('supplier');

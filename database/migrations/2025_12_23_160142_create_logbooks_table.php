@@ -11,17 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('reimbursements', function (Blueprint $table) {
+        Schema::create('logbooks', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('employee_id');
-            $table->string('purpose'); // Keperluan
-            $table->date('expense_date'); // Tanggal pengeluaran
-            $table->decimal('amount', 15, 2);
-            $table->string('proof_of_payment')->nullable(); // Bukti pembayaran (file path)
-            $table->text('description')->nullable();
-            $table->enum('status', ['pending', 'approved', 'rejected', 'paid'])->default('pending');
+            $table->date('log_date');
+            $table->text('activity');
+            $table->json('photo')->nullable();
             $table->timestamps();
-
+            
             $table->foreign('employee_id')->references('id')->on('employees')->onDelete('cascade');
         });
     }
@@ -31,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('reimbursements');
+        Schema::dropIfExists('logbooks');
     }
 };

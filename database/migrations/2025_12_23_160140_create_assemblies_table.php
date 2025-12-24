@@ -12,13 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('assemblies', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('invoice_id')->constrained()->onDelete('cascade');
+            $table->uuid('id')->primary();
+            $table->uuid('invoice_id');
             $table->string('product_type'); // DigiGate Macan atau DigiGate Maleo
             $table->json('sn_details'); // Menyimpan list SN yang digunakan dalam bentuk JSON
             $table->date('assembly_date');
+            $table->string('serial_number')->unique()->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
+            
+            $table->foreign('invoice_id')->references('id')->on('invoices')->onDelete('cascade');
         });
     }
 
