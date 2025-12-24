@@ -26,6 +26,12 @@ class EmployeePanelProvider extends PanelProvider
             ->id('employee')
             ->path('employee')
             ->login()
+            ->loginRouteSlug('login')
+            ->brandName('DigiGate System')
+            ->brandLogo(asset('images/digigate-logo.png'))
+            ->brandLogoHeight('3rem')
+            ->darkModeBrandLogo(asset('images/digigate-dark.png'))
+            ->favicon(asset('images/favicon.png'))
             ->colors([
                 'primary' => Color::Blue,
             ])

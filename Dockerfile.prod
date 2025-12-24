@@ -22,28 +22,29 @@ RUN apt-get update && apt-get install -y \
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy existing application directory permissions
-RUN chown -R www-data:www-data /var/www/html
+# Copy composer files first for better caching
+COPY composer.json composer.lock* ./
+
+# Install dependencies (production) as root
+RUN composer install --optimize-autoloader --no-dev --no-interaction --prefer-dist
 
 # Copy application files
-COPY --chown=www-data:www-data . /var/www/html
+COPY . /var/www/html
 
-# Install dependencies (production)
-USER www-data
-RUN composer install --optimize-autoloader --no-dev --no-interaction
+# Create necessary directories and set permissions
+RUN mkdir -p /var/www/html/storage/framework/cache/data \
+    && mkdir -p /var/www/html/storage/framework/sessions \
+    && mkdir -p /var/www/html/storage/framework/views \
+    && mkdir -p /var/www/html/storage/logs \
+    && mkdir -p /var/www/html/bootstrap/cache \
+    && chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 /var/www/html/storage \
+    && chmod -R 775 /var/www/html/bootstrap/cache
 
-# Switch back to root for final setup
-USER root
-
-# Set permissions
-RUN chmod -R 755 /var/www/html/storage
-RUN chmod -R 755 /var/www/html/bootstrap/cache
-
-# Change back to www-data
+# Change to www-data for runtime
 USER www-data
 
 # Expose port 9000
 EXPOSE 9000
 
 CMD ["php-fpm"]
-

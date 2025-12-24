@@ -3,12 +3,14 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasUuids;
@@ -50,5 +52,23 @@ class User extends Authenticatable
     public function employee()
     {
         return $this->hasOne(\App\Models\Employee::class);
+    }
+
+    /**
+     * Determine if the user can access the panel.
+     */
+    public function canAccessPanel(Panel $panel): bool
+    {
+        // Admin panel: hanya user yang TIDAK punya employee record
+        if ($panel->getId() === 'admin') {
+            return $this->employee === null;
+        }
+
+        // Employee panel: hanya user yang PUNYA employee record
+        if ($panel->getId() === 'employee') {
+            return $this->employee !== null;
+        }
+
+        return false;
     }
 }
