@@ -39,7 +39,7 @@ class MyCashbon extends Page implements Tables\Contracts\HasTable
                         'warning' => 'pending',
                         'success' => 'approved',
                         'danger' => 'rejected',
-                        'info' => 'paid_off',
+                        'info' => 'paid',
                     ]),
             ])
             ->filters([
@@ -48,7 +48,7 @@ class MyCashbon extends Page implements Tables\Contracts\HasTable
                         'pending' => 'Pending',
                         'approved' => 'Approved',
                         'rejected' => 'Rejected',
-                        'paid_off' => 'Paid Off',
+                        'paid' => 'Paid',
                     ]),
             ])
             ->headerActions([

@@ -13,9 +13,9 @@ class SalarySlipController extends Controller
         $month = $request->get('month', now()->month);
         $year = $request->get('year', now()->year);
 
-        // Hitung total cashbon yang sudah approved di bulan tersebut
+        // Hitung total cashbon yang sudah paid (dilunasi) di bulan tersebut
         $totalCashbon = $employee->cashbons()
-            ->where('status', 'approved')
+            ->where('status', 'paid')
             ->whereMonth('request_date', $month)
             ->whereYear('request_date', $year)
             ->sum('amount');
@@ -32,7 +32,7 @@ class SalarySlipController extends Controller
             'bpjs_allowance' => $employee->bpjs_allowance,
             'gaji_bersih' => $gajiBersih,
             'cashbons' => $employee->cashbons()
-                ->where('status', 'approved')
+                ->where('status', 'paid')
                 ->whereMonth('request_date', $month)
                 ->whereYear('request_date', $year)
                 ->get(),

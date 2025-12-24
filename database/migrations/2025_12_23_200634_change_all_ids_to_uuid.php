@@ -160,7 +160,7 @@ return new class extends Migration
             $table->decimal('amount', 15, 2);
             $table->string('reason');
             $table->date('request_date');
-            $table->enum('status', ['pending', 'approved', 'rejected', 'paid_off'])->default('pending');
+            $table->enum('status', ['pending', 'approved', 'rejected', 'paid'])->default('pending');
             $table->timestamps();
             
             $table->foreign('employee_id')->references('id')->on('employees')->onDelete('cascade');

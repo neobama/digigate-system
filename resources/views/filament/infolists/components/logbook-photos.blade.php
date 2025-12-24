@@ -1,5 +1,6 @@
 @php
     $photos = $photos ?? [];
+    $disk = env('FILESYSTEM_DISK') === 's3' ? 's3_public' : 'public';
 @endphp
 
 @if(count($photos) > 0)
@@ -7,7 +8,7 @@
         @foreach($photos as $photo)
             <div class="relative">
                 <img 
-                    src="{{ \Storage::url($photo) }}" 
+                    src="{{ \Storage::disk($disk)->url($photo) }}" 
                     alt="Foto Bukti Kerja"
                     class="w-full h-auto rounded-lg shadow-md object-cover"
                     style="max-height: 200px;"

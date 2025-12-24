@@ -23,7 +23,8 @@ class LogbookResource extends Resource
 {
     protected static ?string $model = Logbook::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-book-open';
+    protected static ?string $navigationGroup = 'HR';
 
 public static function form(Form $form): Form
 {
@@ -47,7 +48,7 @@ public static function form(Form $form): Form
                     ->label('Foto Bukti Kerja')
                     ->image()
                     ->directory('logbooks-photos')
-                    ->disk('public')
+                    ->disk(env('FILESYSTEM_DISK') === 's3' ? 's3_public' : 'public')
                     ->imageEditor()
                     ->multiple()
                     ->maxFiles(10)

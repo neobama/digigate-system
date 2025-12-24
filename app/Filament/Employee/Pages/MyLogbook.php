@@ -56,7 +56,7 @@ class MyLogbook extends Page implements Tables\Contracts\HasTable
                             ->label('Foto Bukti Kerja')
                             ->image()
                             ->directory('logbooks-photos')
-                            ->disk('public')
+                            ->disk(env('FILESYSTEM_DISK') === 's3' ? 's3_public' : 'public')
                             ->imageEditor()
                             ->multiple()
                             ->maxFiles(10),
@@ -85,7 +85,7 @@ class MyLogbook extends Page implements Tables\Contracts\HasTable
                             ->label('Foto Bukti Kerja')
                             ->image()
                             ->directory('logbooks-photos')
-                            ->disk('public')
+                            ->disk(env('FILESYSTEM_DISK') === 's3' ? 's3_public' : 'public')
                             ->imageEditor()
                             ->multiple()
                             ->maxFiles(10),

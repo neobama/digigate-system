@@ -19,6 +19,7 @@ class CashbonResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
     protected static ?string $navigationLabel = 'Cashbon';
+    protected static ?string $navigationGroup = 'HR';
 
     public static function form(Form $form): Form
     {
@@ -44,13 +45,13 @@ class CashbonResource extends Resource
                         ->label('Alasan')
                         ->required()
                         ->rows(3),
-                    Forms\Components\Select::make('status')
+                        Forms\Components\Select::make('status')
                         ->label('Status')
                         ->options([
                             'pending' => 'Pending',
                             'approved' => 'Approved',
                             'rejected' => 'Rejected',
-                            'paid_off' => 'Paid Off',
+                            'paid' => 'Paid',
                         ])
                         ->default('pending')
                         ->required(),
@@ -86,7 +87,7 @@ class CashbonResource extends Resource
                         'warning' => 'pending',
                         'success' => 'approved',
                         'danger' => 'rejected',
-                        'info' => 'paid_off',
+                        'info' => 'paid',
                     ])
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
@@ -101,7 +102,7 @@ class CashbonResource extends Resource
                         'pending' => 'Pending',
                         'approved' => 'Approved',
                         'rejected' => 'Rejected',
-                        'paid_off' => 'Paid Off',
+                        'paid' => 'Paid',
                     ]),
                 Tables\Filters\SelectFilter::make('employee_id')
                     ->label('Karyawan')
@@ -125,6 +126,13 @@ class CashbonResource extends Resource
                     ->color('danger')
                     ->visible(fn (Cashbon $record) => $record->status === 'pending')
                     ->action(fn (Cashbon $record) => $record->update(['status' => 'rejected']))
+                    ->requiresConfirmation(),
+                Tables\Actions\Action::make('markAsPaid')
+                    ->label('Set Paid')
+                    ->icon('heroicon-o-banknotes')
+                    ->color('info')
+                    ->visible(fn (Cashbon $record) => $record->status === 'approved')
+                    ->action(fn (Cashbon $record) => $record->update(['status' => 'paid']))
                     ->requiresConfirmation(),
             ])
             ->bulkActions([
