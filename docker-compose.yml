@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: digigate-system-app
+    container_name: digigate-app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - app_storage:/var/www/html/storage
+    networks:
+      - digigate-network
+    depends_on:
+      - db
+
+  nginx:
+    image: nginx:alpine
+    container_name: digigate-nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - digigate-network
+    depends_on:
+      - app
+
+  db:
+    image: mysql:8.0
+    container_name: digigate-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: digigate_db
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_PASSWORD: password
+      MYSQL_USER: digigate_user
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - digigate-network
+
+  redis:
+    image: redis:alpine
+    container_name: digigate-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - digigate-network
+
+volumes:
+  db_data:
+    driver: local
+  app_storage:
+    driver: local
+
+networks:
+  digigate-network:
+    driver: bridge
+
