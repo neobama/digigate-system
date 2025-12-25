@@ -39,6 +39,7 @@ class StockSummaryWidget extends BaseWidget
                     ->formatStateUsing(fn ($state) => $state . ' pcs'),
             ])
             ->defaultSort('name', 'asc')
-            ->paginated(false);
+            ->paginated(false)
+            ->getTableRecordKeyUsing(fn ($record) => $record->name ?? 'unknown');
     }
 }
