@@ -156,20 +156,30 @@ class InvoiceResource extends Resource
                     ->hidden(fn (Invoice $record) => $record->status !== 'paid')
                     ->action(fn (Invoice $record) => $record->update(['status' => 'delivered']))
                     ->requiresConfirmation(),
-                Tables\Actions\Action::make('downloadProformaPdf')
-                    ->label('PDF Proforma')
-                    ->icon('heroicon-o-document-text')
-                    ->color('secondary')
-                    ->hidden(fn (Invoice $record) => $record->status !== 'proforma')
-                    ->url(fn (Invoice $record) => route('invoices.proforma.pdf', $record))
-                    ->openUrlInNewTab(),
-                Tables\Actions\Action::make('downloadPaidPdf')
-                    ->label('PDF Invoice')
-                    ->icon('heroicon-o-document-arrow-down')
+                Tables\Actions\Action::make('viewInvoice')
+                    ->label('View Invoice')
+                    ->icon('heroicon-o-eye')
                     ->color('primary')
-                    ->hidden(fn (Invoice $record) => ! in_array($record->status, ['paid', 'delivered']))
-                    ->url(fn (Invoice $record) => route('invoices.paid.pdf', $record))
-                    ->openUrlInNewTab(),
+                    ->modalHeading(fn (Invoice $record) => 'Invoice #' . $record->invoice_number)
+                    ->modalContent(function (Invoice $record) {
+                        $document = \App\Models\Document::where('related_invoice_id', $record->id)
+                            ->where('category', 'invoice')
+                            ->first();
+                        
+                        if ($document) {
+                            return view('filament.documents.preview', [
+                                'document' => $document,
+                                'fileUrl' => \Illuminate\Support\Facades\Storage::disk('s3_public')->url($document->file_path),
+                            ]);
+                        } else {
+                            return view('filament.invoices.no-document', [
+                                'invoice' => $record,
+                            ]);
+                        }
+                    })
+                    ->modalWidth('7xl')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Tutup'),
                 Tables\Actions\Action::make('uploadDocument')
                     ->label('Upload Dokumen')
                     ->icon('heroicon-o-paper-clip')
