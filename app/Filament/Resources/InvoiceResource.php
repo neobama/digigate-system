@@ -214,9 +214,29 @@ class InvoiceResource extends Resource
                         $mimeType = 'application/octet-stream';
                         try {
                             if (\Illuminate\Support\Facades\Storage::disk($disk)->exists($filePath)) {
-                                $fileInfo = \Illuminate\Support\Facades\Storage::disk($disk)->getMetadata($filePath);
-                                $mimeType = $fileInfo['mimetype'] ?? 'application/octet-stream';
-                                $fileSize = $fileInfo['size'] ?? 0;
+                                // Get file size
+                                $fileSize = \Illuminate\Support\Facades\Storage::disk($disk)->size($filePath);
+                                
+                                // Get mime type
+                                try {
+                                    $mimeType = \Illuminate\Support\Facades\Storage::disk($disk)->mimeType($filePath);
+                                } catch (\Exception $e) {
+                                    // Fallback: determine mime type from extension
+                                    $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+                                    $mimeType = match(strtolower($extension)) {
+                                        'pdf' => 'application/pdf',
+                                        'doc' => 'application/msword',
+                                        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                        'xls' => 'application/vnd.ms-excel',
+                                        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                        'jpg', 'jpeg' => 'image/jpeg',
+                                        'png' => 'image/png',
+                                        'gif' => 'image/gif',
+                                        'zip' => 'application/zip',
+                                        'rar' => 'application/x-rar-compressed',
+                                        default => 'application/octet-stream',
+                                    };
+                                }
                             }
                         } catch (\Exception $e) {
                             // Fallback

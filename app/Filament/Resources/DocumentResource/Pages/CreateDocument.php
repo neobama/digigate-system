@@ -23,11 +23,31 @@ class CreateDocument extends CreateRecord
             try {
                 $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
                 if (Storage::disk($disk)->exists($filePath)) {
-                    $fileInfo = Storage::disk($disk)->getMetadata($filePath);
-                    $data['mime_type'] = $fileInfo['mimetype'] ?? null;
-                    $data['file_size'] = $fileInfo['size'] ?? 0;
+                    // Get file size
+                    $data['file_size'] = Storage::disk($disk)->size($filePath);
+                    
+                    // Get mime type
+                    try {
+                        $data['mime_type'] = Storage::disk($disk)->mimeType($filePath);
+                    } catch (\Exception $e) {
+                        // Fallback: determine mime type from extension
+                        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+                        $data['mime_type'] = match(strtolower($extension)) {
+                            'pdf' => 'application/pdf',
+                            'doc' => 'application/msword',
+                            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                            'xls' => 'application/vnd.ms-excel',
+                            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            'jpg', 'jpeg' => 'image/jpeg',
+                            'png' => 'image/png',
+                            'gif' => 'image/gif',
+                            'zip' => 'application/zip',
+                            'rar' => 'application/x-rar-compressed',
+                            default => 'application/octet-stream',
+                        };
+                    }
                 } else {
-                    // Fallback jika metadata tidak tersedia
+                    // Fallback jika file tidak ditemukan
                     $data['mime_type'] = 'application/octet-stream';
                     $data['file_size'] = 0;
                 }
