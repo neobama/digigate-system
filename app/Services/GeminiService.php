@@ -13,8 +13,16 @@ class GeminiService
     public function __construct()
     {
         $this->apiKey = config('gemini.api_key') ?: null;
+        // Force use gemini-1.5-pro as it's the most stable
         $model = config('gemini.model', 'gemini-1.5-pro');
         $this->baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
+        
+        // Log for debugging
+        Log::debug('GeminiService initialized', [
+            'model' => $model,
+            'baseUrl' => $this->baseUrl,
+            'hasApiKey' => !empty($this->apiKey),
+        ]);
     }
     
     /**

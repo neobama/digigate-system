@@ -17,15 +17,14 @@ return [
     | Gemini Model
     |--------------------------------------------------------------------------
     |
-    | Model yang digunakan untuk parsing. Default: gemini-3-pro-preview
+    | Model yang digunakan untuk parsing. Default: gemini-3-pro
     | Options: 
-    |   - gemini-3-pro-preview (Latest - terbaru)
-    |   - gemini-1.5-pro (Stable - lebih akurat)
-    |   - gemini-1.5-flash (Lebih cepat, lebih murah)
-    |   - gemini-2.0-flash-exp (Experimental)
+    |   - gemini-3-pro (Latest - terbaru)
+    |   - gemini-1.5-pro (Stable - lebih stabil)
+    |   - gemini-1.5-flash-latest (Lebih cepat)
     |
     */
-    'model' => env('GEMINI_MODEL', 'gemini-3-pro-preview'),
+    'model' => env('GEMINI_MODEL', 'gemini-3-pro'),
 
     /*
     |--------------------------------------------------------------------------
