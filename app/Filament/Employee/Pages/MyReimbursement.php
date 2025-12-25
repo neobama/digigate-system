@@ -10,6 +10,7 @@ use Filament\Pages\Page;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class MyReimbursement extends Page implements Tables\Contracts\HasTable
 {
@@ -78,6 +79,7 @@ class MyReimbursement extends Page implements Tables\Contracts\HasTable
                                     ->maxSize(5120)
                                     ->acceptedFileTypes(['image/*'])
                                     ->helperText('Upload invoice/bon untuk auto-fill form. Fitur experimental.')
+                                    ->dehydrated(false) // Jangan simpan ke storage, hanya untuk parsing
                                     ->live()
                                     ->afterStateUpdated(function ($state, callable $set, callable $get, $component) {
                                         if (!$state) {
@@ -85,21 +87,23 @@ class MyReimbursement extends Page implements Tables\Contracts\HasTable
                                         }
                                         
                                         try {
-                                            $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
-                                            $imagePath = is_array($state) ? $state[0] : $state;
+                                            // Get file from temporary upload (Livewire)
+                                            $file = is_array($state) ? $state[0] : $state;
                                             
-                                            // Get image content - handle both temporary and stored files
-                                            $imageContent = null;
-                                            
-                                            if (Storage::disk($disk)->exists($imagePath)) {
-                                                $imageContent = Storage::disk($disk)->get($imagePath);
-                                            } elseif (Storage::disk('public')->exists($imagePath)) {
-                                                $imageContent = Storage::disk('public')->get($imagePath);
-                                            } else {
-                                                $fullPath = storage_path('app/public/' . $imagePath);
-                                                if (file_exists($fullPath)) {
-                                                    $imageContent = file_get_contents($fullPath);
+                                            // Handle TemporaryUploadedFile from Livewire
+                                            if ($file instanceof TemporaryUploadedFile) {
+                                                $imageContent = file_get_contents($file->getRealPath());
+                                            } elseif (is_string($file)) {
+                                                // Try to read from temporary Livewire path
+                                                $tmpPath = storage_path('app/livewire-tmp/' . $file);
+                                                if (file_exists($tmpPath)) {
+                                                    $imageContent = file_get_contents($tmpPath);
+                                                } else {
+                                                    // Try as regular path
+                                                    $imageContent = file_get_contents($file);
                                                 }
+                                            } else {
+                                                throw new \Exception('Format file tidak didukung');
                                             }
                                             
                                             if (!$imageContent) {
@@ -132,8 +136,7 @@ class MyReimbursement extends Page implements Tables\Contracts\HasTable
                                                     $set('description', $parsed['description']);
                                                 }
                                                 
-                                                // Set proof_of_payment to the uploaded image
-                                                $set('proof_of_payment', $imagePath);
+                                                // Note: proof_of_payment akan diisi user secara terpisah
                                                 
                                                 Notification::make()
                                                     ->success()

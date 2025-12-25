@@ -11,6 +11,7 @@ use Filament\Tables\Table;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class MyComponent extends Page implements Tables\Contracts\HasTable
 {
@@ -90,74 +91,84 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                                     ->maxSize(5120)
                                     ->acceptedFileTypes(['image/*'])
                                     ->helperText('Upload invoice untuk auto-detect items dari invoice')
+                                    ->dehydrated(false) // Jangan simpan ke storage, hanya untuk parsing
                                     ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                        if ($state) {
-                                            try {
-                                                $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
-                                                $imagePath = is_array($state) ? $state[0] : $state;
-                                                
-                                                // Get image content - handle both temporary and stored files
-                                                if (Storage::disk($disk)->exists($imagePath)) {
-                                                    $imageContent = Storage::disk($disk)->get($imagePath);
+                                        if (!$state) {
+                                            return;
+                                        }
+                                        
+                                        try {
+                                            // Get file from temporary upload (Livewire)
+                                            $file = is_array($state) ? $state[0] : $state;
+                                            
+                                            // Handle TemporaryUploadedFile from Livewire
+                                            if ($file instanceof TemporaryUploadedFile) {
+                                                $imageContent = file_get_contents($file->getRealPath());
+                                            } elseif (is_string($file)) {
+                                                // Try to read from temporary Livewire path
+                                                $tmpPath = storage_path('app/livewire-tmp/' . $file);
+                                                if (file_exists($tmpPath)) {
+                                                    $imageContent = file_get_contents($tmpPath);
                                                 } else {
-                                                    // Try public disk
-                                                    if (Storage::disk('public')->exists($imagePath)) {
-                                                        $imageContent = Storage::disk('public')->get($imagePath);
-                                                    } else {
-                                                        // Try to get from full path
-                                                        $fullPath = storage_path('app/public/' . $imagePath);
-                                                        if (file_exists($fullPath)) {
-                                                            $imageContent = file_get_contents($fullPath);
-                                                        } else {
-                                                            throw new \Exception('File tidak ditemukan');
-                                                        }
-                                                    }
+                                                    // Try as regular path
+                                                    $imageContent = file_get_contents($file);
                                                 }
-                                                
-                                                $imageBase64 = base64_encode($imageContent);
-                                                
-                                                // Call Gemini API
-                                                $gemini = new GeminiService();
-                                                $parsedItems = $gemini->parseComponentInvoice($imageBase64);
-                                                
-                                                if ($parsedItems && count($parsedItems) > 0) {
-                                                    // Convert to Repeater format
-                                                    $components = [];
-                                                    foreach ($parsedItems as $item) {
-                                                        // Handle quantity - create multiple entries if quantity > 1
-                                                        $quantity = $item['quantity'] ?? 1;
-                                                        for ($i = 0; $i < $quantity; $i++) {
-                                                            $components[] = [
-                                                                'name' => $item['name'] ?? null,
-                                                                'supplier' => $item['supplier'] ?? null,
-                                                                'purchase_date' => $item['purchase_date'] ?? now()->format('Y-m-d'),
-                                                                'sn' => '', // User must fill
-                                                                'status' => 'available',
-                                                            ];
-                                                        }
-                                                    }
-                                                    
-                                                    $set('components', $components);
-                                                    
-                                                    Notification::make()
-                                                        ->success()
-                                                        ->title('AI Parse Berhasil')
-                                                        ->body('Ditemukan ' . count($components) . ' item(s). Silakan lengkapi Serial Number untuk setiap item.')
-                                                        ->send();
-                                                } else {
-                                                    Notification::make()
-                                                        ->warning()
-                                                        ->title('AI Parse Gagal')
-                                                        ->body('Tidak dapat memparse invoice atau tidak ada item ditemukan. Silakan tambah manual.')
-                                                        ->send();
-                                                }
-                                            } catch (\Exception $e) {
+                                            } else {
+                                                throw new \Exception('Format file tidak didukung');
+                                            }
+                                            
+                                            if (!$imageContent) {
                                                 Notification::make()
-                                                    ->danger()
-                                                    ->title('Error')
-                                                    ->body('Terjadi error saat parsing: ' . $e->getMessage())
+                                                    ->warning()
+                                                    ->title('File tidak ditemukan')
+                                                    ->body('Silakan upload ulang file.')
+                                                    ->send();
+                                                return;
+                                            }
+                                            
+                                            $imageBase64 = base64_encode($imageContent);
+                                            
+                                            // Call Gemini API
+                                            $gemini = new GeminiService();
+                                            $parsedItems = $gemini->parseComponentInvoice($imageBase64);
+                                            
+                                            if ($parsedItems && count($parsedItems) > 0) {
+                                                // Convert to Repeater format
+                                                $components = [];
+                                                foreach ($parsedItems as $item) {
+                                                    // Handle quantity - create multiple entries if quantity > 1
+                                                    $quantity = $item['quantity'] ?? 1;
+                                                    for ($i = 0; $i < $quantity; $i++) {
+                                                        $components[] = [
+                                                            'name' => $item['name'] ?? null,
+                                                            'supplier' => $item['supplier'] ?? null,
+                                                            'purchase_date' => $item['purchase_date'] ?? now()->format('Y-m-d'),
+                                                            'sn' => '', // User must fill
+                                                            'status' => 'available',
+                                                        ];
+                                                    }
+                                                }
+                                                
+                                                $set('components', $components);
+                                                
+                                                Notification::make()
+                                                    ->success()
+                                                    ->title('AI Parse Berhasil')
+                                                    ->body('Ditemukan ' . count($components) . ' item(s). Silakan lengkapi Serial Number untuk setiap item.')
+                                                    ->send();
+                                            } else {
+                                                Notification::make()
+                                                    ->warning()
+                                                    ->title('AI Parse Gagal')
+                                                    ->body('Tidak dapat memparse invoice atau tidak ada item ditemukan. Silakan tambah manual.')
                                                     ->send();
                                             }
+                                        } catch (\Exception $e) {
+                                            Notification::make()
+                                                ->danger()
+                                                ->title('Error')
+                                                ->body('Terjadi error saat parsing: ' . $e->getMessage())
+                                                ->send();
                                         }
                                     })
                                     ->columnSpanFull(),
