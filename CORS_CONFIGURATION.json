@@ -14,15 +14,17 @@
         "AllowedOrigins": [
             "http://127.0.0.1:8000",
             "http://localhost:8000",
-            "https://yourdomain.com"
+            "https://erp.digigate.id"
         ],
         "ExposeHeaders": [
             "ETag",
             "x-amz-server-side-encryption",
             "x-amz-request-id",
             "x-amz-id-2",
+            "x-amz-version-id",
             "Content-Length",
-            "Content-Type"
+            "Content-Type",
+            "x-amz-acl"
         ],
         "MaxAgeSeconds": 3000
     }

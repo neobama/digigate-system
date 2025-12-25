@@ -10,8 +10,8 @@
                 <img 
                     src="{{ \Storage::disk($disk)->url($photo) }}" 
                     alt="Foto Bukti Kerja"
-                    class="w-full h-auto rounded-lg shadow-md object-cover"
-                    style="max-height: 200px;"
+                    class="w-full h-auto rounded-lg shadow-lg object-contain border border-gray-200"
+                    style="max-height: 600px;"
                 />
             </div>
         @endforeach

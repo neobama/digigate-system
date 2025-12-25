@@ -67,9 +67,6 @@ public static function form(Form $form): Form
                     ->label('Nama Karyawan')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('employee.nik')
-                    ->label('NIK')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('log_date')
                     ->label('Tanggal Aktivitas')
                     ->date()
