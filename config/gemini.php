@@ -17,11 +17,15 @@ return [
     | Gemini Model
     |--------------------------------------------------------------------------
     |
-    | Model yang digunakan untuk parsing. Default: gemini-1.5-flash
-    | Options: gemini-1.5-flash, gemini-1.5-pro
+    | Model yang digunakan untuk parsing. Default: gemini-3-pro-preview
+    | Options: 
+    |   - gemini-3-pro-preview (Latest - terbaru)
+    |   - gemini-1.5-pro (Stable - lebih akurat)
+    |   - gemini-1.5-flash (Lebih cepat, lebih murah)
+    |   - gemini-2.0-flash-exp (Experimental)
     |
     */
-    'model' => env('GEMINI_MODEL', 'gemini-1.5-flash'),
+    'model' => env('GEMINI_MODEL', 'gemini-3-pro-preview'),
 
     /*
     |--------------------------------------------------------------------------

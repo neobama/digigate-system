@@ -7,12 +7,22 @@ use Illuminate\Support\Facades\Log;
 
 class GeminiService
 {
-    protected string $apiKey;
-    protected string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+    protected ?string $apiKey;
+    protected string $baseUrl;
 
     public function __construct()
     {
-        $this->apiKey = config('gemini.api_key');
+        $this->apiKey = config('gemini.api_key') ?: null;
+        $model = config('gemini.model', 'gemini-1.5-pro');
+        $this->baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
+    }
+    
+    /**
+     * Check if API key is configured
+     */
+    protected function hasApiKey(): bool
+    {
+        return !empty($this->apiKey);
     }
 
     /**
@@ -23,6 +33,11 @@ class GeminiService
      */
     public function parseReimbursementInvoice(string $imageBase64): ?array
     {
+        if (!$this->hasApiKey()) {
+            Log::error('Gemini API Key not configured');
+            return null;
+        }
+        
         $prompt = "Analyze this invoice/receipt image and extract the following information in JSON format:
 {
   \"purpose\": \"Short description of what the expense is for (e.g., 'Transport ke client', 'Makan siang meeting')\",
@@ -97,6 +112,11 @@ Only return valid JSON, no other text. If any field cannot be determined, use nu
      */
     public function parseComponentInvoice(string $imageBase64): ?array
     {
+        if (!$this->hasApiKey()) {
+            Log::error('Gemini API Key not configured');
+            return null;
+        }
+        
         $prompt = "Analyze this invoice/receipt image and extract ALL items/products listed. Return as JSON array:
 [
   {
