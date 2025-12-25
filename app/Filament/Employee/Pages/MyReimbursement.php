@@ -90,20 +90,60 @@ class MyReimbursement extends Page implements Tables\Contracts\HasTable
                                             // Get file from temporary upload (Livewire)
                                             $file = is_array($state) ? $state[0] : $state;
                                             
+                                            $imageContent = null;
+                                            
                                             // Handle TemporaryUploadedFile from Livewire
                                             if ($file instanceof TemporaryUploadedFile) {
-                                                $imageContent = file_get_contents($file->getRealPath());
+                                                // Read directly from temporary file using getRealPath or get()
+                                                try {
+                                                    $realPath = $file->getRealPath();
+                                                    if ($realPath && file_exists($realPath)) {
+                                                        $imageContent = file_get_contents($realPath);
+                                                    } else {
+                                                        // Fallback to get() method
+                                                        $imageContent = $file->get();
+                                                    }
+                                                } catch (\Exception $e) {
+                                                    // Try get() method directly
+                                                    $imageContent = $file->get();
+                                                }
                                             } elseif (is_string($file)) {
-                                                // Try to read from temporary Livewire path
-                                                $tmpPath = storage_path('app/livewire-tmp/' . $file);
-                                                if (file_exists($tmpPath)) {
-                                                    $imageContent = file_get_contents($tmpPath);
-                                                } else {
-                                                    // Try as regular path
-                                                    $imageContent = file_get_contents($file);
+                                                // Handle string path - try multiple locations
+                                                $paths = [
+                                                    storage_path('app/livewire-tmp/' . basename($file)),
+                                                    storage_path('app/public/livewire-tmp/' . basename($file)),
+                                                    storage_path('app/livewire-tmp/' . $file),
+                                                    storage_path('app/public/livewire-tmp/' . $file),
+                                                    $file, // Direct path
+                                                ];
+                                                
+                                                foreach ($paths as $path) {
+                                                    if (file_exists($path) && is_file($path)) {
+                                                        $imageContent = file_get_contents($path);
+                                                        if ($imageContent) break;
+                                                    }
+                                                }
+                                                
+                                                // If still not found, try reading from Storage
+                                                if (!$imageContent) {
+                                                    $storagePaths = [
+                                                        'livewire-tmp/' . basename($file),
+                                                        'livewire-tmp/' . $file,
+                                                    ];
+                                                    
+                                                    foreach ($storagePaths as $storagePath) {
+                                                        try {
+                                                            if (Storage::disk('local')->exists($storagePath)) {
+                                                                $imageContent = Storage::disk('local')->get($storagePath);
+                                                                break;
+                                                            }
+                                                        } catch (\Exception $e) {
+                                                            continue;
+                                                        }
+                                                    }
                                                 }
                                             } else {
-                                                throw new \Exception('Format file tidak didukung');
+                                                throw new \Exception('Format file tidak didukung: ' . gettype($file));
                                             }
                                             
                                             if (!$imageContent) {

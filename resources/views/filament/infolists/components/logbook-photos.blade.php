@@ -18,5 +18,5 @@
     </div>
 @else
     <p class="text-gray-500">Tidak ada foto</p>
-@endif
+@endiff
 
