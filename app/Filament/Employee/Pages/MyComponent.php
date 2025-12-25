@@ -82,7 +82,7 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                     ->badge('Experimental')
                     ->form([
                         Forms\Components\Section::make('Upload Invoice untuk AI Parse')
-                            ->description('Upload invoice untuk auto-detect semua items. Fitur experimental.')
+                            ->description('⚠️ Upload invoice untuk auto-detect semua items. Fitur experimental.')
                             ->schema([
                                 Forms\Components\FileUpload::make('invoice_image')
                                     ->label('Upload Invoice')
@@ -163,8 +163,7 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                                     ->columnSpanFull(),
                             ])
                             ->collapsible()
-                            ->collapsed()
-                            ->badge('Experimental'),
+                            ->collapsed(),
                         Forms\Components\Repeater::make('components')
                             ->label('Daftar Komponen')
                             ->schema([
