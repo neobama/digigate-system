@@ -209,58 +209,51 @@ class InvoiceResource extends Resource
                         $filePath = $data['file_path'];
                         $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
                         
-                        // Determine mime type from extension (safer, no S3 access needed during upload)
-                        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-                        $mimeType = match(strtolower($extension)) {
-                            'pdf' => 'application/pdf',
-                            'doc' => 'application/msword',
-                            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                            'xls' => 'application/vnd.ms-excel',
-                            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                            'jpg', 'jpeg' => 'image/jpeg',
-                            'png' => 'image/png',
-                            'gif' => 'image/gif',
-                            'zip' => 'application/zip',
-                            'rar' => 'application/x-rar-compressed',
-                            default => 'application/octet-stream',
-                        };
+                        // Get file info
+                        $fileSize = 0;
+                        $mimeType = 'application/octet-stream';
+                        try {
+                            if (\Illuminate\Support\Facades\Storage::disk($disk)->exists($filePath)) {
+                                // Get file size
+                                $fileSize = \Illuminate\Support\Facades\Storage::disk($disk)->size($filePath);
+                                
+                                // Get mime type
+                                try {
+                                    $mimeType = \Illuminate\Support\Facades\Storage::disk($disk)->mimeType($filePath);
+                                } catch (\Exception $e) {
+                                    // Fallback: determine mime type from extension
+                                    $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+                                    $mimeType = match(strtolower($extension)) {
+                                        'pdf' => 'application/pdf',
+                                        'doc' => 'application/msword',
+                                        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                        'xls' => 'application/vnd.ms-excel',
+                                        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                        'jpg', 'jpeg' => 'image/jpeg',
+                                        'png' => 'image/png',
+                                        'gif' => 'image/gif',
+                                        'zip' => 'application/zip',
+                                        'rar' => 'application/x-rar-compressed',
+                                        default => 'application/octet-stream',
+                                    };
+                                }
+                            }
+                        } catch (\Exception $e) {
+                            // Fallback
+                        }
                         
-                        // Create document with initial file info
-                        $document = \App\Models\Document::create([
+                        \App\Models\Document::create([
                             'name' => $data['name'],
                             'file_path' => $filePath,
                             'file_name' => basename($filePath),
                             'mime_type' => $mimeType,
-                            'file_size' => 0, // Will be updated after file is saved
+                            'file_size' => $fileSize,
                             'category' => $data['category'] ?? 'invoice',
                             'description' => $data['description'] ?? null,
                             'related_invoice_id' => $record->id,
                             'uploaded_by' => auth()->id(),
                             'access_level' => 'private',
                         ]);
-                        
-                        // Update file size after file is saved to S3
-                        try {
-                            if (\Illuminate\Support\Facades\Storage::disk($disk)->exists($filePath)) {
-                                $fileSize = \Illuminate\Support\Facades\Storage::disk($disk)->size($filePath);
-                                
-                                // Try to get mime type from S3
-                                try {
-                                    $actualMimeType = \Illuminate\Support\Facades\Storage::disk($disk)->mimeType($filePath);
-                                    $document->update([
-                                        'file_size' => $fileSize,
-                                        'mime_type' => $actualMimeType,
-                                    ]);
-                                } catch (\Exception $e) {
-                                    // Keep extension-based mime type, just update size
-                                    $document->update([
-                                        'file_size' => $fileSize,
-                                    ]);
-                                }
-                            }
-                        } catch (\Exception $e) {
-                            // Silently fail - file info already set from extension
-                        }
                         
                         \Filament\Notifications\Notification::make()
                             ->success()
