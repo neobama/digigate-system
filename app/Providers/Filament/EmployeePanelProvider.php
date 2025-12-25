@@ -16,6 +16,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class EmployeePanelProvider extends PanelProvider
@@ -28,10 +29,10 @@ class EmployeePanelProvider extends PanelProvider
             ->login()
             ->loginRouteSlug('login')
             ->brandName('DigiGate System')
-            ->brandLogo('https://is3.cloudhost.id/s3-digigate/assets/digigate-logo.png')
+            ->brandLogo(Storage::disk('s3_public')->url('assets/digigate-logo.png'))
             ->brandLogoHeight('3rem')
-            ->darkModeBrandLogo('https://is3.cloudhost.id/s3-digigate/assets/digigate-dark.png')
-            ->favicon('https://is3.cloudhost.id/s3-digigate/assets/favicon.png')
+            ->darkModeBrandLogo(Storage::disk('s3_public')->url('assets/digigate-dark.png'))
+            ->favicon(Storage::disk('s3_public')->url('assets/favicon.png'))
             ->colors([
                 'primary' => Color::Blue,
             ])
