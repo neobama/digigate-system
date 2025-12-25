@@ -179,6 +179,18 @@ class DocumentResource extends Resource
                     ]),
             ])
             ->actions([
+                Tables\Actions\Action::make('preview')
+                    ->label('Preview')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->modalHeading(fn (Document $record) => $record->name)
+                    ->modalContent(fn (Document $record) => view('filament.documents.preview', [
+                        'document' => $record,
+                        'fileUrl' => Storage::disk('s3_public')->url($record->file_path),
+                    ]))
+                    ->modalWidth('7xl')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Tutup'),
                 Tables\Actions\Action::make('download')
                     ->label('Download')
                     ->icon('heroicon-o-arrow-down-tray')
