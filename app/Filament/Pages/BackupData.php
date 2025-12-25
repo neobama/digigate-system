@@ -12,8 +12,8 @@ class BackupData extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-arrow-down-tray';
     protected static ?string $navigationLabel = 'Backup Data';
-    protected static ?string $title = 'Backup Semua Data';
-    protected static ?string $navigationGroup = 'Pengaturan';
+    protected static ?string $title = 'Backup All Data';
+    protected static ?string $navigationGroup = 'Settings';
     protected static string $view = 'filament.pages.backup-data';
 
     protected function getHeaderActions(): array
