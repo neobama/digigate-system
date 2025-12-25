@@ -3,7 +3,10 @@
 namespace App\Filament\Employee\Pages;
 
 use App\Models\Reimbursement;
+use App\Services\GeminiService;
 use Filament\Forms;
+use Filament\Forms\Components\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -67,6 +70,89 @@ class MyReimbursement extends Page implements Tables\Contracts\HasTable
                 Tables\Actions\CreateAction::make()
                     ->label('Request Reimbursement Baru')
                     ->form([
+                        Forms\Components\Section::make('Experimental AI - Auto Fill dari Invoice')
+                            ->description('Upload invoice/bon untuk auto-fill form (Experimental Feature)')
+                            ->schema([
+                                Forms\Components\FileUpload::make('ai_invoice_image')
+                                    ->label('Upload Invoice/Bon untuk AI Parse')
+                                    ->image()
+                                    ->maxSize(5120)
+                                    ->acceptedFileTypes(['image/*'])
+                                    ->helperText('Upload invoice/bon untuk auto-fill form. Fitur experimental.')
+                                    ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                        if ($state) {
+                                            try {
+                                                $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
+                                                $imagePath = is_array($state) ? $state[0] : $state;
+                                                
+                                                // Get image content - handle both temporary and stored files
+                                                if (Storage::disk($disk)->exists($imagePath)) {
+                                                    $imageContent = Storage::disk($disk)->get($imagePath);
+                                                } else {
+                                                    // Try public disk
+                                                    if (Storage::disk('public')->exists($imagePath)) {
+                                                        $imageContent = Storage::disk('public')->get($imagePath);
+                                                    } else {
+                                                        // Try to get from full path
+                                                        $fullPath = storage_path('app/public/' . $imagePath);
+                                                        if (file_exists($fullPath)) {
+                                                            $imageContent = file_get_contents($fullPath);
+                                                        } else {
+                                                            throw new \Exception('File tidak ditemukan');
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                $imageBase64 = base64_encode($imageContent);
+                                                
+                                                // Call Gemini API
+                                                $gemini = new GeminiService();
+                                                $parsed = $gemini->parseReimbursementInvoice($imageBase64);
+                                                
+                                                if ($parsed) {
+                                                    // Auto-fill form
+                                                    if (isset($parsed['purpose'])) {
+                                                        $set('purpose', $parsed['purpose']);
+                                                    }
+                                                    if (isset($parsed['expense_date'])) {
+                                                        $set('expense_date', $parsed['expense_date']);
+                                                    }
+                                                    if (isset($parsed['amount'])) {
+                                                        $set('amount', $parsed['amount']);
+                                                    }
+                                                    if (isset($parsed['description'])) {
+                                                        $set('description', $parsed['description']);
+                                                    }
+                                                    
+                                                    // Set proof_of_payment to the uploaded image
+                                                    $set('proof_of_payment', $imagePath);
+                                                    
+                                                    Notification::make()
+                                                        ->success()
+                                                        ->title('AI Parse Berhasil')
+                                                        ->body('Form telah diisi otomatis. Silakan periksa dan edit jika diperlukan.')
+                                                        ->send();
+                                                } else {
+                                                    Notification::make()
+                                                        ->warning()
+                                                        ->title('AI Parse Gagal')
+                                                        ->body('Tidak dapat memparse invoice. Silakan isi form secara manual.')
+                                                        ->send();
+                                                }
+                                            } catch (\Exception $e) {
+                                                Notification::make()
+                                                    ->danger()
+                                                    ->title('Error')
+                                                    ->body('Terjadi error saat parsing: ' . $e->getMessage())
+                                                    ->send();
+                                            }
+                                        }
+                                    })
+                                    ->columnSpanFull(),
+                            ])
+                            ->collapsible()
+                            ->collapsed()
+                            ->badge('Experimental'),
                         Forms\Components\TextInput::make('purpose')
                             ->label('Keperluan')
                             ->required()
