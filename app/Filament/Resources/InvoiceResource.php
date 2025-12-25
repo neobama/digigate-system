@@ -170,6 +170,77 @@ class InvoiceResource extends Resource
                     ->hidden(fn (Invoice $record) => ! in_array($record->status, ['paid', 'delivered']))
                     ->url(fn (Invoice $record) => route('invoices.paid.pdf', $record))
                     ->openUrlInNewTab(),
+                Tables\Actions\Action::make('uploadDocument')
+                    ->label('Upload Dokumen')
+                    ->icon('heroicon-o-paper-clip')
+                    ->color('info')
+                    ->form([
+                        Forms\Components\TextInput::make('name')
+                            ->label('Nama Dokumen')
+                            ->required()
+                            ->default(fn (Invoice $record) => 'Invoice ' . $record->invoice_number),
+                        Forms\Components\Textarea::make('description')
+                            ->label('Deskripsi')
+                            ->rows(2),
+                        Forms\Components\Select::make('category')
+                            ->label('Kategori')
+                            ->options([
+                                'invoice' => 'Invoice',
+                                'contract' => 'Kontrak',
+                                'certificate' => 'Sertifikat',
+                                'other' => 'Lainnya',
+                            ])
+                            ->default('invoice'),
+                        Forms\Components\FileUpload::make('file_path')
+                            ->label('File')
+                            ->directory('documents')
+                            ->disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')
+                            ->visibility('public')
+                            ->acceptedFileTypes([
+                                'application/pdf',
+                                'application/msword',
+                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                'image/*',
+                            ])
+                            ->maxSize(10240)
+                            ->required(),
+                    ])
+                    ->action(function (array $data, Invoice $record) {
+                        $filePath = $data['file_path'];
+                        $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
+                        
+                        // Get file info
+                        $fileSize = 0;
+                        $mimeType = 'application/octet-stream';
+                        try {
+                            if (\Illuminate\Support\Facades\Storage::disk($disk)->exists($filePath)) {
+                                $fileInfo = \Illuminate\Support\Facades\Storage::disk($disk)->getMetadata($filePath);
+                                $mimeType = $fileInfo['mimetype'] ?? 'application/octet-stream';
+                                $fileSize = $fileInfo['size'] ?? 0;
+                            }
+                        } catch (\Exception $e) {
+                            // Fallback
+                        }
+                        
+                        \App\Models\Document::create([
+                            'name' => $data['name'],
+                            'file_path' => $filePath,
+                            'file_name' => basename($filePath),
+                            'mime_type' => $mimeType,
+                            'file_size' => $fileSize,
+                            'category' => $data['category'] ?? 'invoice',
+                            'description' => $data['description'] ?? null,
+                            'related_invoice_id' => $record->id,
+                            'uploaded_by' => auth()->id(),
+                            'access_level' => 'private',
+                        ]);
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->success()
+                            ->title('Dokumen berhasil diupload')
+                            ->body('Dokumen telah ditambahkan dan terhubung dengan invoice ini.')
+                            ->send();
+                    }),
             ])
             ->headerActions([
                 \pxlrbt\FilamentExcel\Actions\Tables\ExportAction::make()
