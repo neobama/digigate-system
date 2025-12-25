@@ -40,7 +40,7 @@ class FinancialReportExport implements FromCollection, WithHeadings, WithMapping
             $data->push([
                 'type' => 'Pemasukan',
                 'category' => 'Invoice',
-                'date' => $invoice->invoice_date,
+                'date' => \Carbon\Carbon::parse($invoice->invoice_date),
                 'description' => 'Invoice #' . $invoice->invoice_number . ' - ' . $invoice->client_name,
                 'amount' => $invoice->total_amount,
                 'debit' => $invoice->total_amount,
@@ -57,7 +57,7 @@ class FinancialReportExport implements FromCollection, WithHeadings, WithMapping
             $data->push([
                 'type' => 'Pemasukan',
                 'category' => 'Manual',
-                'date' => $income->income_date,
+                'date' => \Carbon\Carbon::parse($income->income_date),
                 'description' => $income->description,
                 'amount' => $income->amount,
                 'debit' => $income->amount,
@@ -76,7 +76,7 @@ class FinancialReportExport implements FromCollection, WithHeadings, WithMapping
             $data->push([
                 'type' => 'Pengeluaran',
                 'category' => 'Reimbursement',
-                'date' => $reimbursement->expense_date,
+                'date' => \Carbon\Carbon::parse($reimbursement->expense_date),
                 'description' => $reimbursement->purpose . ' - ' . ($reimbursement->employee ? $reimbursement->employee->name : 'N/A'),
                 'amount' => $reimbursement->amount,
                 'debit' => 0,
@@ -95,7 +95,7 @@ class FinancialReportExport implements FromCollection, WithHeadings, WithMapping
             $data->push([
                 'type' => 'Pengeluaran',
                 'category' => 'Cashbon',
-                'date' => $cashbon->request_date,
+                'date' => \Carbon\Carbon::parse($cashbon->request_date),
                 'description' => $cashbon->reason . ' - ' . ($cashbon->employee ? $cashbon->employee->name : 'N/A'),
                 'amount' => $cashbon->amount,
                 'debit' => 0,
@@ -112,7 +112,7 @@ class FinancialReportExport implements FromCollection, WithHeadings, WithMapping
             $data->push([
                 'type' => 'Pengeluaran',
                 'category' => 'Manual',
-                'date' => $expense->expense_date,
+                'date' => \Carbon\Carbon::parse($expense->expense_date),
                 'description' => $expense->description . ($expense->account_code ? ' (Kode: ' . $expense->account_code . ')' : ''),
                 'amount' => $expense->amount,
                 'debit' => 0,
@@ -120,7 +120,9 @@ class FinancialReportExport implements FromCollection, WithHeadings, WithMapping
             ]);
         }
 
-        return $data->sortBy('date');
+        return $data->sortBy(function ($item) {
+            return $item['date']->timestamp;
+        })->values();
     }
 
     public function headings(): array
@@ -142,8 +144,13 @@ class FinancialReportExport implements FromCollection, WithHeadings, WithMapping
     {
         $this->balance += ($row['debit'] - $row['credit']);
 
+        // Date is already Carbon instance from collection
+        $date = $row['date'] instanceof \Carbon\Carbon 
+            ? $row['date'] 
+            : \Carbon\Carbon::parse($row['date']);
+
         return [
-            $row['date']->format('d/m/Y'),
+            $date->format('d/m/Y'),
             $row['type'],
             $row['category'],
             $row['description'],
