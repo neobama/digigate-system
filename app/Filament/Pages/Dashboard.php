@@ -14,6 +14,7 @@ class Dashboard extends BaseDashboard
     {
         return [
             \App\Filament\Widgets\InvoiceStatsWidget::class,
+            \App\Filament\Widgets\FinancialOverviewWidget::class,
             \App\Filament\Widgets\StockSummaryWidget::class,
         ];
     }
