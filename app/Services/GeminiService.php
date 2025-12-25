@@ -120,13 +120,15 @@ Only return valid JSON, no other text. If any field cannot be determined, use nu
         $prompt = "Analyze this invoice/receipt image and extract ALL items/products listed. Return as JSON array:
 [
   {
-    \"name\": \"Product/Item name (e.g., 'Processor i7 11700K', 'RAM DDR4', 'SSD')\",
+    \"name\": \"Product/Item name - MUST match one of these exact options: 'Processor i7 11700K', 'Processor i7 8700K', 'RAM DDR4', or 'SSD'. Mapping rules: If you see RAM/DDR4/DDR memory -> use 'RAM DDR4'. If you see Processor i7 11700/11700K/11700F -> use 'Processor i7 11700K'. If you see Processor i7 8700/8700K/8700F -> use 'Processor i7 8700K'. If you see any SSD (Samsung, Kingston, etc.) -> use 'SSD'.\",
     \"supplier\": \"Supplier/vendor name from invoice\",
     \"purchase_date\": \"Date in YYYY-MM-DD format (extract from invoice date)\",
     \"quantity\": \"Quantity as number (if available)\"
   },
   ...
 ]
+
+IMPORTANT: The 'name' field MUST be exactly one of: 'Processor i7 11700K', 'Processor i7 8700K', 'RAM DDR4', or 'SSD'. Map similar items to the closest match.
 
 Only return valid JSON array, no other text. If invoice date is not found, use today's date. Extract all items from the invoice.";
 
@@ -162,12 +164,12 @@ Only return valid JSON array, no other text. If invoice date is not found, use t
                     $parsed = json_decode($text, true);
                     
                     if ($parsed && is_array($parsed)) {
-                        // Normalize items
+                        // Normalize items and map to dropdown options
                         $items = [];
                         foreach ($parsed as $item) {
                             if (isset($item['name'])) {
                                 $items[] = [
-                                    'name' => $item['name'] ?? null,
+                                    'name' => $this->mapComponentName($item['name']),
                                     'supplier' => $item['supplier'] ?? null,
                                     'purchase_date' => $item['purchase_date'] ?? now()->format('Y-m-d'),
                                     'quantity' => isset($item['quantity']) ? (int) $item['quantity'] : 1,
@@ -192,6 +194,49 @@ Only return valid JSON array, no other text. If invoice date is not found, use t
             ]);
             return null;
         }
+    }
+
+    /**
+     * Map component name to dropdown options
+     * 
+     * @param string $name
+     * @return string
+     */
+    protected function mapComponentName(string $name): string
+    {
+        $name = strtolower(trim($name));
+        
+        // Available options
+        $options = [
+            'Processor i7 11700K',
+            'Processor i7 8700K',
+            'RAM DDR4',
+            'SSD',
+        ];
+        
+        // Mapping rules
+        // RAM/DDR4 -> RAM DDR4
+        if (preg_match('/\b(ram|ddr4|ddr\s*4|memory)\b/i', $name)) {
+            return 'RAM DDR4';
+        }
+        
+        // Processor i7 11700 variants -> Processor i7 11700K
+        if (preg_match('/\b(i7\s*11700|11700k|11700f|11700)\b/i', $name)) {
+            return 'Processor i7 11700K';
+        }
+        
+        // Processor i7 8700 variants -> Processor i7 8700K
+        if (preg_match('/\b(i7\s*8700|8700k|8700f|8700)\b/i', $name)) {
+            return 'Processor i7 8700K';
+        }
+        
+        // SSD (any brand/model) -> SSD
+        if (preg_match('/\b(ssd|solid\s*state|samsung|kingston|wd|western\s*digital|crucial|adata|sandisk)\b/i', $name)) {
+            return 'SSD';
+        }
+        
+        // Default: return first option if no match
+        return $options[0];
     }
 
     /**
