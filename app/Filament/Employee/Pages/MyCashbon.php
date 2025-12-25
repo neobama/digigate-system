@@ -15,7 +15,7 @@ class MyCashbon extends Page implements Tables\Contracts\HasTable
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
     protected static string $view = 'filament.employee.pages.my-cashbon';
-    protected static ?string $navigationLabel = 'Cashbon Saya';
+    protected static ?string $navigationLabel = 'Cashbon';
     protected static ?string $title = 'Request Cashbon';
 
     public function table(Table $table): Table

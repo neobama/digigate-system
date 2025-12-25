@@ -28,10 +28,10 @@ class AdminPanelProvider extends PanelProvider
             ->path('/')
             ->login(\App\Filament\Pages\CustomLogin::class)
             ->brandName('DigiGate System')
-            ->brandLogo(asset('images/digigate-logo.png'))
+            ->brandLogo('https://is3.cloudhost.id/s3-digigate/assets/digigate-logo.png')
             ->brandLogoHeight('3rem')
-            ->darkModeBrandLogo(asset('images/digigate-dark.png'))
-            ->favicon(asset('images/favicon.png'))
+            ->darkModeBrandLogo('https://is3.cloudhost.id/s3-digigate/assets/digigate-dark.png')
+            ->favicon('https://is3.cloudhost.id/s3-digigate/assets/favicon.png')
             ->colors([
                 'primary' => Color::Amber,
             ])

@@ -15,7 +15,7 @@ class MyReimbursement extends Page implements Tables\Contracts\HasTable
 
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
     protected static string $view = 'filament.employee.pages.my-reimbursement';
-    protected static ?string $navigationLabel = 'Reimbursement Saya';
+    protected static ?string $navigationLabel = 'Reimbursement';
     protected static ?string $title = 'Request Reimbursement';
 
     public function table(Table $table): Table

@@ -16,8 +16,8 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
 
     protected static ?string $navigationIcon = 'heroicon-o-cube';
     protected static string $view = 'filament.employee.pages.my-component';
-    protected static ?string $navigationLabel = 'Komponen';
-    protected static ?string $title = 'Daftar Komponen';
+    protected static ?string $navigationLabel = 'Component';
+    protected static ?string $title = 'Component List';
 
     public function table(Table $table): Table
     {

@@ -17,8 +17,8 @@ class MyLogbook extends Page implements Tables\Contracts\HasTable
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static string $view = 'filament.employee.pages.my-logbook';
-    protected static ?string $navigationLabel = 'Logbook Saya';
-    protected static ?string $title = 'Logbook Harian';
+    protected static ?string $navigationLabel = 'Logbook';
+    protected static ?string $title = 'Daily Logbook';
 
     public function table(Table $table): Table
     {
