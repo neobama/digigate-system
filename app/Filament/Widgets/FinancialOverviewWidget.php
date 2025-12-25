@@ -62,7 +62,6 @@ class FinancialOverviewWidget extends BaseWidget
                 ->color('success'),
             
             Stat::make('Total Pengeluaran Bulan Ini', 'Rp ' . number_format($totalExpense, 0, ',', '.'))
-                ->description('Reimbursement: ' . number_format($reimbursementExpense, 0, ',', '.') . ' | Cashbon: ' . number_format($cashbonExpense, 0, ',', '.') . ' | Manual: ' . number_format($manualExpense, 0, ',', '.'))
                 ->descriptionIcon('heroicon-m-arrow-trending-down')
                 ->color('danger'),
             
