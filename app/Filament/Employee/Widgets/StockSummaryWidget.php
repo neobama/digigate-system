@@ -6,6 +6,7 @@ use App\Models\Component;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
+use Illuminate\Database\Eloquent\Builder;
 
 class StockSummaryWidget extends BaseWidget
 {
@@ -20,7 +21,7 @@ class StockSummaryWidget extends BaseWidget
             ->description('Breakdown stock per komponen yang tersedia')
             ->query(
                 Component::query()
-                    ->selectRaw('name, 
+                    ->selectRaw('MIN(id) as id, name, 
                         SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as available', 
                         ['available'])
                     ->groupBy('name')
@@ -39,8 +40,7 @@ class StockSummaryWidget extends BaseWidget
                     ->formatStateUsing(fn ($state) => $state . ' pcs'),
             ])
             ->defaultSort('name', 'asc')
-            ->paginated(false)
-            ->getTableRecordKeyUsing(fn ($record) => $record->name ?? 'unknown');
+            ->paginated(false);
     }
 }
 
