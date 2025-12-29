@@ -7,6 +7,8 @@ use App\Filament\Resources\AssemblyResource\RelationManagers;
 use App\Models\Assembly;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -95,6 +97,98 @@ class AssemblyResource extends Resource
         ]);
     }
 
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                Infolists\Components\Section::make('Informasi Assembly')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('serial_number')
+                            ->label('Serial Number')
+                            ->size('lg')
+                            ->weight('bold')
+                            ->copyable()
+                            ->copyMessage('Serial Number disalin!'),
+                        Infolists\Components\TextEntry::make('invoice.invoice_number')
+                            ->label('Invoice')
+                            ->badge()
+                            ->color('info'),
+                        Infolists\Components\TextEntry::make('product_type')
+                            ->label('Produk')
+                            ->formatStateUsing(fn ($state) => match($state) {
+                                'Macan' => 'DigiGate Macan (i7 11700K)',
+                                'Maleo' => 'DigiGate Maleo (i7 8700K)',
+                                default => $state,
+                            })
+                            ->badge()
+                            ->color('success'),
+                        Infolists\Components\TextEntry::make('assembly_date')
+                            ->label('Tanggal Assembly')
+                            ->date('d/m/Y'),
+                        Infolists\Components\TextEntry::make('created_at')
+                            ->label('Dibuat')
+                            ->dateTime('d/m/Y H:i'),
+                    ])->columns(2),
+                Infolists\Components\Section::make('Serial Number Komponen')
+                    ->description('Detail Serial Number komponen yang digunakan dalam assembly ini')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('sn_details.processor')
+                            ->label(fn (Assembly $record) => 'SN ' . ($record->product_type === 'Macan' ? 'Processor i7 11700K' : 'Processor i7 8700K'))
+                            ->badge()
+                            ->color('primary')
+                            ->copyable()
+                            ->copyMessage('SN Processor disalin!'),
+                        Infolists\Components\TextEntry::make('sn_details.ram_1')
+                            ->label('SN RAM DDR4 (Slot 1)')
+                            ->badge()
+                            ->color('warning')
+                            ->copyable()
+                            ->copyMessage('SN RAM 1 disalin!'),
+                        Infolists\Components\TextEntry::make('sn_details.ram_2')
+                            ->label('SN RAM DDR4 (Slot 2)')
+                            ->badge()
+                            ->color('warning')
+                            ->copyable()
+                            ->copyMessage('SN RAM 2 disalin!'),
+                        Infolists\Components\TextEntry::make('sn_details.ssd')
+                            ->label('SN SSD')
+                            ->badge()
+                            ->color('success')
+                            ->copyable()
+                            ->copyMessage('SN SSD disalin!'),
+                    ])->columns(2),
+                Infolists\Components\Section::make('Informasi Invoice')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('invoice.client_name')
+                            ->label('Client'),
+                        Infolists\Components\TextEntry::make('invoice.invoice_date')
+                            ->label('Tanggal Invoice')
+                            ->date('d/m/Y'),
+                        Infolists\Components\TextEntry::make('invoice.total_amount')
+                            ->label('Total Invoice')
+                            ->money('IDR'),
+                        Infolists\Components\TextEntry::make('invoice.status')
+                            ->label('Status Invoice')
+                            ->badge()
+                            ->formatStateUsing(fn ($state) => match($state) {
+                                'proforma' => 'Proforma',
+                                'paid' => 'Paid',
+                                'delivered' => 'Delivered',
+                                'cancelled' => 'Cancelled',
+                                default => $state,
+                            })
+                            ->color(fn ($state) => match($state) {
+                                'paid' => 'success',
+                                'proforma' => 'warning',
+                                'delivered' => 'info',
+                                'cancelled' => 'danger',
+                                default => 'gray',
+                            }),
+                    ])->columns(2)
+                    ->visible(fn (Assembly $record) => $record->invoice !== null),
+            ]);
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -128,6 +222,7 @@ class AssemblyResource extends Resource
                     ]),
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -149,6 +244,7 @@ class AssemblyResource extends Resource
         return [
             'index' => Pages\ListAssemblies::route('/'),
             'create' => Pages\CreateAssembly::route('/create'),
+            'view' => Pages\ViewAssembly::route('/{record}'),
             'edit' => Pages\EditAssembly::route('/{record}/edit'),
         ];
     }
