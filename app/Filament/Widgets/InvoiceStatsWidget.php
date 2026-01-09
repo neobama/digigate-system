@@ -12,7 +12,8 @@ class InvoiceStatsWidget extends BaseWidget
     {
         return [
             Stat::make('Pendapatan Bulan Ini', function () {
-                $total = Invoice::where('status', 'paid')
+                // Include both 'paid' and 'delivered' status (delivered means already paid)
+                $total = Invoice::whereIn('status', ['paid', 'delivered'])
                     ->whereMonth('invoice_date', now()->month)
                     ->whereYear('invoice_date', now()->year)
                     ->sum('total_amount');
@@ -25,7 +26,8 @@ class InvoiceStatsWidget extends BaseWidget
             
             Stat::make('Pendapatan Bulan Lalu', function () {
                 $lastMonth = now()->subMonth();
-                $total = Invoice::where('status', 'paid')
+                // Include both 'paid' and 'delivered' status (delivered means already paid)
+                $total = Invoice::whereIn('status', ['paid', 'delivered'])
                     ->whereMonth('invoice_date', $lastMonth->month)
                     ->whereYear('invoice_date', $lastMonth->year)
                     ->sum('total_amount');
