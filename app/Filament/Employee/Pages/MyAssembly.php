@@ -82,8 +82,15 @@ class MyAssembly extends Page implements Tables\Contracts\HasTable
 
                                 // Tentukan spek berdasarkan tipe
                                 $procModel = ($type === 'Macan') ? 'Processor i7 11700K' : 'Processor i7 8700K';
+                                $chassisModel = ($type === 'Macan') ? 'Chassis Macan' : 'Chassis Maleo';
 
                                 return [
+                                    // Dropdown Chassis
+                                    Forms\Components\Select::make('sn_details.chassis')
+                                        ->label("SN $chassisModel")
+                                        ->options(fn() => Component::where('name', $chassisModel)->where('status', 'available')->pluck('sn', 'sn'))
+                                        ->required(),
+                                    
                                     // Dropdown Processor
                                     Forms\Components\Select::make('sn_details.processor')
                                         ->label("SN $procModel")

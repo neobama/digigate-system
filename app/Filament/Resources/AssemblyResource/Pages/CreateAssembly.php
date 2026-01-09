@@ -38,7 +38,7 @@ class CreateAssembly extends CreateRecord
         $data = $this->record->sn_details;
 
         // Ambil semua SN yang ada di dalam array sn_details
-        // (Processor, RAM 1, RAM 2, SSD)
+        // (Chassis, Processor, RAM 1, RAM 2, SSD)
         $serialNumbers = array_values($data);
 
         // Update status komponen tersebut di database menjadi 'used'

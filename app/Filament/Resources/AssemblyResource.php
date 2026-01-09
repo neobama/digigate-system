@@ -66,8 +66,15 @@ class AssemblyResource extends Resource
 
                         // Tentukan spek berdasarkan tipe
                         $procModel = ($type === 'Macan') ? 'Processor i7 11700K' : 'Processor i7 8700K';
+                        $chassisModel = ($type === 'Macan') ? 'Chassis Macan' : 'Chassis Maleo';
 
                         return [
+                            // Dropdown Chassis
+                            Forms\Components\Select::make('sn_details.chassis')
+                                ->label("SN $chassisModel")
+                                ->options(fn() => \App\Models\Component::where('name', $chassisModel)->where('status', 'available')->pluck('sn', 'sn'))
+                                ->required(),
+                            
                             // Dropdown Processor
                             Forms\Components\Select::make('sn_details.processor')
                                 ->label("SN $procModel")
@@ -132,6 +139,12 @@ class AssemblyResource extends Resource
                 Infolists\Components\Section::make('Serial Number Komponen')
                     ->description('Detail Serial Number komponen yang digunakan dalam assembly ini')
                     ->schema([
+                        Infolists\Components\TextEntry::make('sn_details.chassis')
+                            ->label(fn (Assembly $record) => 'SN ' . ($record->product_type === 'Macan' ? 'Chassis Macan' : 'Chassis Maleo'))
+                            ->badge()
+                            ->color('info')
+                            ->copyable()
+                            ->copyMessage('SN Chassis disalin!'),
                         Infolists\Components\TextEntry::make('sn_details.processor')
                             ->label(fn (Assembly $record) => 'SN ' . ($record->product_type === 'Macan' ? 'Processor i7 11700K' : 'Processor i7 8700K'))
                             ->badge()
