@@ -120,48 +120,30 @@ class CashbonResource extends Resource
                     ->color('success')
                     ->visible(fn (Cashbon $record) => $record->status === 'pending')
                     ->action(function (Cashbon $record) {
-                        \Illuminate\Support\Facades\DB::table('cashbons')
-                            ->where('id', $record->id)
-                            ->update([
-                                'status' => 'approved',
-                                'updated_at' => now()
-                            ]);
+                        $record->update(['status' => 'approved']);
                     })
                     ->requiresConfirmation()
-                    ->successNotificationTitle('Cashbon approved')
-                    ->dismissible(),
+                    ->successNotificationTitle('Cashbon approved'),
                 Tables\Actions\Action::make('reject')
                     ->label('Reject')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->visible(fn (Cashbon $record) => $record->status === 'pending')
                     ->action(function (Cashbon $record) {
-                        \Illuminate\Support\Facades\DB::table('cashbons')
-                            ->where('id', $record->id)
-                            ->update([
-                                'status' => 'rejected',
-                                'updated_at' => now()
-                            ]);
+                        $record->update(['status' => 'rejected']);
                     })
                     ->requiresConfirmation()
-                    ->successNotificationTitle('Cashbon rejected')
-                    ->dismissible(),
+                    ->successNotificationTitle('Cashbon rejected'),
                 Tables\Actions\Action::make('markAsPaid')
                     ->label('Set Paid')
                     ->icon('heroicon-o-banknotes')
                     ->color('info')
                     ->visible(fn (Cashbon $record) => $record->status === 'approved')
                     ->action(function (Cashbon $record) {
-                        \Illuminate\Support\Facades\DB::table('cashbons')
-                            ->where('id', $record->id)
-                            ->update([
-                                'status' => 'paid',
-                                'updated_at' => now()
-                            ]);
+                        $record->update(['status' => 'paid']);
                     })
                     ->requiresConfirmation()
-                    ->successNotificationTitle('Cashbon marked as paid')
-                    ->dismissible(),
+                    ->successNotificationTitle('Cashbon marked as paid'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
