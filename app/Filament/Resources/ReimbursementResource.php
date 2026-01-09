@@ -105,15 +105,26 @@ class ReimbursementResource extends Resource
                     ->circular()
                     ->defaultImageUrl(url('/images/placeholder.png'))
                     ->disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')
-                    ->openUrlInNewTab()
-                    ->extraAttributes(['loading' => 'lazy']), // Lazy load images
-                Tables\Columns\BadgeColumn::make('status')
-                    ->colors([
-                        'warning' => 'pending',
-                        'success' => 'approved',
-                        'danger' => 'rejected',
-                        'info' => 'paid',
-                    ])
+                    ->url(fn ($record) => $record->proof_of_payment 
+                        ? Storage::disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')->url($record->proof_of_payment) 
+                        : null)
+                    ->openUrlInNewTab(),
+                Tables\Columns\TextColumn::make('status')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'pending' => 'warning',
+                        'approved' => 'success',
+                        'rejected' => 'danger',
+                        'paid' => 'info',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'pending' => 'Pending',
+                        'approved' => 'Approved',
+                        'rejected' => 'Rejected',
+                        'paid' => 'Paid',
+                        default => $state,
+                    })
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
