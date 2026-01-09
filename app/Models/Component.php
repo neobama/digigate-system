@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Component extends Model
 {
     use HasUuids;
-    protected $fillable = ['name', 'sn', 'supplier', 'purchase_date', 'status'];
+    protected $fillable = ['name', 'sn', 'supplier', 'invoice_number', 'purchase_date', 'status'];
 
     // Opsional: Untuk membantu pencarian SN di proses rakit
     public function scopeAvailable($query)

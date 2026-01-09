@@ -40,6 +40,10 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                     ->label('Supplier')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('invoice_number')
+                    ->label('Nomor Invoice')
+                    ->searchable()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('purchase_date')
                     ->label('Tanggal Pembelian')
                     ->date('d/m/Y')
@@ -73,6 +77,8 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                         'Processor i7 8700K' => 'Processor i7 8700K',
                         'RAM DDR4' => 'RAM DDR4',
                         'SSD' => 'SSD',
+                        'Chassis Macan' => 'Chassis Macan',
+                        'Chassis Maleo' => 'Chassis Maleo',
                     ]),
             ])
             ->headerActions([
@@ -225,6 +231,8 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                                         'Processor i7 8700K' => 'Processor i7 8700K',
                                         'RAM DDR4' => 'RAM DDR4',
                                         'SSD' => 'SSD',
+                                        'Chassis Macan' => 'Chassis Macan',
+                                        'Chassis Maleo' => 'Chassis Maleo',
                                     ])
                                     ->required()
                                     ->searchable(),
@@ -237,6 +245,10 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                                     ->label('Supplier')
                                     ->required()
                                     ->maxLength(255),
+                                Forms\Components\TextInput::make('invoice_number')
+                                    ->label('Nomor Invoice')
+                                    ->maxLength(255)
+                                    ->placeholder('Nomor invoice pembelian komponen'),
                                 Forms\Components\DatePicker::make('purchase_date')
                                     ->label('Tanggal Pembelian')
                                     ->required()
@@ -276,6 +288,7 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                                     'name' => $componentData['name'],
                                     'sn' => $componentData['sn'],
                                     'supplier' => $componentData['supplier'],
+                                    'invoice_number' => $componentData['invoice_number'] ?? null,
                                     'purchase_date' => $componentData['purchase_date'],
                                     'status' => $componentData['status'] ?? 'available',
                                 ]);
@@ -318,6 +331,8 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                                 'Processor i7 8700K' => 'Processor i7 8700K',
                                 'RAM DDR4' => 'RAM DDR4',
                                 'SSD' => 'SSD',
+                                'Chassis Macan' => 'Chassis Macan',
+                                'Chassis Maleo' => 'Chassis Maleo',
                             ])
                             ->required()
                             ->searchable(),
@@ -332,6 +347,10 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                             ->required()
                             ->maxLength(255)
                             ->placeholder('Nama supplier atau vendor'),
+                        Forms\Components\TextInput::make('invoice_number')
+                            ->label('Nomor Invoice')
+                            ->maxLength(255)
+                            ->placeholder('Nomor invoice pembelian komponen'),
                         Forms\Components\DatePicker::make('purchase_date')
                             ->label('Tanggal Pembelian')
                             ->default(now())
@@ -372,6 +391,8 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                                 'Processor i7 8700K' => 'Processor i7 8700K',
                                 'RAM DDR4' => 'RAM DDR4',
                                 'SSD' => 'SSD',
+                                'Chassis Macan' => 'Chassis Macan',
+                                'Chassis Maleo' => 'Chassis Maleo',
                             ])
                             ->required()
                             ->searchable(),
@@ -384,6 +405,10 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                             ->label('Supplier')
                             ->required()
                             ->maxLength(255),
+                        Forms\Components\TextInput::make('invoice_number')
+                            ->label('Nomor Invoice')
+                            ->maxLength(255)
+                            ->placeholder('Nomor invoice pembelian komponen'),
                         Forms\Components\DatePicker::make('purchase_date')
                             ->label('Tanggal Pembelian')
                             ->required()

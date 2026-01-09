@@ -31,7 +31,8 @@ class FinancialReportExport implements FromCollection, WithHeadings, WithMapping
         $data = collect();
 
         // Incomes from Invoices
-        $invoices = Invoice::where('status', 'paid')
+        // Include both 'paid' and 'delivered' status (delivered means already paid)
+        $invoices = Invoice::whereIn('status', ['paid', 'delivered'])
             ->whereMonth('invoice_date', $this->month)
             ->whereYear('invoice_date', $this->year)
             ->get();
@@ -66,41 +67,51 @@ class FinancialReportExport implements FromCollection, WithHeadings, WithMapping
         }
 
         // Expenses from Reimbursements
+        // Only get reimbursements that still exist and have valid employee relationship
         $reimbursements = Reimbursement::with('employee')
             ->where('status', 'paid')
             ->whereMonth('expense_date', $this->month)
             ->whereYear('expense_date', $this->year)
+            ->whereHas('employee') // Only include reimbursements with valid employee
             ->get();
 
         foreach ($reimbursements as $reimbursement) {
-            $data->push([
-                'type' => 'Pengeluaran',
-                'category' => 'Reimbursement',
-                'date' => \Carbon\Carbon::parse($reimbursement->expense_date),
-                'description' => $reimbursement->purpose . ' - ' . ($reimbursement->employee ? $reimbursement->employee->name : 'N/A'),
-                'amount' => $reimbursement->amount,
-                'debit' => 0,
-                'credit' => $reimbursement->amount,
-            ]);
+            // Double check: only add if employee still exists
+            if ($reimbursement->employee) {
+                $data->push([
+                    'type' => 'Pengeluaran',
+                    'category' => 'Reimbursement',
+                    'date' => \Carbon\Carbon::parse($reimbursement->expense_date),
+                    'description' => $reimbursement->purpose . ' - ' . $reimbursement->employee->name,
+                    'amount' => $reimbursement->amount,
+                    'debit' => 0,
+                    'credit' => $reimbursement->amount,
+                ]);
+            }
         }
 
         // Expenses from Cashbons
+        // Only get cashbons that still exist and have valid employee relationship
         $cashbons = Cashbon::with('employee')
             ->where('status', 'paid')
             ->whereMonth('request_date', $this->month)
             ->whereYear('request_date', $this->year)
+            ->whereHas('employee') // Only include cashbons with valid employee
             ->get();
 
         foreach ($cashbons as $cashbon) {
-            $data->push([
-                'type' => 'Pengeluaran',
-                'category' => 'Cashbon',
-                'date' => \Carbon\Carbon::parse($cashbon->request_date),
-                'description' => $cashbon->reason . ' - ' . ($cashbon->employee ? $cashbon->employee->name : 'N/A'),
-                'amount' => $cashbon->amount,
-                'debit' => 0,
-                'credit' => $cashbon->amount,
-            ]);
+            // Double check: only add if employee still exists
+            if ($cashbon->employee) {
+                $data->push([
+                    'type' => 'Pengeluaran',
+                    'category' => 'Cashbon',
+                    'date' => \Carbon\Carbon::parse($cashbon->request_date),
+                    'description' => $cashbon->reason . ' - ' . $cashbon->employee->name,
+                    'amount' => $cashbon->amount,
+                    'debit' => 0,
+                    'credit' => $cashbon->amount,
+                ]);
+            }
         }
 
         // Manual Expenses

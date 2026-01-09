@@ -18,8 +18,9 @@ class FinancialOverviewWidget extends BaseWidget
         $month = $now->month;
         $year = $now->year;
 
-        // Pemasukan dari Invoice Paid
-        $invoiceIncome = Invoice::where('status', 'paid')
+        // Pemasukan dari Invoice Paid dan Delivered
+        // Include both 'paid' and 'delivered' status (delivered means already paid)
+        $invoiceIncome = Invoice::whereIn('status', ['paid', 'delivered'])
             ->whereMonth('invoice_date', $month)
             ->whereYear('invoice_date', $year)
             ->sum('total_amount');
@@ -33,15 +34,19 @@ class FinancialOverviewWidget extends BaseWidget
         $totalIncome = $invoiceIncome + $manualIncome;
 
         // Pengeluaran dari Reimbursement Paid
+        // Only count reimbursements with valid employee relationship
         $reimbursementExpense = Reimbursement::where('status', 'paid')
             ->whereMonth('expense_date', $month)
             ->whereYear('expense_date', $year)
+            ->whereHas('employee') // Only include reimbursements with valid employee
             ->sum('amount');
 
         // Pengeluaran dari Cashbon Paid
+        // Only count cashbons with valid employee relationship
         $cashbonExpense = Cashbon::where('status', 'paid')
             ->whereMonth('request_date', $month)
             ->whereYear('request_date', $year)
+            ->whereHas('employee') // Only include cashbons with valid employee
             ->sum('amount');
 
         // Pengeluaran Manual

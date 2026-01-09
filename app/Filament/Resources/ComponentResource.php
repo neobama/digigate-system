@@ -32,6 +32,8 @@ class ComponentResource extends Resource
                         'Processor i7 8700K' => 'Processor i7 8700K',
                         'RAM DDR4' => 'RAM DDR4',
                         'SSD' => 'SSD',
+                        'Chassis Macan' => 'Chassis Macan',
+                        'Chassis Maleo' => 'Chassis Maleo',
                     ])
                     ->required(),
                 Forms\Components\TextInput::make('sn')
@@ -39,8 +41,14 @@ class ComponentResource extends Resource
                     ->unique(ignoreRecord: true)
                     ->required(),
                 Forms\Components\TextInput::make('supplier')
+                    ->label('Supplier')
                     ->required(),
+                Forms\Components\TextInput::make('invoice_number')
+                    ->label('Nomor Invoice')
+                    ->maxLength(255)
+                    ->placeholder('Nomor invoice pembelian komponen'),
                 Forms\Components\DatePicker::make('purchase_date')
+                    ->label('Tanggal Pembelian')
                     ->default(now())
                     ->required(),
                 Forms\Components\Select::make('status')
@@ -62,6 +70,10 @@ class ComponentResource extends Resource
             Tables\Columns\TextColumn::make('name')->searchable(),
             Tables\Columns\TextColumn::make('sn')->label('Serial Number')->searchable(),
             Tables\Columns\TextColumn::make('supplier')->sortable(),
+            Tables\Columns\TextColumn::make('invoice_number')
+                ->label('Nomor Invoice')
+                ->searchable()
+                ->toggleable(),
             Tables\Columns\BadgeColumn::make('status')
                 ->colors([
                     'success' => 'available',

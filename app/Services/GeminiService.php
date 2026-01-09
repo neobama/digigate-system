@@ -128,7 +128,7 @@ Only return valid JSON, no other text. If any field cannot be determined, use nu
         $prompt = "Analyze this invoice/receipt image and extract ALL items/products listed. Return as JSON array:
 [
   {
-    \"name\": \"Product/Item name - MUST match one of these exact options: 'Processor i7 11700K', 'Processor i7 8700K', 'RAM DDR4', or 'SSD'. Mapping rules: If you see RAM/DDR4/DDR memory -> use 'RAM DDR4'. If you see Processor i7 11700/11700K/11700F -> use 'Processor i7 11700K'. If you see Processor i7 8700/8700K/8700F -> use 'Processor i7 8700K'. If you see any SSD (Samsung, Kingston, etc.) -> use 'SSD'.\",
+    \"name\": \"Product/Item name - MUST match one of these exact options: 'Processor i7 11700K', 'Processor i7 8700K', 'RAM DDR4', 'SSD', 'Chassis Macan', or 'Chassis Maleo'. Mapping rules: If you see RAM/DDR4/DDR memory -> use 'RAM DDR4'. If you see Processor i7 11700/11700K/11700F -> use 'Processor i7 11700K'. If you see Processor i7 8700/8700K/8700F -> use 'Processor i7 8700K'. If you see any SSD (Samsung, Kingston, etc.) -> use 'SSD'. If you see Chassis Macan/Case Macan -> use 'Chassis Macan'. If you see Chassis Maleo/Case Maleo -> use 'Chassis Maleo'.\",
     \"supplier\": \"Supplier/vendor name from invoice\",
     \"purchase_date\": \"Date in YYYY-MM-DD format (extract from invoice date)\",
     \"quantity\": \"Quantity as number (if available)\"
@@ -136,7 +136,7 @@ Only return valid JSON, no other text. If any field cannot be determined, use nu
   ...
 ]
 
-IMPORTANT: The 'name' field MUST be exactly one of: 'Processor i7 11700K', 'Processor i7 8700K', 'RAM DDR4', or 'SSD'. Map similar items to the closest match.
+IMPORTANT: The 'name' field MUST be exactly one of: 'Processor i7 11700K', 'Processor i7 8700K', 'RAM DDR4', 'SSD', 'Chassis Macan', or 'Chassis Maleo'. Map similar items to the closest match.
 
 Only return valid JSON array, no other text. If invoice date is not found, use today's date. Extract all items from the invoice.";
 
@@ -220,9 +220,21 @@ Only return valid JSON array, no other text. If invoice date is not found, use t
             'Processor i7 8700K',
             'RAM DDR4',
             'SSD',
+            'Chassis Macan',
+            'Chassis Maleo',
         ];
         
         // Mapping rules
+        // Chassis Macan -> Chassis Macan
+        if (preg_match('/\b(chassis\s*macan|macan\s*chassis|case\s*macan)\b/i', $name)) {
+            return 'Chassis Macan';
+        }
+        
+        // Chassis Maleo -> Chassis Maleo
+        if (preg_match('/\b(chassis\s*maleo|maleo\s*chassis|case\s*maleo)\b/i', $name)) {
+            return 'Chassis Maleo';
+        }
+        
         // RAM/DDR4 -> RAM DDR4
         if (preg_match('/\b(ram|ddr4|ddr\s*4|memory)\b/i', $name)) {
             return 'RAM DDR4';
