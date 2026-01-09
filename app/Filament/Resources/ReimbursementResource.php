@@ -11,6 +11,7 @@ use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
 
 class ReimbursementResource extends Resource
@@ -77,6 +78,7 @@ class ReimbursementResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('employee')) // Eager load employee to prevent N+1 queries
             ->columns([
                 Tables\Columns\TextColumn::make('employee.name')
                     ->label('Karyawan')
@@ -141,21 +143,30 @@ class ReimbursementResource extends Resource
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->visible(fn (Reimbursement $record) => $record->status === 'pending')
-                    ->action(fn (Reimbursement $record) => $record->update(['status' => 'approved']))
+                    ->action(function (Reimbursement $record) {
+                        $record->status = 'approved';
+                        $record->save();
+                    })
                     ->requiresConfirmation(),
                 Tables\Actions\Action::make('reject')
                     ->label('Reject')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->visible(fn (Reimbursement $record) => $record->status === 'pending')
-                    ->action(fn (Reimbursement $record) => $record->update(['status' => 'rejected']))
+                    ->action(function (Reimbursement $record) {
+                        $record->status = 'rejected';
+                        $record->save();
+                    })
                     ->requiresConfirmation(),
                 Tables\Actions\Action::make('markAsPaid')
                     ->label('Set Paid')
                     ->icon('heroicon-o-banknotes')
                     ->color('info')
                     ->visible(fn (Reimbursement $record) => $record->status === 'approved')
-                    ->action(fn (Reimbursement $record) => $record->update(['status' => 'paid']))
+                    ->action(function (Reimbursement $record) {
+                        $record->status = 'paid';
+                        $record->save();
+                    })
                     ->requiresConfirmation(),
             ])
             ->bulkActions([
