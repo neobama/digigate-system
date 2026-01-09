@@ -155,7 +155,6 @@ class ReimbursementResource extends Resource
                     ->action(function (Reimbursement $record) {
                         $record->update(['status' => 'approved']);
                     })
-                    ->requiresConfirmation()
                     ->successNotificationTitle('Reimbursement approved'),
                 Tables\Actions\Action::make('reject')
                     ->label('Reject')
@@ -165,7 +164,6 @@ class ReimbursementResource extends Resource
                     ->action(function (Reimbursement $record) {
                         $record->update(['status' => 'rejected']);
                     })
-                    ->requiresConfirmation()
                     ->successNotificationTitle('Reimbursement rejected'),
                 Tables\Actions\Action::make('markAsPaid')
                     ->label('Set Paid')
@@ -175,7 +173,6 @@ class ReimbursementResource extends Resource
                     ->action(function (Reimbursement $record) {
                         $record->update(['status' => 'paid']);
                     })
-                    ->requiresConfirmation()
                     ->successNotificationTitle('Reimbursement marked as paid'),
             ])
             ->bulkActions([
