@@ -12,9 +12,11 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
-class FinancialReportExport implements FromCollection, WithHeadings, WithMapping, WithTitle, WithStyles
+class FinancialReportExport implements FromCollection, WithHeadings, WithMapping, WithTitle, WithStyles, WithColumnFormatting
 {
     protected $month;
     protected $year;
@@ -160,14 +162,26 @@ class FinancialReportExport implements FromCollection, WithHeadings, WithMapping
             ? $row['date'] 
             : \Carbon\Carbon::parse($row['date']);
 
+        // Return numbers as-is (not formatted strings) so Excel can properly interpret them
         return [
             $date->format('d/m/Y'),
             $row['type'],
             $row['category'],
             $row['description'],
-            $row['debit'] > 0 ? number_format($row['debit'], 0, ',', '.') : '',
-            $row['credit'] > 0 ? number_format($row['credit'], 0, ',', '.') : '',
-            number_format($this->balance, 0, ',', '.'),
+            $row['debit'] > 0 ? (float) $row['debit'] : null,
+            $row['credit'] > 0 ? (float) $row['credit'] : null,
+            (float) $this->balance,
+        ];
+    }
+    
+    public function columnFormats(): array
+    {
+        // Format kolom Debit (E), Kredit (F), dan Saldo (G) sebagai angka dengan format Indonesia
+        // Format: #,##0 untuk angka tanpa desimal dengan pemisah ribuan
+        return [
+            'E' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1, // Debit
+            'F' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1, // Kredit
+            'G' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1, // Saldo
         ];
     }
 
