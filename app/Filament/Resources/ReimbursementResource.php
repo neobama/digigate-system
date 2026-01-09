@@ -105,20 +105,17 @@ class ReimbursementResource extends Resource
                     ->circular()
                     ->defaultImageUrl(url('/images/placeholder.png'))
                     ->disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')
-                    ->url(fn ($record) => $record->proof_of_payment 
-                        ? Storage::disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')->url($record->proof_of_payment) 
-                        : null)
                     ->openUrlInNewTab(),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn ($state): string => match ($state) {
                         'pending' => 'warning',
                         'approved' => 'success',
                         'rejected' => 'danger',
                         'paid' => 'info',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                    ->formatStateUsing(fn ($state): string => match ($state) {
                         'pending' => 'Pending',
                         'approved' => 'Approved',
                         'rejected' => 'Rejected',
@@ -156,49 +153,27 @@ class ReimbursementResource extends Resource
                     ->color('success')
                     ->visible(fn (Reimbursement $record) => $record->status === 'pending')
                     ->action(function (Reimbursement $record) {
-                        // Use direct DB update for maximum performance
-                        DB::table('reimbursements')
-                            ->where('id', $record->id)
-                            ->update([
-                                'status' => 'approved',
-                                'updated_at' => now()
-                            ]);
+                        $record->update(['status' => 'approved']);
                     })
-                    ->requiresConfirmation()
-                    ->successNotificationTitle('Reimbursement approved')
-                    ->dismissible(),
+                    ->requiresConfirmation(),
                 Tables\Actions\Action::make('reject')
                     ->label('Reject')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->visible(fn (Reimbursement $record) => $record->status === 'pending')
                     ->action(function (Reimbursement $record) {
-                        DB::table('reimbursements')
-                            ->where('id', $record->id)
-                            ->update([
-                                'status' => 'rejected',
-                                'updated_at' => now()
-                            ]);
+                        $record->update(['status' => 'rejected']);
                     })
-                    ->requiresConfirmation()
-                    ->successNotificationTitle('Reimbursement rejected')
-                    ->dismissible(),
+                    ->requiresConfirmation(),
                 Tables\Actions\Action::make('markAsPaid')
                     ->label('Set Paid')
                     ->icon('heroicon-o-banknotes')
                     ->color('info')
                     ->visible(fn (Reimbursement $record) => $record->status === 'approved')
                     ->action(function (Reimbursement $record) {
-                        DB::table('reimbursements')
-                            ->where('id', $record->id)
-                            ->update([
-                                'status' => 'paid',
-                                'updated_at' => now()
-                            ]);
+                        $record->update(['status' => 'paid']);
                     })
-                    ->requiresConfirmation()
-                    ->successNotificationTitle('Reimbursement marked as paid')
-                    ->dismissible(),
+                    ->requiresConfirmation(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
