@@ -12,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class ReimbursementResource extends Resource
@@ -104,8 +105,8 @@ class ReimbursementResource extends Resource
                     ->circular()
                     ->defaultImageUrl(url('/images/placeholder.png'))
                     ->disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')
-                    ->url(fn ($record) => $record->proof_of_payment ? Storage::disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')->url($record->proof_of_payment) : null)
-                    ->openUrlInNewTab(),
+                    ->openUrlInNewTab()
+                    ->extraAttributes(['loading' => 'lazy']), // Lazy load images
                 Tables\Columns\BadgeColumn::make('status')
                     ->colors([
                         'warning' => 'pending',
@@ -144,30 +145,49 @@ class ReimbursementResource extends Resource
                     ->color('success')
                     ->visible(fn (Reimbursement $record) => $record->status === 'pending')
                     ->action(function (Reimbursement $record) {
-                        $record->status = 'approved';
-                        $record->save();
+                        // Use direct DB update for maximum performance
+                        DB::table('reimbursements')
+                            ->where('id', $record->id)
+                            ->update([
+                                'status' => 'approved',
+                                'updated_at' => now()
+                            ]);
                     })
-                    ->requiresConfirmation(),
+                    ->requiresConfirmation()
+                    ->successNotificationTitle('Reimbursement approved')
+                    ->dismissible(),
                 Tables\Actions\Action::make('reject')
                     ->label('Reject')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->visible(fn (Reimbursement $record) => $record->status === 'pending')
                     ->action(function (Reimbursement $record) {
-                        $record->status = 'rejected';
-                        $record->save();
+                        DB::table('reimbursements')
+                            ->where('id', $record->id)
+                            ->update([
+                                'status' => 'rejected',
+                                'updated_at' => now()
+                            ]);
                     })
-                    ->requiresConfirmation(),
+                    ->requiresConfirmation()
+                    ->successNotificationTitle('Reimbursement rejected')
+                    ->dismissible(),
                 Tables\Actions\Action::make('markAsPaid')
                     ->label('Set Paid')
                     ->icon('heroicon-o-banknotes')
                     ->color('info')
                     ->visible(fn (Reimbursement $record) => $record->status === 'approved')
                     ->action(function (Reimbursement $record) {
-                        $record->status = 'paid';
-                        $record->save();
+                        DB::table('reimbursements')
+                            ->where('id', $record->id)
+                            ->update([
+                                'status' => 'paid',
+                                'updated_at' => now()
+                            ]);
                     })
-                    ->requiresConfirmation(),
+                    ->requiresConfirmation()
+                    ->successNotificationTitle('Reimbursement marked as paid')
+                    ->dismissible(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
