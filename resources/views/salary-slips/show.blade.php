@@ -128,7 +128,7 @@
         </tr>
     </table>
 
-    @if($cashbons->count() > 0)
+    @if(count($cashbon_details) > 0)
     <table class="details">
         <thead>
             <tr>
@@ -138,11 +138,16 @@
             </tr>
         </thead>
         <tbody>
-        @foreach($cashbons as $cashbon)
+        @foreach($cashbon_details as $detail)
             <tr>
-                <td>{{ \Carbon\Carbon::parse($cashbon->request_date)->format('d/m/Y') }}</td>
-                <td>{{ $cashbon->reason }}</td>
-                <td class="text-right">Rp {{ number_format($cashbon->amount, 0, ',', '.') }}</td>
+                <td>{{ \Carbon\Carbon::parse($detail['cashbon']->request_date)->format('d/m/Y') }}</td>
+                <td>
+                    {{ $detail['cashbon']->reason }}
+                    @if($detail['type'] === 'cicilan')
+                        <br><small style="color: #666;">(Cicilan {{ $detail['installment_number'] }}/{{ $detail['total_installments'] }})</small>
+                    @endif
+                </td>
+                <td class="text-right">Rp {{ number_format($detail['amount'], 0, ',', '.') }}</td>
             </tr>
         @endforeach
         </tbody>

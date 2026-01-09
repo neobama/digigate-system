@@ -40,12 +40,36 @@ class CashbonResource extends Resource
                         ->label('Jumlah')
                         ->numeric()
                         ->prefix('Rp')
-                        ->required(),
+                        ->required()
+                        ->live()
+                        ->afterStateUpdated(function ($state, callable $set) {
+                            // Reset installment_months jika amount < 2 juta
+                            if ($state < 2000000) {
+                                $set('installment_months', null);
+                            }
+                        }),
                     Forms\Components\Textarea::make('reason')
                         ->label('Alasan')
                         ->required()
                         ->rows(3),
-                        Forms\Components\Select::make('status')
+                    Forms\Components\Select::make('installment_months')
+                        ->label('Cicilan (Bulan)')
+                        ->helperText('Pilih jumlah bulan untuk mencicil cashbon. Hanya muncul jika jumlah >= 2 juta. Kosongkan jika ingin langsung dipotong.')
+                        ->options(function (Forms\Get $get) {
+                            $amount = $get('amount');
+                            if ($amount >= 2000000) {
+                                $options = [null => 'Langsung dipotong (tidak dicicil)'];
+                                for ($i = 1; $i <= 12; $i++) {
+                                    $options[$i] = "$i bulan";
+                                }
+                                return $options;
+                            }
+                            return [];
+                        })
+                        ->placeholder('Pilih jumlah bulan cicilan')
+                        ->visible(fn (Forms\Get $get) => $get('amount') >= 2000000)
+                        ->nullable(),
+                    Forms\Components\Select::make('status')
                         ->label('Status')
                         ->options([
                             'pending' => 'Pending',
@@ -83,13 +107,28 @@ class CashbonResource extends Resource
                     ->label('Alasan')
                     ->limit(50)
                     ->searchable(),
-                Tables\Columns\BadgeColumn::make('status')
-                    ->colors([
-                        'warning' => 'pending',
-                        'success' => 'approved',
-                        'danger' => 'rejected',
-                        'info' => 'paid',
-                    ])
+                Tables\Columns\TextColumn::make('installment_months')
+                    ->label('Cicilan')
+                    ->formatStateUsing(fn ($state) => $state ? "$state bulan" : 'Langsung')
+                    ->badge()
+                    ->color(fn ($state) => $state ? 'info' : 'gray')
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('status')
+                    ->badge()
+                    ->color(fn ($state) => match ($state) {
+                        'pending' => 'warning',
+                        'approved' => 'success',
+                        'rejected' => 'danger',
+                        'paid' => 'info',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'pending' => 'Pending',
+                        'approved' => 'Approved',
+                        'rejected' => 'Rejected',
+                        'paid' => 'Paid',
+                        default => $state,
+                    })
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')

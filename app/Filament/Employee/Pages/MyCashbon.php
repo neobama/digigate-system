@@ -31,6 +31,12 @@ class MyCashbon extends Page implements Tables\Contracts\HasTable
                     ->label('Jumlah')
                     ->money('IDR')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('installment_months')
+                    ->label('Cicilan')
+                    ->formatStateUsing(fn ($state) => $state ? "$state bulan" : 'Langsung')
+                    ->badge()
+                    ->color(fn ($state) => $state ? 'info' : 'gray')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('reason')
                     ->label('Alasan')
                     ->limit(50),
@@ -63,11 +69,35 @@ class MyCashbon extends Page implements Tables\Contracts\HasTable
                             ->label('Jumlah')
                             ->numeric()
                             ->prefix('Rp')
-                            ->required(),
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                // Reset installment_months jika amount < 2 juta
+                                if ($state < 2000000) {
+                                    $set('installment_months', null);
+                                }
+                            }),
                         Forms\Components\Textarea::make('reason')
                             ->label('Alasan')
                             ->required()
                             ->rows(3),
+                        Forms\Components\Select::make('installment_months')
+                            ->label('Cicilan (Bulan)')
+                            ->helperText('Pilih jumlah bulan untuk mencicil cashbon. Kosongkan jika ingin langsung dipotong di bulan pertama.')
+                            ->options(function (Forms\Get $get) {
+                                $amount = $get('amount');
+                                if ($amount >= 2000000) {
+                                    $options = [null => 'Langsung dipotong (tidak dicicil)'];
+                                    for ($i = 1; $i <= 12; $i++) {
+                                        $options[$i] = "$i bulan";
+                                    }
+                                    return $options;
+                                }
+                                return [];
+                            })
+                            ->placeholder('Pilih jumlah bulan cicilan')
+                            ->visible(fn (Forms\Get $get) => $get('amount') >= 2000000)
+                            ->nullable(),
                     ])
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['employee_id'] = auth()->user()->employee?->id;
@@ -91,11 +121,35 @@ class MyCashbon extends Page implements Tables\Contracts\HasTable
                             ->label('Jumlah')
                             ->numeric()
                             ->prefix('Rp')
-                            ->required(),
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                // Reset installment_months jika amount < 2 juta
+                                if ($state < 2000000) {
+                                    $set('installment_months', null);
+                                }
+                            }),
                         Forms\Components\Textarea::make('reason')
                             ->label('Alasan')
                             ->required()
                             ->rows(3),
+                        Forms\Components\Select::make('installment_months')
+                            ->label('Cicilan (Bulan)')
+                            ->helperText('Pilih jumlah bulan untuk mencicil cashbon. Kosongkan jika ingin langsung dipotong di bulan pertama.')
+                            ->options(function (Forms\Get $get) {
+                                $amount = $get('amount');
+                                if ($amount >= 2000000) {
+                                    $options = [null => 'Langsung dipotong (tidak dicicil)'];
+                                    for ($i = 1; $i <= 12; $i++) {
+                                        $options[$i] = "$i bulan";
+                                    }
+                                    return $options;
+                                }
+                                return [];
+                            })
+                            ->placeholder('Pilih jumlah bulan cicilan')
+                            ->visible(fn (Forms\Get $get) => $get('amount') >= 2000000)
+                            ->nullable(),
                     ]),
             ]);
     }
