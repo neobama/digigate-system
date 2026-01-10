@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\Cashbon;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -18,12 +19,17 @@ class SalarySlipController extends Controller
         $totalCashbon = 0;
         $cashbonDetails = [];
 
-        // Ambil semua cashbon yang sudah paid
-        $cashbons = $employee->cashbons()
+        // Ambil semua cashbon yang sudah paid untuk employee ini
+        // Query langsung dari model Cashbon untuk memastikan hanya mengambil yang benar-benar ada
+        $cashbons = Cashbon::where('employee_id', $employee->id)
             ->where('status', 'paid')
             ->get();
 
         foreach ($cashbons as $cashbon) {
+            // Pastikan cashbon masih ada dan memiliki relasi employee yang valid
+            if (!$cashbon || !$cashbon->employee) {
+                continue;
+            }
             $requestDate = \Carbon\Carbon::parse($cashbon->request_date);
             $installmentMonths = $cashbon->installment_months;
 
