@@ -1,155 +1,106 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Proforma Invoice - {{ $invoice->invoice_number }}</title>
+    <title>Proforma Invoice</title>
     <style>
-        @page {
-            margin: 15mm;
-        }
-
         body {
-            font-family: DejaVu Sans, sans-serif;
-            font-size: 11px;
-            margin: 0;
+            font-family: "Times New Roman", serif;
+            font-size: 14px;
+            color: #000;
+            margin: 40px;
         }
-
         .header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
         }
-
-        .header img {
-            max-height: 60px;
-            height: auto;
-        }
-
-        h2 {
-            font-size: 18px;
+        .header h1 {
             margin: 10px 0;
-            text-align: center;
-            font-weight: bold;
+            font-size: 22px;
+            letter-spacing: 1px;
         }
-
-        .meta-table {
-            width: 100%;
-            margin-top: 15px;
+        .info {
+            display: flex;
+            justify-content: space-between;
             margin-bottom: 20px;
-            border-collapse: collapse;
         }
-
-        .meta-table td {
-            padding: 5px 10px;
-            vertical-align: top;
+        .info div {
+            width: 48%;
         }
-
-        .meta-table td:first-child {
-            width: 25%;
-            font-weight: bold;
-        }
-
-        table.items {
+        table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            margin-top: 15px;
         }
-
-        table.items th,
-        table.items td {
+        table, th, td {
             border: 1px solid #000;
-            padding: 8px;
         }
-
-        table.items th {
-            background: #f2f2f2;
+        th, td {
+            padding: 6px;
             text-align: center;
+        }
+        th {
             font-weight: bold;
         }
-
-        table.items td {
+        .text-left {
             text-align: left;
         }
-
-        table.items td:first-child,
-        table.items th:first-child {
-            text-align: center;
-            width: 5%;
+        .summary {
+            width: 40%;
+            float: right;
+            margin-top: 10px;
         }
-
-        table.items td:nth-child(3),
-        table.items td:nth-child(4),
-        table.items td:nth-child(5),
-        table.items th:nth-child(3),
-        table.items th:nth-child(4),
-        table.items th:nth-child(5) {
+        .summary td {
             text-align: right;
         }
-
-        .summary {
-            margin-top: 20px;
-            margin-left: auto;
-            width: 40%;
-        }
-
-        .summary table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .summary td {
-            padding: 5px 10px;
-            border: none;
-        }
-
         .summary td:first-child {
             text-align: left;
-            font-weight: bold;
         }
-
-        .summary td:last-child {
-            text-align: right;
+        .notes {
+            margin-top: 40px;
+            clear: both;
         }
-
-        .summary .total-row td {
-            font-weight: bold;
-            font-size: 13px;
-            border-top: 1px solid #000;
-            padding-top: 8px;
+        .footer {
+            margin-top: 60px;
+            display: flex;
+            justify-content: space-between;
         }
-
-        .payment-info {
-            margin-top: 30px;
-            font-size: 11px;
-            line-height: 1.6;
+        .signature {
+            text-align: center;
+            margin-top: 60px;
+        }
+        .kop-surat {
+            width: 100%;
+            margin-top: 40px;
+            page-break-inside: avoid;
+        }
+        .kop-surat img {
+            width: 100%;
+            height: auto;
         }
     </style>
-    </head>
+</head>
 <body>
+
     <div class="header">
-        <img src="{{ public_path('images/digigate-logo.png') }}" alt="DigiGate Logo">
-        <h2>PROFORMA INVOICE</h2>
+        <h1>PROFORMA INVOICE</h1>
     </div>
 
-    <table class="meta-table">
-        <tr>
-            <td>Nomor</td>
-            <td>: {{ $invoice->invoice_number }}</td>
-        </tr>
-        <tr>
-            <td>Nomor PO</td>
-            <td>: {{ $invoice->po_number ?? '-' }}</td>
-        </tr>
-        <tr>
-            <td>Client</td>
-            <td>: {{ $invoice->client_name }}</td>
-        </tr>
-        <tr>
-            <td>Tanggal</td>
-            <td>: {{ \Carbon\Carbon::parse($invoice->invoice_date)->format('d/m/Y') }}</td>
-        </tr>
-    </table>
+    <div class="info">
+        <div>
+            <p><strong>Untuk:</strong> {{ $invoice->client_name }}</p>
+            <p><strong>UP:</strong> -</p>
+        </div>
+        <div>
+            <p><strong>No. Invoice:</strong> {{ $invoice->invoice_number }}</p>
+            <p><strong>Tanggal Invoice:</strong> {{ \Carbon\Carbon::parse($invoice->invoice_date)->locale('id')->translatedFormat('d F Y') }}</p>
+            @if($invoice->po_number)
+            <p><strong>Nomor PO:</strong> {{ $invoice->po_number }}</p>
+            @endif
+        </div>
+    </div>
 
-    <table class="items">
+    <table>
         <thead>
             <tr>
                 <th>No</th>
@@ -160,53 +111,71 @@
             </tr>
         </thead>
         <tbody>
-        @php
-            $subtotal = 0;
-        @endphp
-        @foreach(($invoice->items ?? []) as $index => $item)
             @php
-                $itemTotal = ($item['price'] ?? 0) * ($item['quantity'] ?? 1);
-                $subtotal += $itemTotal;
+                $subtotal = 0;
             @endphp
-            <tr>
-                <td>{{ $index + 1 }}</td>
-                <td>{{ $item['name'] ?? '' }}</td>
-                <td>{{ $item['quantity'] ?? 1 }}</td>
-                <td>Rp {{ number_format($item['price'] ?? 0, 0, ',', '.') }}</td>
-                <td>Rp {{ number_format($itemTotal, 0, ',', '.') }}</td>
-            </tr>
-        @endforeach
+            @foreach(($invoice->items ?? []) as $index => $item)
+                @php
+                    $itemTotal = ($item['price'] ?? 0) * ($item['quantity'] ?? 1);
+                    $subtotal += $itemTotal;
+                @endphp
+                <tr>
+                    <td>{{ $index + 1 }}</td>
+                    <td class="text-left">{{ $item['name'] ?? '' }}</td>
+                    <td>{{ $item['quantity'] ?? 1 }}</td>
+                    <td>{{ number_format($item['price'] ?? 0, 0, ',', '.') }}</td>
+                    <td>{{ number_format($itemTotal, 0, ',', '.') }}</td>
+                </tr>
+            @endforeach
         </tbody>
     </table>
 
-    <div class="summary">
-        <table>
-            <tr>
-                <td>Subtotal :</td>
-                <td>Rp {{ number_format($subtotal, 0, ',', '.') }}</td>
-            </tr>
-            <tr>
-                <td>Diskon :</td>
-                <td>{{ $invoice->discount && $invoice->discount > 0 ? 'Rp ' . number_format($invoice->discount, 0, ',', '.') : '-' }}</td>
-            </tr>
-            <tr>
-                <td>Ongkir :</td>
-                <td>{{ $invoice->shipping_cost ? 'Rp ' . number_format($invoice->shipping_cost, 0, ',', '.') : '-' }}</td>
-            </tr>
-            <tr class="total-row">
-                <td>Total :</td>
-                <td>Rp {{ number_format($invoice->total_amount, 0, ',', '.') }}</td>
-            </tr>
-        </table>
+    <table class="summary">
+        <tr>
+            <td>Subtotal</td>
+            <td>{{ number_format($subtotal, 0, ',', '.') }}</td>
+        </tr>
+        <tr>
+            <td>Diskon</td>
+            <td>{{ $invoice->discount && $invoice->discount > 0 ? number_format($invoice->discount, 0, ',', '.') : '-' }}</td>
+        </tr>
+        <tr>
+            <td>Ongkir</td>
+            <td>{{ $invoice->shipping_cost ? number_format($invoice->shipping_cost, 0, ',', '.') : '-' }}</td>
+        </tr>
+        <tr>
+            <td><strong>Total</strong></td>
+            <td><strong>{{ number_format($invoice->total_amount, 0, ',', '.') }}</strong></td>
+        </tr>
+    </table>
+
+    <div style="clear: both;"></div>
+
+    <div class="notes">
+        <p><strong>Notes:</strong></p>
+        <ul>
+            <li>Garansi berlaku selama 12 bulan sejak barang diterima.</li>
+        </ul>
     </div>
 
-    <div class="payment-info">
-        <p><strong>Pembayaran dapat ditransfer melalui:</strong></p>
-        <p>Bank BCA Cab. Matraman</p>
-        <p>No. Rekening: 3420660391</p>
-        <p>Atas Nama: PT. Gerbang Digital Indonesia</p>
+    <div class="footer">
+        <div>
+            <p><strong>Pembayaran dapat ditransfer melalui:</strong></p>
+            <p>Bank BCA Cab. Matraman</p>
+            <p>No. Rekening: 3420660391</p>
+            <p>Atas Nama: PT. Gerbang Digital Indonesia</p>
+        </div>
+        <div class="signature">
+            <p>Jakarta, {{ \Carbon\Carbon::parse($invoice->invoice_date)->locale('id')->translatedFormat('d F Y') }}</p>
+            <p><strong>Neorafa A. Zulkarnaeen</strong></p>
+        </div>
     </div>
+
+    @if($kopSurat ?? null)
+    <div class="kop-surat">
+        <img src="{{ $kopSurat }}" alt="Kop Surat DigiGate">
+    </div>
+    @endif
+
 </body>
 </html>
-
-
