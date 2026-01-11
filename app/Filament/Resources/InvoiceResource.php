@@ -180,6 +180,20 @@ class InvoiceResource extends Resource
                     ->modalWidth('7xl')
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Tutup'),
+                Tables\Actions\Action::make('generateProformaPdf')
+                    ->label('Generate Proforma Invoice')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('warning')
+                    ->url(fn (Invoice $record) => route('invoices.proforma.pdf', $record))
+                    ->openUrlInNewTab()
+                    ->hidden(fn (Invoice $record) => $record->status !== 'proforma'),
+                Tables\Actions\Action::make('generateInvoicePdf')
+                    ->label('Generate Invoice')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('success')
+                    ->url(fn (Invoice $record) => route('invoices.paid.pdf', $record))
+                    ->openUrlInNewTab()
+                    ->hidden(fn (Invoice $record) => !in_array($record->status, ['paid', 'delivered'])),
                 Tables\Actions\Action::make('uploadDocument')
                     ->label('Upload Dokumen')
                     ->icon('heroicon-o-paper-clip')
