@@ -37,6 +37,7 @@
         }
         .header {
             text-align: center;
+            margin-top: 50px;
             margin-bottom: 30px;
         }
         .header h1 {
@@ -51,6 +52,12 @@
         }
         .info div {
             width: 48%;
+        }
+        .info-left {
+            text-align: left;
+        }
+        .info-right {
+            text-align: right;
         }
         table {
             width: 100%;
@@ -106,11 +113,11 @@
         </div>
 
         <div class="info">
-            <div>
+            <div class="info-left">
                 <p><strong>Untuk:</strong> {{ $invoice->client_name }}</p>
                 <p><strong>UP:</strong> -</p>
             </div>
-            <div>
+            <div class="info-right">
                 <p><strong>No. Invoice:</strong> {{ $invoice->invoice_number }}</p>
                 <p><strong>Tanggal Invoice:</strong> {{ \Carbon\Carbon::parse($invoice->invoice_date)->locale('id')->translatedFormat('d F Y') }}</p>
                 @if($invoice->po_number)
