@@ -50,13 +50,15 @@
             justify-content: space-between;
             margin-bottom: 20px;
         }
-        .info div {
-            width: 48%;
-        }
         .info-left {
+            width: 48%;
             text-align: left;
         }
         .info-right {
+            width: 48%;
+            text-align: right;
+        }
+        .info-right p {
             text-align: right;
         }
         table {
@@ -93,9 +95,15 @@
             display: flex;
             justify-content: space-between;
         }
+        .footer-left {
+            width: 48%;
+        }
         .signature {
-            text-align: center;
-            margin-top: 60px;
+            width: 48%;
+            text-align: right;
+        }
+        .signature p {
+            text-align: right;
         }
     </style>
 </head>
@@ -185,7 +193,7 @@
         </div>
 
         <div class="footer">
-            <div>
+            <div class="footer-left">
                 <p><strong>Pembayaran dapat ditransfer melalui:</strong></p>
                 <p>Bank BCA Cab. Matraman</p>
                 <p>No. Rekening: 3420660391</p>
