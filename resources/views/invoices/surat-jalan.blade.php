@@ -76,12 +76,17 @@
         }
         .signature {
             margin-top: 80px;
-            display: flex;
-            justify-content: space-between;
+            width: 100%;
         }
-        .signature div {
-            width: 40%;
+        .signature-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .signature-table td {
+            width: 50%;
             text-align: center;
+            vertical-align: top;
+            padding: 0;
         }
     </style>
 </head>
@@ -145,18 +150,20 @@
             </tbody>
         </table>
 
-        <div class="signature">
-            <div>
-                <p>Pengirim</p>
-                <br><br><br>
-                <p>( .................................... )</p>
-            </div>
-            <div>
-                <p>Penerima</p>
-                <br><br><br>
-                <p>( .................................... )</p>
-            </div>
-        </div>
+        <table class="signature-table">
+            <tr>
+                <td>
+                    <p>Pengirim</p>
+                    <br><br><br>
+                    <p>( .................................... )</p>
+                </td>
+                <td>
+                    <p>Penerima</p>
+                    <br><br><br>
+                    <p>( .................................... )</p>
+                </td>
+            </tr>
+        </table>
     </div>
 
 </body>
