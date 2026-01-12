@@ -219,7 +219,9 @@ class InvoicePdfController extends Controller
         $suratJalanNumber = $this->generateSuratJalanNumber();
         $tanggal = Carbon::now();
         
-        $fileName = "surat-jalan-{$suratJalanNumber}.pdf";
+        // Create safe filename for storage (replace / with -)
+        $safeFileName = str_replace('/', '-', $suratJalanNumber);
+        $fileName = "surat-jalan-{$safeFileName}.pdf";
         $documentName = "Surat Jalan {$suratJalanNumber}";
         
         // Generate PDF
@@ -320,7 +322,9 @@ class InvoicePdfController extends Controller
         $filePath = $document->file_path;
         
         if (Storage::disk($disk)->exists($filePath)) {
-            return Storage::disk($disk)->download($filePath, $document->file_name);
+            // Create safe download filename (replace / with -)
+            $safeDownloadName = str_replace('/', '-', $document->file_name);
+            return Storage::disk($disk)->download($filePath, $safeDownloadName);
         }
         
         \Log::warning("Surat jalan file not found at: {$filePath}");
@@ -337,7 +341,9 @@ class InvoicePdfController extends Controller
             'tanggal', 
             'assemblies'
         ));
-        return $pdf->download("surat-jalan-{$suratJalanNumber}.pdf");
+        // Create safe download filename
+        $safeDownloadName = str_replace('/', '-', $suratJalanNumber);
+        return $pdf->download("surat-jalan-{$safeDownloadName}.pdf");
     }
 }
 
