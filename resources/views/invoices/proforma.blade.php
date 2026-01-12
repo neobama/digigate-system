@@ -229,6 +229,9 @@
                 </td>
                 <td class="signature">
                     <p>Jakarta, {{ \Carbon\Carbon::parse($invoice->invoice_date)->locale('id')->translatedFormat('d F Y') }}</p>
+                    <p></p>
+                    <p></p>
+                    <p></p>
                     <p><strong>Neorafa A. Zulkarnaeen</strong></p>
                 </td>
             </tr>
