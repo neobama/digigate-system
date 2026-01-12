@@ -40,6 +40,7 @@ class DocumentResource extends Resource
                             ->label('Kategori')
                             ->options([
                                 'invoice' => 'Invoice',
+                                'surat_jalan' => 'Surat Jalan',
                                 'contract' => 'Kontrak',
                                 'certificate' => 'Sertifikat',
                                 'license' => 'Lisensi',
@@ -116,6 +117,7 @@ class DocumentResource extends Resource
                     ->badge()
                     ->formatStateUsing(fn ($state) => match($state) {
                         'invoice' => 'Invoice',
+                        'surat_jalan' => 'Surat Jalan',
                         'contract' => 'Kontrak',
                         'certificate' => 'Sertifikat',
                         'license' => 'Lisensi',
@@ -161,6 +163,7 @@ class DocumentResource extends Resource
                     ->label('Kategori')
                     ->options([
                         'invoice' => 'Invoice',
+                        'surat_jalan' => 'Surat Jalan',
                         'contract' => 'Kontrak',
                         'certificate' => 'Sertifikat',
                         'license' => 'Lisensi',

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class Document extends Model
 {
@@ -27,6 +28,25 @@ class Document extends Model
     protected $casts = [
         'file_size' => 'integer',
     ];
+
+    protected static function booted()
+    {
+        // Auto-delete file from S3 when document is deleted
+        static::deleting(function (Document $document) {
+            if ($document->file_path) {
+                $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
+                try {
+                    if (Storage::disk($disk)->exists($document->file_path)) {
+                        Storage::disk($disk)->delete($document->file_path);
+                        \Log::info("Deleted file from storage: {$document->file_path}");
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Failed to delete file from storage: {$document->file_path} - " . $e->getMessage());
+                    // Continue with deletion even if file deletion fails
+                }
+            }
+        });
+    }
 
     public function uploader(): BelongsTo
     {
