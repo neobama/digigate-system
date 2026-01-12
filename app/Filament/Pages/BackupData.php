@@ -23,10 +23,6 @@ class BackupData extends Page
                 ->label('Download Backup Excel')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('success')
-                ->requiresConfirmation()
-                ->modalHeading('Download Backup Data')
-                ->modalDescription('File Excel akan berisi semua data dari sistem (Invoice, Assembly, Employee, Logbook, Cashbon, Component). Foto tidak termasuk dalam backup.')
-                ->modalSubmitActionLabel('Download')
                 ->action(function () {
                     $filename = 'backup-data-' . date('Y-m-d-His') . '.xlsx';
                     

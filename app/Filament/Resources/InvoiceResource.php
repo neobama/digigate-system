@@ -147,15 +147,13 @@ class InvoiceResource extends Resource
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->hidden(fn (Invoice $record) => $record->status !== 'proforma')
-                    ->action(fn (Invoice $record) => $record->update(['status' => 'paid']))
-                    ->requiresConfirmation(),
+                    ->action(fn (Invoice $record) => $record->update(['status' => 'paid'])),
                 Tables\Actions\Action::make('markAsDelivered')
                     ->label('Set Delivered')
                     ->icon('heroicon-o-truck')
                     ->color('info')
                     ->hidden(fn (Invoice $record) => $record->status !== 'paid')
-                    ->action(fn (Invoice $record) => $record->update(['status' => 'delivered']))
-                    ->requiresConfirmation(),
+                    ->action(fn (Invoice $record) => $record->update(['status' => 'delivered'])),
                 Tables\Actions\Action::make('generateProformaPdf')
                     ->label('Generate Proforma Invoice')
                     ->icon('heroicon-o-document-arrow-down')
@@ -322,11 +320,7 @@ class InvoiceResource extends Resource
                             \Log::error('Error in generateSuratJalan hidden: ' . $e->getMessage());
                             return false;
                         }
-                    })
-                    ->requiresConfirmation()
-                    ->modalHeading('Generate Surat Jalan')
-                    ->modalDescription('Pastikan invoice sudah memiliki assembly sebelum generate surat jalan.')
-                    ->modalSubmitActionLabel('Generate'),
+                    }),
                 Tables\Actions\Action::make('viewSuratJalan')
                     ->label('View Surat Jalan')
                     ->icon('heroicon-o-eye')
