@@ -186,14 +186,123 @@ class InvoiceResource extends Resource
                     ->color('warning')
                     ->url(fn (Invoice $record) => route('invoices.proforma.pdf', $record))
                     ->openUrlInNewTab()
-                    ->hidden(fn (Invoice $record) => $record->status !== 'proforma'),
+                    ->hidden(function (Invoice $record) {
+                        if ($record->status !== 'proforma') {
+                            return true;
+                        }
+                        // Hide if document already exists
+                        $document = \App\Models\Document::where('related_invoice_id', $record->id)
+                            ->where('category', 'invoice')
+                            ->where(function($query) use ($record) {
+                                $query->where('name', 'like', "%Proforma%{$record->invoice_number}%")
+                                      ->orWhere('file_name', 'like', "proforma-{$record->invoice_number}.pdf");
+                            })
+                            ->first();
+                        return $document !== null;
+                    }),
+                Tables\Actions\Action::make('viewProformaDocument')
+                    ->label('View Proforma Invoice')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->modalHeading(fn (Invoice $record) => 'Proforma Invoice #' . $record->invoice_number)
+                    ->modalContent(function (Invoice $record) {
+                        $document = \App\Models\Document::where('related_invoice_id', $record->id)
+                            ->where('category', 'invoice')
+                            ->where(function($query) use ($record) {
+                                $query->where('name', 'like', "%Proforma%{$record->invoice_number}%")
+                                      ->orWhere('file_name', 'like', "proforma-{$record->invoice_number}.pdf");
+                            })
+                            ->first();
+                        
+                        if ($document) {
+                            $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
+                            return view('filament.documents.preview', [
+                                'document' => $document,
+                                'fileUrl' => \Illuminate\Support\Facades\Storage::disk($disk)->url($document->file_path),
+                            ]);
+                        }
+                        return view('filament.invoices.no-document', ['invoice' => $record]);
+                    })
+                    ->modalWidth('7xl')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Tutup')
+                    ->hidden(function (Invoice $record) {
+                        if ($record->status !== 'proforma') {
+                            return true;
+                        }
+                        // Show only if document exists
+                        $document = \App\Models\Document::where('related_invoice_id', $record->id)
+                            ->where('category', 'invoice')
+                            ->where(function($query) use ($record) {
+                                $query->where('name', 'like', "%Proforma%{$record->invoice_number}%")
+                                      ->orWhere('file_name', 'like', "proforma-{$record->invoice_number}.pdf");
+                            })
+                            ->first();
+                        return $document === null;
+                    }),
                 Tables\Actions\Action::make('generateInvoicePdf')
                     ->label('Generate Invoice')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('success')
                     ->url(fn (Invoice $record) => route('invoices.paid.pdf', $record))
                     ->openUrlInNewTab()
-                    ->hidden(fn (Invoice $record) => !in_array($record->status, ['paid', 'delivered'])),
+                    ->hidden(function (Invoice $record) {
+                        if (!in_array($record->status, ['paid', 'delivered'])) {
+                            return true;
+                        }
+                        // Hide if document already exists
+                        $document = \App\Models\Document::where('related_invoice_id', $record->id)
+                            ->where('category', 'invoice')
+                            ->where(function($query) use ($record) {
+                                $query->where('name', 'like', "%Invoice {$record->invoice_number}%")
+                                      ->where('name', 'not like', '%Proforma%')
+                                      ->orWhere('file_name', 'like', "invoice-{$record->invoice_number}.pdf");
+                            })
+                            ->first();
+                        return $document !== null;
+                    }),
+                Tables\Actions\Action::make('viewInvoiceDocument')
+                    ->label('View Invoice')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->modalHeading(fn (Invoice $record) => 'Invoice #' . $record->invoice_number)
+                    ->modalContent(function (Invoice $record) {
+                        $document = \App\Models\Document::where('related_invoice_id', $record->id)
+                            ->where('category', 'invoice')
+                            ->where(function($query) use ($record) {
+                                $query->where('name', 'like', "%Invoice {$record->invoice_number}%")
+                                      ->where('name', 'not like', '%Proforma%')
+                                      ->orWhere('file_name', 'like', "invoice-{$record->invoice_number}.pdf");
+                            })
+                            ->first();
+                        
+                        if ($document) {
+                            $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
+                            return view('filament.documents.preview', [
+                                'document' => $document,
+                                'fileUrl' => \Illuminate\Support\Facades\Storage::disk($disk)->url($document->file_path),
+                            ]);
+                        }
+                        return view('filament.invoices.no-document', ['invoice' => $record]);
+                    })
+                    ->modalWidth('7xl')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Tutup')
+                    ->hidden(function (Invoice $record) {
+                        if (!in_array($record->status, ['paid', 'delivered'])) {
+                            return true;
+                        }
+                        // Show only if document exists
+                        $document = \App\Models\Document::where('related_invoice_id', $record->id)
+                            ->where('category', 'invoice')
+                            ->where(function($query) use ($record) {
+                                $query->where('name', 'like', "%Invoice {$record->invoice_number}%")
+                                      ->where('name', 'not like', '%Proforma%')
+                                      ->orWhere('file_name', 'like', "invoice-{$record->invoice_number}.pdf");
+                            })
+                            ->first();
+                        return $document === null;
+                    }),
                 Tables\Actions\Action::make('uploadDocument')
                     ->label('Upload Dokumen')
                     ->icon('heroicon-o-paper-clip')

@@ -63,10 +63,19 @@ class InvoicePdfController extends Controller
             $fileSize = Storage::disk($disk)->size($filePath);
             $mimeType = 'application/pdf';
             
-            // Check if document already exists for this invoice
+            // Check if document already exists for this invoice (by type)
             $existingDocument = Document::where('related_invoice_id', $invoice->id)
                 ->where('category', 'invoice')
-                ->where('name', 'like', "%{$invoice->invoice_number}%")
+                ->where(function($query) use ($invoice, $type) {
+                    if ($type === 'proforma') {
+                        $query->where('name', 'like', "%Proforma%{$invoice->invoice_number}%")
+                              ->orWhere('file_name', 'like', "proforma-{$invoice->invoice_number}.pdf");
+                    } else {
+                        $query->where('name', 'like', "%Invoice {$invoice->invoice_number}%")
+                              ->where('name', 'not like', '%Proforma%')
+                              ->orWhere('file_name', 'like', "invoice-{$invoice->invoice_number}.pdf");
+                    }
+                })
                 ->first();
             
             if ($existingDocument) {
@@ -77,7 +86,7 @@ class InvoicePdfController extends Controller
                     'file_name' => $fileName,
                     'mime_type' => $mimeType,
                     'file_size' => $fileSize,
-                    'uploaded_by' => auth()->id(),
+                    'uploaded_by' => auth()->check() ? auth()->id() : null,
                 ]);
                 
                 return $existingDocument;
@@ -92,7 +101,7 @@ class InvoicePdfController extends Controller
                     'category' => 'invoice',
                     'description' => "Generated {$type} invoice for {$invoice->client_name}",
                     'related_invoice_id' => $invoice->id,
-                    'uploaded_by' => auth()->id(),
+                    'uploaded_by' => auth()->check() ? auth()->id() : null,
                     'access_level' => 'private',
                 ]);
                 
@@ -110,11 +119,14 @@ class InvoicePdfController extends Controller
         $document = $this->savePdfToDocument($invoice, 'proforma');
         
         if (!$document) {
+            \Log::error("Failed to save proforma invoice document for invoice: {$invoice->id}");
             // Fallback: generate and download directly if save fails
             $kopSurat = $this->getKopSuratBase64();
             $pdf = Pdf::loadView('invoices.proforma', compact('invoice', 'kopSurat'));
             return $pdf->download("proforma-{$invoice->invoice_number}.pdf");
         }
+        
+        \Log::info("Proforma invoice document saved successfully: {$document->id} for invoice: {$invoice->id}");
         
         // Download from S3
         $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
@@ -124,6 +136,7 @@ class InvoicePdfController extends Controller
             return Storage::disk($disk)->download($filePath, $document->file_name);
         }
         
+        \Log::warning("Proforma invoice file not found at: {$filePath}");
         // Fallback if file doesn't exist
         $kopSurat = $this->getKopSuratBase64();
         $pdf = Pdf::loadView('invoices.proforma', compact('invoice', 'kopSurat'));
@@ -136,11 +149,14 @@ class InvoicePdfController extends Controller
         $document = $this->savePdfToDocument($invoice, 'paid');
         
         if (!$document) {
+            \Log::error("Failed to save paid invoice document for invoice: {$invoice->id}");
             // Fallback: generate and download directly if save fails
             $kopSurat = $this->getKopSuratBase64();
             $pdf = Pdf::loadView('invoices.paid', compact('invoice', 'kopSurat'));
             return $pdf->download("invoice-{$invoice->invoice_number}.pdf");
         }
+        
+        \Log::info("Paid invoice document saved successfully: {$document->id} for invoice: {$invoice->id}");
         
         // Download from S3
         $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
@@ -150,6 +166,7 @@ class InvoicePdfController extends Controller
             return Storage::disk($disk)->download($filePath, $document->file_name);
         }
         
+        \Log::warning("Paid invoice file not found at: {$filePath}");
         // Fallback if file doesn't exist
         $kopSurat = $this->getKopSuratBase64();
         $pdf = Pdf::loadView('invoices.paid', compact('invoice', 'kopSurat'));
