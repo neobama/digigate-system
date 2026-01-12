@@ -156,30 +156,6 @@ class InvoiceResource extends Resource
                     ->hidden(fn (Invoice $record) => $record->status !== 'paid')
                     ->action(fn (Invoice $record) => $record->update(['status' => 'delivered']))
                     ->requiresConfirmation(),
-                Tables\Actions\Action::make('viewInvoice')
-                    ->label('View Invoice')
-                    ->icon('heroicon-o-eye')
-                    ->color('primary')
-                    ->modalHeading(fn (Invoice $record) => 'Invoice #' . $record->invoice_number)
-                    ->modalContent(function (Invoice $record) {
-                        $document = \App\Models\Document::where('related_invoice_id', $record->id)
-                            ->where('category', 'invoice')
-                            ->first();
-                        
-                        if ($document) {
-                            return view('filament.documents.preview', [
-                                'document' => $document,
-                                'fileUrl' => \Illuminate\Support\Facades\Storage::disk('s3_public')->url($document->file_path),
-                            ]);
-                        } else {
-                            return view('filament.invoices.no-document', [
-                                'invoice' => $record,
-                            ]);
-                        }
-                    })
-                    ->modalWidth('7xl')
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Tutup'),
                 Tables\Actions\Action::make('generateProformaPdf')
                     ->label('Generate Proforma Invoice')
                     ->icon('heroicon-o-document-arrow-down')
@@ -300,6 +276,58 @@ class InvoiceResource extends Resource
                                       ->where('name', 'not like', '%Proforma%')
                                       ->orWhere('file_name', 'like', "invoice-{$record->invoice_number}.pdf");
                             })
+                            ->first();
+                        return $document === null;
+                    }),
+                Tables\Actions\Action::make('generateSuratJalan')
+                    ->label('Generate Surat Jalan')
+                    ->icon('heroicon-o-truck')
+                    ->color('info')
+                    ->url(fn (Invoice $record) => route('invoices.surat-jalan.pdf', $record))
+                    ->openUrlInNewTab()
+                    ->hidden(function (Invoice $record) {
+                        if ($record->status !== 'delivered') {
+                            return true;
+                        }
+                        // Hide if document already exists
+                        $document = \App\Models\Document::where('related_invoice_id', $record->id)
+                            ->where('category', 'surat_jalan')
+                            ->first();
+                        return $document !== null;
+                    })
+                    ->requiresConfirmation()
+                    ->modalHeading('Generate Surat Jalan')
+                    ->modalDescription('Pastikan invoice sudah memiliki assembly sebelum generate surat jalan.')
+                    ->modalSubmitActionLabel('Generate'),
+                Tables\Actions\Action::make('viewSuratJalan')
+                    ->label('View Surat Jalan')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->modalHeading(fn (Invoice $record) => 'Surat Jalan - Invoice #' . $record->invoice_number)
+                    ->modalContent(function (Invoice $record) {
+                        $document = \App\Models\Document::where('related_invoice_id', $record->id)
+                            ->where('category', 'surat_jalan')
+                            ->first();
+                        
+                        if ($document) {
+                            $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
+                            return view('filament.documents.preview', [
+                                'document' => $document,
+                                'fileUrl' => \Illuminate\Support\Facades\Storage::disk($disk)->url($document->file_path),
+                            ]);
+                        }
+                        return view('filament.invoices.no-document', ['invoice' => $record]);
+                    })
+                    ->modalWidth('7xl')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Tutup')
+                    ->hidden(function (Invoice $record) {
+                        if ($record->status !== 'delivered') {
+                            return true;
+                        }
+                        // Show only if document exists
+                        $document = \App\Models\Document::where('related_invoice_id', $record->id)
+                            ->where('category', 'surat_jalan')
                             ->first();
                         return $document === null;
                     }),

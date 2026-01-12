@@ -15,5 +15,8 @@ Route::get('/invoices/{invoice}/proforma-pdf', [InvoicePdfController::class, 'pr
 Route::get('/invoices/{invoice}/paid-pdf', [InvoicePdfController::class, 'paid'])
     ->name('invoices.paid.pdf');
 
+Route::get('/invoices/{invoice}/surat-jalan-pdf', [InvoicePdfController::class, 'suratJalan'])
+    ->name('invoices.surat-jalan.pdf');
+
 Route::get('/employees/{employee}/salary-slip', [SalarySlipController::class, 'show'])
     ->name('employee.salary-slip');
