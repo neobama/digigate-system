@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
+use App\Models\Document;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 
@@ -35,19 +36,123 @@ class InvoicePdfController extends Controller
         return null;
     }
 
-    public function proforma(Invoice $invoice)
+    /**
+     * Save PDF to S3 and create Document record
+     */
+    protected function savePdfToDocument(Invoice $invoice, string $type = 'proforma'): ?Document
     {
         $kopSurat = $this->getKopSuratBase64();
-        $pdf = Pdf::loadView('invoices.proforma', compact('invoice', 'kopSurat'));
+        $viewName = $type === 'proforma' ? 'invoices.proforma' : 'invoices.paid';
+        $fileName = $type === 'proforma' ? "proforma-{$invoice->invoice_number}.pdf" : "invoice-{$invoice->invoice_number}.pdf";
+        $documentName = $type === 'proforma' ? "Proforma Invoice {$invoice->invoice_number}" : "Invoice {$invoice->invoice_number}";
+        
+        // Generate PDF
+        $pdf = Pdf::loadView($viewName, compact('invoice', 'kopSurat'));
+        $pdfContent = $pdf->output();
+        
+        // Determine storage disk
+        $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
+        $directory = 'documents/invoices';
+        $filePath = $directory . '/' . $fileName;
+        
+        try {
+            // Save PDF to S3/public storage
+            Storage::disk($disk)->put($filePath, $pdfContent, 'public');
+            
+            // Get file info
+            $fileSize = Storage::disk($disk)->size($filePath);
+            $mimeType = 'application/pdf';
+            
+            // Check if document already exists for this invoice
+            $existingDocument = Document::where('related_invoice_id', $invoice->id)
+                ->where('category', 'invoice')
+                ->where('name', 'like', "%{$invoice->invoice_number}%")
+                ->first();
+            
+            if ($existingDocument) {
+                // Update existing document
+                $existingDocument->update([
+                    'name' => $documentName,
+                    'file_path' => $filePath,
+                    'file_name' => $fileName,
+                    'mime_type' => $mimeType,
+                    'file_size' => $fileSize,
+                    'uploaded_by' => auth()->id(),
+                ]);
+                
+                return $existingDocument;
+            } else {
+                // Create new document
+                $document = Document::create([
+                    'name' => $documentName,
+                    'file_path' => $filePath,
+                    'file_name' => $fileName,
+                    'mime_type' => $mimeType,
+                    'file_size' => $fileSize,
+                    'category' => 'invoice',
+                    'description' => "Generated {$type} invoice for {$invoice->client_name}",
+                    'related_invoice_id' => $invoice->id,
+                    'uploaded_by' => auth()->id(),
+                    'access_level' => 'private',
+                ]);
+                
+                return $document;
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed to save PDF to storage: ' . $e->getMessage());
+            return null;
+        }
+    }
 
+    public function proforma(Invoice $invoice)
+    {
+        // Save PDF to S3 and create/update document
+        $document = $this->savePdfToDocument($invoice, 'proforma');
+        
+        if (!$document) {
+            // Fallback: generate and download directly if save fails
+            $kopSurat = $this->getKopSuratBase64();
+            $pdf = Pdf::loadView('invoices.proforma', compact('invoice', 'kopSurat'));
+            return $pdf->download("proforma-{$invoice->invoice_number}.pdf");
+        }
+        
+        // Download from S3
+        $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
+        $filePath = $document->file_path;
+        
+        if (Storage::disk($disk)->exists($filePath)) {
+            return Storage::disk($disk)->download($filePath, $document->file_name);
+        }
+        
+        // Fallback if file doesn't exist
+        $kopSurat = $this->getKopSuratBase64();
+        $pdf = Pdf::loadView('invoices.proforma', compact('invoice', 'kopSurat'));
         return $pdf->download("proforma-{$invoice->invoice_number}.pdf");
     }
 
     public function paid(Invoice $invoice)
     {
+        // Save PDF to S3 and create/update document
+        $document = $this->savePdfToDocument($invoice, 'paid');
+        
+        if (!$document) {
+            // Fallback: generate and download directly if save fails
+            $kopSurat = $this->getKopSuratBase64();
+            $pdf = Pdf::loadView('invoices.paid', compact('invoice', 'kopSurat'));
+            return $pdf->download("invoice-{$invoice->invoice_number}.pdf");
+        }
+        
+        // Download from S3
+        $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
+        $filePath = $document->file_path;
+        
+        if (Storage::disk($disk)->exists($filePath)) {
+            return Storage::disk($disk)->download($filePath, $document->file_name);
+        }
+        
+        // Fallback if file doesn't exist
         $kopSurat = $this->getKopSuratBase64();
         $pdf = Pdf::loadView('invoices.paid', compact('invoice', 'kopSurat'));
-
         return $pdf->download("invoice-{$invoice->invoice_number}.pdf");
     }
 }
