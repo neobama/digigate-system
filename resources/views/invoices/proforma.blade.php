@@ -56,7 +56,6 @@
         .info-table td {
             padding: 0;
             vertical-align: top;
-            border: none;
         }
         .info-left {
             width: 50%;
@@ -114,7 +113,6 @@
         .footer-table td {
             padding: 0;
             vertical-align: top;
-            border: none;
         }
         .footer-left {
             width: 50%;
