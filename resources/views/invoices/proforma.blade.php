@@ -46,20 +46,32 @@
             letter-spacing: 1px;
         }
         .info {
-            display: flex;
-            justify-content: space-between;
+            width: 100%;
             margin-bottom: 20px;
         }
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .info-table td {
+            padding: 0;
+            vertical-align: top;
+        }
         .info-left {
-            width: 48%;
+            width: 50%;
             text-align: left;
         }
         .info-right {
-            width: 48%;
+            width: 50%;
             text-align: right;
         }
         .info-right p {
             text-align: right;
+            margin: 0 0 5px 0;
+        }
+        .info-left p {
+            text-align: left;
+            margin: 0 0 5px 0;
         }
         table {
             width: 100%;
@@ -92,18 +104,31 @@
         }
         .footer {
             margin-top: 60px;
-            display: flex;
-            justify-content: space-between;
+            width: 100%;
+        }
+        .footer-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .footer-table td {
+            padding: 0;
+            vertical-align: top;
         }
         .footer-left {
-            width: 48%;
+            width: 50%;
+            text-align: left;
         }
         .signature {
-            width: 48%;
+            width: 50%;
             text-align: right;
         }
         .signature p {
             text-align: right;
+            margin: 0 0 5px 0;
+        }
+        .footer-left p {
+            text-align: left;
+            margin: 0 0 5px 0;
         }
     </style>
 </head>
@@ -120,19 +145,21 @@
             <h1>PROFORMA INVOICE</h1>
         </div>
 
-        <div class="info">
-            <div class="info-left">
-                <p><strong>Untuk:</strong> {{ $invoice->client_name }}</p>
-                <p><strong>UP:</strong> -</p>
-            </div>
-            <div class="info-right">
-                <p><strong>No. Invoice:</strong> {{ $invoice->invoice_number }}</p>
-                <p><strong>Tanggal Invoice:</strong> {{ \Carbon\Carbon::parse($invoice->invoice_date)->locale('id')->translatedFormat('d F Y') }}</p>
-                @if($invoice->po_number)
-                <p><strong>Nomor PO:</strong> {{ $invoice->po_number }}</p>
-                @endif
-            </div>
-        </div>
+        <table class="info-table">
+            <tr>
+                <td class="info-left">
+                    <p><strong>Untuk:</strong> {{ $invoice->client_name }}</p>
+                    <p><strong>UP:</strong> -</p>
+                </td>
+                <td class="info-right">
+                    <p><strong>No. Invoice:</strong> {{ $invoice->invoice_number }}</p>
+                    <p><strong>Tanggal Invoice:</strong> {{ \Carbon\Carbon::parse($invoice->invoice_date)->locale('id')->translatedFormat('d F Y') }}</p>
+                    @if($invoice->po_number)
+                    <p><strong>Nomor PO:</strong> {{ $invoice->po_number }}</p>
+                    @endif
+                </td>
+            </tr>
+        </table>
 
         <table>
             <thead>
@@ -192,18 +219,20 @@
             </ul>
         </div>
 
-        <div class="footer">
-            <div class="footer-left">
-                <p><strong>Pembayaran dapat ditransfer melalui:</strong></p>
-                <p>Bank BCA Cab. Matraman</p>
-                <p>No. Rekening: 3420660391</p>
-                <p>Atas Nama: PT. Gerbang Digital Indonesia</p>
-            </div>
-            <div class="signature">
-                <p>Jakarta, {{ \Carbon\Carbon::parse($invoice->invoice_date)->locale('id')->translatedFormat('d F Y') }}</p>
-                <p><strong>Neorafa A. Zulkarnaeen</strong></p>
-            </div>
-        </div>
+        <table class="footer-table">
+            <tr>
+                <td class="footer-left">
+                    <p><strong>Pembayaran dapat ditransfer melalui:</strong></p>
+                    <p>Bank BCA Cab. Matraman</p>
+                    <p>No. Rekening: 3420660391</p>
+                    <p>Atas Nama: PT. Gerbang Digital Indonesia</p>
+                </td>
+                <td class="signature">
+                    <p>Jakarta, {{ \Carbon\Carbon::parse($invoice->invoice_date)->locale('id')->translatedFormat('d F Y') }}</p>
+                    <p><strong>Neorafa A. Zulkarnaeen</strong></p>
+                </td>
+            </tr>
+        </table>
     </div>
 
 </body>
