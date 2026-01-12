@@ -163,18 +163,23 @@ class InvoiceResource extends Resource
                     ->url(fn (Invoice $record) => route('invoices.proforma.pdf', $record))
                     ->openUrlInNewTab()
                     ->hidden(function (Invoice $record) {
-                        if ($record->status !== 'proforma') {
-                            return true;
+                        try {
+                            if ($record->status !== 'proforma') {
+                                return true;
+                            }
+                            // Hide if document already exists
+                            $document = \App\Models\Document::where('related_invoice_id', $record->id)
+                                ->where('category', 'invoice')
+                                ->where(function($query) use ($record) {
+                                    $query->where('name', 'like', "%Proforma%{$record->invoice_number}%")
+                                          ->orWhere('file_name', 'like', "proforma-{$record->invoice_number}.pdf");
+                                })
+                                ->exists();
+                            return $document !== null;
+                        } catch (\Exception $e) {
+                            \Log::error('Error in generateProformaPdf hidden: ' . $e->getMessage());
+                            return false;
                         }
-                        // Hide if document already exists
-                        $document = \App\Models\Document::where('related_invoice_id', $record->id)
-                            ->where('category', 'invoice')
-                            ->where(function($query) use ($record) {
-                                $query->where('name', 'like', "%Proforma%{$record->invoice_number}%")
-                                      ->orWhere('file_name', 'like', "proforma-{$record->invoice_number}.pdf");
-                            })
-                            ->first();
-                        return $document !== null;
                     }),
                 Tables\Actions\Action::make('viewProformaDocument')
                     ->label('View Proforma Invoice')
@@ -203,18 +208,23 @@ class InvoiceResource extends Resource
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Tutup')
                     ->hidden(function (Invoice $record) {
-                        if ($record->status !== 'proforma') {
+                        try {
+                            if ($record->status !== 'proforma') {
+                                return true;
+                            }
+                            // Show only if document exists
+                            $exists = \App\Models\Document::where('related_invoice_id', $record->id)
+                                ->where('category', 'invoice')
+                                ->where(function($query) use ($record) {
+                                    $query->where('name', 'like', "%Proforma%{$record->invoice_number}%")
+                                          ->orWhere('file_name', 'like', "proforma-{$record->invoice_number}.pdf");
+                                })
+                                ->exists();
+                            return !$exists;
+                        } catch (\Exception $e) {
+                            \Log::error('Error in viewProformaDocument hidden: ' . $e->getMessage());
                             return true;
                         }
-                        // Show only if document exists
-                        $document = \App\Models\Document::where('related_invoice_id', $record->id)
-                            ->where('category', 'invoice')
-                            ->where(function($query) use ($record) {
-                                $query->where('name', 'like', "%Proforma%{$record->invoice_number}%")
-                                      ->orWhere('file_name', 'like', "proforma-{$record->invoice_number}.pdf");
-                            })
-                            ->first();
-                        return $document === null;
                     }),
                 Tables\Actions\Action::make('generateInvoicePdf')
                     ->label('Generate Invoice')
@@ -223,19 +233,26 @@ class InvoiceResource extends Resource
                     ->url(fn (Invoice $record) => route('invoices.paid.pdf', $record))
                     ->openUrlInNewTab()
                     ->hidden(function (Invoice $record) {
-                        if (!in_array($record->status, ['paid', 'delivered'])) {
-                            return true;
+                        try {
+                            if (!in_array($record->status, ['paid', 'delivered'])) {
+                                return true;
+                            }
+                            // Hide if document already exists
+                            $exists = \App\Models\Document::where('related_invoice_id', $record->id)
+                                ->where('category', 'invoice')
+                                ->where(function($query) use ($record) {
+                                    $query->where(function($q) use ($record) {
+                                        $q->where('name', 'like', "%Invoice {$record->invoice_number}%")
+                                          ->where('name', 'not like', '%Proforma%');
+                                    })
+                                    ->orWhere('file_name', 'like', "invoice-{$record->invoice_number}.pdf");
+                                })
+                                ->exists();
+                            return $exists;
+                        } catch (\Exception $e) {
+                            \Log::error('Error in generateInvoicePdf hidden: ' . $e->getMessage());
+                            return false;
                         }
-                        // Hide if document already exists
-                        $document = \App\Models\Document::where('related_invoice_id', $record->id)
-                            ->where('category', 'invoice')
-                            ->where(function($query) use ($record) {
-                                $query->where('name', 'like', "%Invoice {$record->invoice_number}%")
-                                      ->where('name', 'not like', '%Proforma%')
-                                      ->orWhere('file_name', 'like', "invoice-{$record->invoice_number}.pdf");
-                            })
-                            ->first();
-                        return $document !== null;
                     }),
                 Tables\Actions\Action::make('viewInvoiceDocument')
                     ->label('View Invoice')
@@ -265,19 +282,26 @@ class InvoiceResource extends Resource
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Tutup')
                     ->hidden(function (Invoice $record) {
-                        if (!in_array($record->status, ['paid', 'delivered'])) {
+                        try {
+                            if (!in_array($record->status, ['paid', 'delivered'])) {
+                                return true;
+                            }
+                            // Show only if document exists
+                            $exists = \App\Models\Document::where('related_invoice_id', $record->id)
+                                ->where('category', 'invoice')
+                                ->where(function($query) use ($record) {
+                                    $query->where(function($q) use ($record) {
+                                        $q->where('name', 'like', "%Invoice {$record->invoice_number}%")
+                                          ->where('name', 'not like', '%Proforma%');
+                                    })
+                                    ->orWhere('file_name', 'like', "invoice-{$record->invoice_number}.pdf");
+                                })
+                                ->exists();
+                            return !$exists;
+                        } catch (\Exception $e) {
+                            \Log::error('Error in viewInvoiceDocument hidden: ' . $e->getMessage());
                             return true;
                         }
-                        // Show only if document exists
-                        $document = \App\Models\Document::where('related_invoice_id', $record->id)
-                            ->where('category', 'invoice')
-                            ->where(function($query) use ($record) {
-                                $query->where('name', 'like', "%Invoice {$record->invoice_number}%")
-                                      ->where('name', 'not like', '%Proforma%')
-                                      ->orWhere('file_name', 'like', "invoice-{$record->invoice_number}.pdf");
-                            })
-                            ->first();
-                        return $document === null;
                     }),
                 Tables\Actions\Action::make('generateSuratJalan')
                     ->label('Generate Surat Jalan')
@@ -286,14 +310,18 @@ class InvoiceResource extends Resource
                     ->url(fn (Invoice $record) => route('invoices.surat-jalan.pdf', $record))
                     ->openUrlInNewTab()
                     ->hidden(function (Invoice $record) {
-                        if ($record->status !== 'delivered') {
-                            return true;
+                        try {
+                            if ($record->status !== 'delivered') {
+                                return true;
+                            }
+                            // Hide if document already exists
+                            return \App\Models\Document::where('related_invoice_id', $record->id)
+                                ->where('category', 'surat_jalan')
+                                ->exists();
+                        } catch (\Exception $e) {
+                            \Log::error('Error in generateSuratJalan hidden: ' . $e->getMessage());
+                            return false;
                         }
-                        // Hide if document already exists
-                        $document = \App\Models\Document::where('related_invoice_id', $record->id)
-                            ->where('category', 'surat_jalan')
-                            ->first();
-                        return $document !== null;
                     })
                     ->requiresConfirmation()
                     ->modalHeading('Generate Surat Jalan')
@@ -322,14 +350,18 @@ class InvoiceResource extends Resource
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Tutup')
                     ->hidden(function (Invoice $record) {
-                        if ($record->status !== 'delivered') {
+                        try {
+                            if ($record->status !== 'delivered') {
+                                return true;
+                            }
+                            // Show only if document exists
+                            return !\App\Models\Document::where('related_invoice_id', $record->id)
+                                ->where('category', 'surat_jalan')
+                                ->exists();
+                        } catch (\Exception $e) {
+                            \Log::error('Error in viewSuratJalan hidden: ' . $e->getMessage());
                             return true;
                         }
-                        // Show only if document exists
-                        $document = \App\Models\Document::where('related_invoice_id', $record->id)
-                            ->where('category', 'surat_jalan')
-                            ->first();
-                        return $document === null;
                     }),
                 Tables\Actions\Action::make('uploadDocument')
                     ->label('Upload Dokumen')
