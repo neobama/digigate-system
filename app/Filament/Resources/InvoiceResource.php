@@ -166,14 +166,13 @@ class InvoiceResource extends Resource
                                 return true;
                             }
                             // Hide if document already exists
-                            $document = \App\Models\Document::where('related_invoice_id', $record->id)
+                            return \App\Models\Document::where('related_invoice_id', $record->id)
                                 ->where('category', 'invoice')
                                 ->where(function($query) use ($record) {
                                     $query->where('name', 'like', "%Proforma%{$record->invoice_number}%")
                                           ->orWhere('file_name', 'like', "proforma-{$record->invoice_number}.pdf");
                                 })
                                 ->exists();
-                            return $document !== null;
                         } catch (\Exception $e) {
                             \Log::error('Error in generateProformaPdf hidden: ' . $e->getMessage());
                             return false;
