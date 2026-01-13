@@ -110,16 +110,17 @@ class InvoiceResource extends Resource
                     ->form([
                         Forms\Components\Select::make('month')
                             ->label('Bulan')
+                            ->placeholder('Semua Bulan')
                             ->options(function () {
                                 $months = [];
                                 for ($i = 1; $i <= 12; $i++) {
                                     $months[$i] = date('F', mktime(0, 0, 0, $i, 1));
                                 }
                                 return $months;
-                            })
-                            ->default(now()->month),
+                            }),
                         Forms\Components\Select::make('year')
                             ->label('Tahun')
+                            ->placeholder('Semua Tahun')
                             ->options(function () {
                                 $years = [];
                                 $currentYear = now()->year;
@@ -127,8 +128,7 @@ class InvoiceResource extends Resource
                                     $years[$i] = $i;
                                 }
                                 return $years;
-                            })
-                            ->default(now()->year),
+                            }),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -139,6 +139,7 @@ class InvoiceResource extends Resource
                             );
                     }),
             ])
+            ->defaultSort('invoice_date', 'desc')
             ->actions([
                 Tables\Actions\EditAction::make(),
                 // Action cepat untuk mengubah Proforma menjadi Paid
