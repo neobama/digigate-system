@@ -8,9 +8,11 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 class MyTasks extends Page
 {
+    use WithFileUploads;
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
     protected static string $view = 'filament.employee.pages.my-tasks';
     protected static ?string $navigationLabel = 'Kalender Pekerjaan';
@@ -109,7 +111,8 @@ class MyTasks extends Page
     {
         $this->selectedTask = Task::with('employees')->find($taskId);
         $this->showUploadModal = true;
-        $this->proofImages = [];
+        $this->proofImage = null;
+        $this->uploadedImages = [];
         $this->notes = $this->selectedTask->notes ?? '';
         $this->uploadProgress = 0;
         $this->isUploading = false;
@@ -119,20 +122,39 @@ class MyTasks extends Page
     {
         $this->showUploadModal = false;
         $this->selectedTask = null;
-        $this->proofImages = [];
+        $this->proofImage = null;
+        $this->uploadedImages = [];
         $this->notes = '';
         $this->uploadProgress = 0;
         $this->isUploading = false;
     }
     
-    public function updatedProofImages(): void
+    public function updatedProofImage(): void
     {
-        // Reset progress when new files are selected
+        // Reset progress when new file is selected
         $this->uploadProgress = 0;
         $this->isUploading = true;
         
-        // Files are being uploaded, Livewire will handle it
-        // After upload completes, $proofImages will contain the TemporaryUploadedFile instances
+        // File is being uploaded, Livewire will handle it
+        // After upload completes, $proofImage will contain the TemporaryUploadedFile
+    }
+    
+    public function addAnotherImage(): void
+    {
+        // Add current image to uploadedImages array and reset proofImage
+        if ($this->proofImage instanceof TemporaryUploadedFile) {
+            // Store the file temporarily and add to array
+            $path = $this->proofImage->store('tasks/proofs/temp', 'public');
+            if ($path) {
+                $this->uploadedImages[] = $path;
+            }
+            $this->proofImage = null;
+            
+            \Filament\Notifications\Notification::make()
+                ->title('Foto ditambahkan. Upload foto berikutnya atau klik Simpan Bukti.')
+                ->success()
+                ->send();
+        }
     }
     
     public function updateStatus($status): void
@@ -159,8 +181,15 @@ class MyTasks extends Page
             return;
         }
 
+        // Combine current proofImage and uploadedImages
+        $imagesToUpload = [];
+        if ($this->proofImage) {
+            $imagesToUpload[] = $this->proofImage;
+        }
+        $imagesToUpload = array_merge($imagesToUpload, $this->uploadedImages);
+
         // Validate that proof images are required
-        if (empty($this->proofImages)) {
+        if (empty($imagesToUpload)) {
             \Filament\Notifications\Notification::make()
                 ->title('Foto bukti wajib diupload')
                 ->warning()
@@ -174,12 +203,12 @@ class MyTasks extends Page
 
         // Upload new images
         try {
-            foreach ($this->proofImages as $proofImage) {
+            foreach ($imagesToUpload as $proofImage) {
                 $path = null;
                 
                 // Check if it's a TemporaryUploadedFile (from Livewire)
                 if ($proofImage instanceof TemporaryUploadedFile) {
-                    // Upload to local first (public disk)
+                    // Upload to local first (public disk) - Livewire will use local for temporary storage
                     $path = $proofImage->store('tasks/proofs', 'public');
                     
                     // If using S3, move to S3 after upload
