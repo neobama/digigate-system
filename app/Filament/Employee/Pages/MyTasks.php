@@ -373,19 +373,27 @@ class MyTasks extends Page implements HasForms
             
             // Only add task if it's in visible range
             if ($startDayIndex !== null) {
-                // Calculate span from start to end
-                $span = 1;
+                // Calculate span from start to end (inclusive)
+                $span = 1; // Start with the start day itself
                 $currentIdx = $startDayIndex;
+                
+                // Count days until we reach or pass the end date
                 while ($currentIdx < count($days) - 1) {
                     $currentIdx++;
                     $nextDayStr = $days[$currentIdx]['date']->format('Y-m-d');
+                    
+                    // Stop if we've passed the end date
                     if ($nextDayStr > $taskEndStr) {
                         break;
                     }
+                    
+                    // Include this day if it's within the task range
                     if ($nextDayStr <= $taskEndStr) {
                         $span++;
                     }
-                    if ($span >= 35) break;
+                    
+                    // Safety limit
+                    if ($span >= 42) break; // Max 6 weeks
                 }
                 
                 $taskBars[] = [

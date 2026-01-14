@@ -87,6 +87,7 @@
                                     $task = $taskInfo['task'];
                                     $span = $taskInfo['span'];
                                     $row = $taskInfo['row'] ?? 0;
+                                    $startIndex = $taskInfo['startIndex'] ?? $index; // Use startIndex from task, fallback to current index
                                     
                                     // Color definitions based on status
                                     $statusColors = [
@@ -128,8 +129,9 @@
                                     $style = "background-color: {$colors['bg']}; color: {$colors['text']}; border-color: {$colors['border']};";
                                     $darkStyle = "background-color: {$colors['dark_bg']}; color: {$colors['dark_text']}; border-color: {$colors['dark_border']};";
                                     
-                                    // Calculate position based on grid - simple and direct
-                                    $col = $index % 7; // Column (0-6)
+                                    // Calculate position based on startIndex (not loop index)
+                                    $col = $startIndex % 7; // Column (0-6) based on actual start day
+                                    $weekRow = intval($startIndex / 7); // Week row (0-based) based on actual start day
                                     $cellWidthPercent = 100 / 7; // 14.2857% per cell
                                     $leftPercent = $col * $cellWidthPercent;
                                     $widthPercent = $span * $cellWidthPercent;
