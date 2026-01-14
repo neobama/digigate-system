@@ -93,6 +93,10 @@
                             $cellWidthPercent = 100 / 7; // 14.2857% per cell
                             $leftPercent = $col * $cellWidthPercent;
                             $widthPercent = $span * $cellWidthPercent;
+                            
+                            // Calculate top offset based on calendar week row
+                            // Row already includes the week row (baseRow) + offset for overlaps
+                            // Each row is approximately 3rem (48px) spacing
                             $topOffset = $row * 3; // Row spacing in rem (48px per row)
                         @endphp
                         

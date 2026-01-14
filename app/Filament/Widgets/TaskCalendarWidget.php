@@ -154,16 +154,25 @@ class TaskCalendarWidget extends Widget
                     if ($span >= 35) break;
                 }
                 
-                // Calculate row position (to avoid overlaps)
-                $row = 0;
+                // Calculate row position - based on calendar week row, then add offset for overlaps
+                $baseRow = intval($startDayIndex / 7); // Which week row (0-based) in the calendar
+                
+                // Check for overlaps in the same week row and find available row offset
+                $rowOffset = 0;
                 $placed = false;
-                while (!$placed && $row < 10) {
+                while (!$placed && $rowOffset < 10) {
+                    $row = $baseRow + $rowOffset;
                     $canPlace = true;
+                    
                     for ($i = 0; $i < $span && ($startDayIndex + $i) < count($days); $i++) {
                         $checkIdx = $startDayIndex + $i;
-                        // Check if this position is already taken
+                        // Check if this position is already taken by another task in the same row
                         foreach ($taskBars as $existingBar) {
-                            if ($existingBar['row'] == $row) {
+                            $existingBaseRow = intval($existingBar['startIndex'] / 7);
+                            $existingRowOffset = $existingBar['row'] - $existingBaseRow;
+                            $existingRow = $existingBaseRow + $existingRowOffset;
+                            
+                            if ($existingRow == $row) {
                                 $existingStart = $existingBar['startIndex'];
                                 $existingSpan = $existingBar['span'];
                                 $existingEnd = $existingStart + $existingSpan - 1;
@@ -179,9 +188,11 @@ class TaskCalendarWidget extends Widget
                     if ($canPlace) {
                         $placed = true;
                     } else {
-                        $row++;
+                        $rowOffset++;
                     }
                 }
+                
+                $row = $baseRow + $rowOffset;
                 
                 $taskBars[] = [
                     'task' => $task,
