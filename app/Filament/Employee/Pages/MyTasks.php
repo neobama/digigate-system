@@ -26,8 +26,9 @@ class MyTasks extends Page
     public $showCreateModal = false;
     public $notes = '';
     
-    // For multiple file upload (upload to local first, then move to S3)
-    public $proofImages = [];
+    // For single file upload (S3 doesn't support multiple, so we upload one at a time)
+    public $proofImage;
+    public $uploadedImages = []; // Array to store paths of uploaded images
     public $uploadProgress = 0;
     public $isUploading = false;
     

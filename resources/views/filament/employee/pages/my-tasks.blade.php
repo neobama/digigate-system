@@ -260,24 +260,24 @@
                                         Mengupload foto...
                                     </div>
                                     <div wire:loading.remove wire:target="proofImage">
-                                        @if($proofImage)
+                                        @if(isset($proofImage) && $proofImage)
                                             <p class="mt-1 text-xs text-green-600 dark:text-green-400">✓ Foto siap ditambahkan</p>
                                         @endif
                                     </div>
                                     @error('proofImage') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                     
-                                    @if(!empty($uploadedImages) || $proofImage)
+                                    @if(!empty($uploadedImages) || (isset($proofImage) && $proofImage))
                                         <div class="mt-2">
                                             <p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Foto yang akan diupload:</p>
                                             <ul class="text-xs text-gray-600 dark:text-gray-400 list-disc list-inside">
-                                                @if($proofImage)
+                                                @if(isset($proofImage) && $proofImage)
                                                     <li>Foto baru ({{ $proofImage->getClientOriginalName() }})</li>
                                                 @endif
                                                 @foreach($uploadedImages as $index => $img)
                                                     <li>Foto {{ $index + 1 }}</li>
                                                 @endforeach
                                             </ul>
-                                            @if($proofImage)
+                                            @if(isset($proofImage) && $proofImage)
                                                 <button 
                                                     type="button"
                                                     wire:click="addAnotherImage"
@@ -328,8 +328,8 @@
                                     id="save-proof-btn"
                                     wire:loading.attr="disabled"
                                     wire:target="proofImage,uploadProof"
-                                    @if(!$proofImage && empty($uploadedImages)) disabled @endif
-                                    class="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white sm:mt-0 sm:col-start-1 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed {{ ($proofImage || !empty($uploadedImages)) ? 'bg-primary-600 dark:bg-primary-500 hover:bg-primary-700 dark:hover:bg-primary-600' : 'bg-gray-400 dark:bg-gray-600' }}"
+                                    @if((!isset($proofImage) || !$proofImage) && empty($uploadedImages)) disabled @endif
+                                    class="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white sm:mt-0 sm:col-start-1 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed {{ ((isset($proofImage) && $proofImage) || !empty($uploadedImages)) ? 'bg-primary-600 dark:bg-primary-500 hover:bg-primary-700 dark:hover:bg-primary-600' : 'bg-gray-400 dark:bg-gray-600' }}"
                                 >
                                     <span wire:loading.remove wire:target="proofImage,uploadProof">Simpan Bukti</span>
                                     <span wire:loading wire:target="proofImage">Mengupload...</span>
