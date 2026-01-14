@@ -224,20 +224,45 @@
                             </div>
                         @endif
                         
-                        <form wire:submit.prevent="uploadProof">
+                        <form wire:submit.prevent="uploadProof" id="upload-proof-form">
                             <div class="space-y-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Upload Foto Bukti Pekerjaan (Satu per satu)
+                                        Upload Foto Bukti Pekerjaan <span class="text-red-500">*</span>
                                     </label>
                                     <input 
                                         type="file" 
                                         wire:model="proofImage" 
+                                        wire:loading.attr="disabled"
                                         accept="image/*"
+                                        id="proof-image-input"
                                         class="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900 dark:file:text-primary-300"
+                                        required
                                     >
+                                    
+                                    <!-- Progress Bar -->
+                                    <div id="upload-progress-container" class="mt-2 hidden">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Upload Progress</span>
+                                            <span class="text-xs font-medium text-gray-700 dark:text-gray-300" id="upload-progress-text">0%</span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                            <div 
+                                                id="upload-progress-bar" 
+                                                class="bg-primary-600 dark:bg-primary-500 h-2 rounded-full transition-all duration-300"
+                                                style="width: 0%"
+                                            ></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div wire:loading wire:target="proofImage" class="mt-2 text-xs text-blue-600 dark:text-blue-400">
+                                        Mengupload foto...
+                                    </div>
                                     @error('proofImage') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Upload satu foto per kali. Status akan otomatis berubah ke Completed setelah upload bukti.</p>
+                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Upload satu foto per kali. Status akan otomatis berubah setelah upload bukti selesai (100%).</p>
+                                    <div id="upload-complete-message" class="mt-1 text-xs text-green-600 dark:text-green-400 hidden">
+                                        ✓ Foto siap disimpan
+                                    </div>
                                 </div>
 
                                 @if(!empty($selectedTask->proof_images))
@@ -275,7 +300,9 @@
                                 </button>
                                 <button 
                                     type="submit"
-                                    class="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 dark:bg-primary-500 text-base font-medium text-white hover:bg-primary-700 dark:hover:bg-primary-600 sm:mt-0 sm:col-start-1 sm:text-sm"
+                                    id="save-proof-btn"
+                                    disabled
+                                    class="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-gray-400 dark:bg-gray-600 text-base font-medium text-white cursor-not-allowed sm:mt-0 sm:col-start-1 sm:text-sm disabled:opacity-50"
                                 >
                                     Simpan Bukti
                                 </button>
@@ -402,9 +429,97 @@
             });
         }
         
+        // File upload progress tracking
+        function setupFileUploadProgress() {
+            const fileInput = document.getElementById('proof-image-input');
+            const progressContainer = document.getElementById('upload-progress-container');
+            const progressBar = document.getElementById('upload-progress-bar');
+            const progressText = document.getElementById('upload-progress-text');
+            const completeMessage = document.getElementById('upload-complete-message');
+            const saveBtn = document.getElementById('save-proof-btn');
+            
+            if (!fileInput || !progressContainer) return;
+            
+            // Listen to Livewire file upload events
+            document.addEventListener('livewire:init', () => {
+                // Livewire 3 hooks
+                Livewire.hook('file.upload', ({ component, file, progress, upload }) => {
+                    if (fileInput.files.length > 0 && file.name === fileInput.files[0]?.name) {
+                        progressContainer.classList.remove('hidden');
+                        const progressPercent = Math.min(progress, 100);
+                        progressBar.style.width = progressPercent + '%';
+                        progressText.textContent = Math.round(progressPercent) + '%';
+                        
+                        if (progressPercent >= 100) {
+                            setTimeout(() => {
+                                completeMessage.classList.remove('hidden');
+                                saveBtn.disabled = false;
+                                saveBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed', 'disabled:opacity-50');
+                                saveBtn.classList.add('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
+                            }, 300);
+                        }
+                    }
+                });
+                
+                Livewire.hook('file.upload.failed', ({ component, file }) => {
+                    progressContainer.classList.add('hidden');
+                    completeMessage.classList.add('hidden');
+                    saveBtn.disabled = true;
+                    saveBtn.classList.add('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed', 'disabled:opacity-50');
+                    saveBtn.classList.remove('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
+                });
+                
+                Livewire.hook('file.upload.success', ({ component, file }) => {
+                    if (fileInput.files.length > 0 && file.name === fileInput.files[0]?.name) {
+                        progressBar.style.width = '100%';
+                        progressText.textContent = '100%';
+                        completeMessage.classList.remove('hidden');
+                        saveBtn.disabled = false;
+                        saveBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed', 'disabled:opacity-50');
+                        saveBtn.classList.add('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
+                    }
+                });
+            });
+            
+            // Also listen for Livewire events after initialization
+            window.addEventListener('livewire:file-upload-progress', (event) => {
+                const progress = event.detail.progress || 0;
+                progressContainer.classList.remove('hidden');
+                progressBar.style.width = progress + '%';
+                progressText.textContent = Math.round(progress) + '%';
+                
+                if (progress >= 100) {
+                    setTimeout(() => {
+                        completeMessage.classList.remove('hidden');
+                        saveBtn.disabled = false;
+                        saveBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed', 'disabled:opacity-50');
+                        saveBtn.classList.add('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
+                    }, 300);
+                }
+            });
+            
+            // Reset on file change
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length > 0) {
+                    progressContainer.classList.remove('hidden');
+                    progressBar.style.width = '0%';
+                    progressText.textContent = '0%';
+                    completeMessage.classList.add('hidden');
+                    saveBtn.disabled = true;
+                    saveBtn.classList.add('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed', 'disabled:opacity-50');
+                    saveBtn.classList.remove('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
+                } else {
+                    progressContainer.classList.add('hidden');
+                    completeMessage.classList.add('hidden');
+                    saveBtn.disabled = true;
+                }
+            });
+        }
+        
         // Initial update
         document.addEventListener('DOMContentLoaded', function() {
             updateTaskBarColors();
+            setupFileUploadProgress();
             
             // Watch for dark mode changes
             const observer = new MutationObserver(updateTaskBarColors);
@@ -419,6 +534,7 @@
             document.addEventListener('DOMContentLoaded', updateTaskBarColors);
         } else {
             updateTaskBarColors();
+            setupFileUploadProgress();
         }
     </script>
 </x-filament-panels::page>

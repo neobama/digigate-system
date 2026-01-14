@@ -6,6 +6,7 @@ use App\Models\Task;
 use Filament\Pages\Page;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class MyTasks extends Page
 {
@@ -25,6 +26,8 @@ class MyTasks extends Page
     
     // For single file upload (S3 doesn't support multiple)
     public $proofImage;
+    public $uploadProgress = 0;
+    public $isUploading = false;
     
     // Form untuk create task
     public $newTaskTitle = '';
@@ -115,6 +118,18 @@ class MyTasks extends Page
         $this->proofImages = [];
         $this->proofImage = null;
         $this->notes = '';
+        $this->uploadProgress = 0;
+        $this->isUploading = false;
+    }
+    
+    public function updatedProofImage(): void
+    {
+        // Reset progress when new file is selected
+        $this->uploadProgress = 0;
+        $this->isUploading = true;
+        
+        // Simulate progress (Livewire will handle actual upload)
+        $this->dispatch('upload-started');
     }
     
     public function updateStatus($status): void
@@ -141,10 +156,10 @@ class MyTasks extends Page
             return;
         }
 
-        // Validate that proof image is provided
+        // Validate that proof image is required
         if (!$this->proofImage) {
             \Filament\Notifications\Notification::make()
-                ->title('Silakan pilih foto bukti terlebih dahulu')
+                ->title('Foto bukti wajib diupload')
                 ->warning()
                 ->send();
             return;
@@ -154,8 +169,32 @@ class MyTasks extends Page
         $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
 
         // Upload new image (S3 doesn't support multiple, so we upload one at a time)
-        $path = $this->proofImage->store('tasks/proofs', $disk);
-        $proofImages[] = $path;
+        try {
+            $path = null;
+            
+            // Check if it's a TemporaryUploadedFile (from Livewire)
+            if ($this->proofImage instanceof TemporaryUploadedFile) {
+                $path = $this->proofImage->store('tasks/proofs', $disk);
+            } elseif (is_string($this->proofImage)) {
+                // Already a path, just use it
+                $path = $this->proofImage;
+            } else {
+                // Try to store it anyway
+                $path = $this->proofImage->store('tasks/proofs', $disk);
+            }
+            
+            if (!$path) {
+                throw new \Exception('Gagal menyimpan file');
+            }
+            
+            $proofImages[] = $path;
+        } catch (\Exception $e) {
+            \Filament\Notifications\Notification::make()
+                ->title('Error saat upload foto: ' . $e->getMessage())
+                ->danger()
+                ->send();
+            return;
+        }
 
         // Determine new status based on current status
         $newStatus = $this->selectedTask->status;
