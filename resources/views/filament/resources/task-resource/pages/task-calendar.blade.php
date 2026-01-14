@@ -5,121 +5,6 @@
         <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.15/main.min.css" rel="stylesheet" />
     @endpush
 
-    @push('scripts')
-        <!-- FullCalendar JS -->
-        <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/main.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.15/main.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/interaction@6.1.15/main.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/locales/id.global.min.js"></script>
-        
-        <script>
-            window.initTaskCalendar = function() {
-                if (window.taskCalendarInitialized) return;
-                
-                const calendarEl = document.getElementById('task-calendar');
-                if (!calendarEl) {
-                    console.error('Calendar element not found');
-                    return;
-                }
-                
-                if (typeof FullCalendar === 'undefined') {
-                    console.error('FullCalendar not loaded');
-                    setTimeout(window.initTaskCalendar, 100);
-                    return;
-                }
-                
-                try {
-                    const events = JSON.parse(calendarEl.dataset.events || '[]');
-                    
-                    window.taskCalendar = new FullCalendar.Calendar(calendarEl, {
-                        plugins: [FullCalendar.dayGridPlugin, FullCalendar.interactionPlugin],
-                        locale: 'id',
-                        initialView: 'dayGridMonth',
-                        headerToolbar: {
-                            left: 'prev,next today',
-                            center: 'title',
-                            right: ''
-                        },
-                        firstDay: 1,
-                        height: 'auto',
-                        events: events,
-                        eventDisplay: 'block',
-                        eventColor: function(info) {
-                            const status = info.event.extendedProps.status;
-                            const statusColors = {
-                                'pending': '#fde68a',
-                                'in_progress': '#fbbf24',
-                                'completed': '#86efac',
-                                'cancelled': '#fca5a5'
-                            };
-                            return statusColors[status] || statusColors['pending'];
-                        },
-                        eventTextColor: function(info) {
-                            const status = info.event.extendedProps.status;
-                            const textColors = {
-                                'pending': '#78350f',
-                                'in_progress': '#78350f',
-                                'completed': '#14532d',
-                                'cancelled': '#7f1d1d'
-                            };
-                            return textColors[status] || textColors['pending'];
-                        },
-                        eventClick: function(info) {
-                            const url = info.event.extendedProps.editUrl;
-                            if (url) {
-                                window.location.href = url;
-                            }
-                        },
-                        eventDidMount: function(info) {
-                            info.el.style.borderRadius = '0.5rem';
-                            info.el.style.borderWidth = '2px';
-                            info.el.style.fontWeight = '600';
-                            info.el.style.padding = '0.5rem';
-                            info.el.style.cursor = 'pointer';
-                        }
-                    });
-                    
-                    window.taskCalendar.render();
-                    window.taskCalendarInitialized = true;
-                    console.log('FullCalendar initialized successfully');
-                } catch (error) {
-                    console.error('Error initializing FullCalendar:', error);
-                }
-            };
-            
-            // Initialize when everything is ready
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', function() {
-                    setTimeout(window.initTaskCalendar, 500);
-                });
-            } else {
-                setTimeout(window.initTaskCalendar, 500);
-            }
-            
-            // Handle Livewire updates
-            document.addEventListener('livewire:init', function() {
-                if (window.Livewire) {
-                    Livewire.hook('morph.updated', () => {
-                        setTimeout(() => {
-                            const calendarEl = document.getElementById('task-calendar');
-                            if (calendarEl && window.taskCalendar) {
-                                try {
-                                    const events = JSON.parse(calendarEl.dataset.events || '[]');
-                                    window.taskCalendar.removeAllEvents();
-                                    window.taskCalendar.addEventSource(events);
-                                    const currentDate = new Date({{ $this->currentYear }}, {{ $this->currentMonth }} - 1, 1);
-                                    window.taskCalendar.gotoDate(currentDate);
-                                } catch (error) {
-                                    console.error('Error updating calendar:', error);
-                                }
-                            }
-                        }, 200);
-                    });
-                }
-            });
-        </script>
-    @endpush
-
     <div class="space-y-6">
         <!-- Calendar Header -->
         <div class="flex items-center justify-between">
@@ -187,6 +72,140 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // Load scripts sequentially
+        function loadScript(src, callback) {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = callback;
+            script.onerror = function() {
+                console.error('Failed to load script:', src);
+            };
+            document.head.appendChild(script);
+        }
+
+        function initTaskCalendar() {
+            if (window.taskCalendar) {
+                return;
+            }
+            
+            const calendarEl = document.getElementById('task-calendar');
+            if (!calendarEl) {
+                console.error('Calendar element not found');
+                return;
+            }
+            
+            if (typeof FullCalendar === 'undefined') {
+                console.error('FullCalendar is not defined');
+                return;
+            }
+            
+            try {
+                const events = JSON.parse(calendarEl.dataset.events || '[]');
+                
+                window.taskCalendar = new FullCalendar.Calendar(calendarEl, {
+                    plugins: [FullCalendar.dayGridPlugin, FullCalendar.interactionPlugin],
+                    locale: 'id',
+                    initialView: 'dayGridMonth',
+                    headerToolbar: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: ''
+                    },
+                    firstDay: 1,
+                    height: 'auto',
+                    events: events,
+                    eventDisplay: 'block',
+                    eventColor: function(info) {
+                        const status = info.event.extendedProps.status;
+                        const statusColors = {
+                            'pending': '#fde68a',
+                            'in_progress': '#fbbf24',
+                            'completed': '#86efac',
+                            'cancelled': '#fca5a5'
+                        };
+                        return statusColors[status] || statusColors['pending'];
+                    },
+                    eventTextColor: function(info) {
+                        const status = info.event.extendedProps.status;
+                        const textColors = {
+                            'pending': '#78350f',
+                            'in_progress': '#78350f',
+                            'completed': '#14532d',
+                            'cancelled': '#7f1d1d'
+                        };
+                        return textColors[status] || textColors['pending'];
+                    },
+                    eventClick: function(info) {
+                        const url = info.event.extendedProps.editUrl;
+                        if (url) {
+                            window.location.href = url;
+                        }
+                    },
+                    eventDidMount: function(info) {
+                        info.el.style.borderRadius = '0.5rem';
+                        info.el.style.borderWidth = '2px';
+                        info.el.style.fontWeight = '600';
+                        info.el.style.padding = '0.5rem';
+                        info.el.style.cursor = 'pointer';
+                    }
+                });
+                
+                window.taskCalendar.render();
+                console.log('FullCalendar initialized successfully');
+            } catch (error) {
+                console.error('Error initializing FullCalendar:', error);
+            }
+        }
+
+        // Load scripts in order
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/main.min.js', function() {
+                    loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.15/main.min.js', function() {
+                        loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/interaction@6.1.15/main.min.js', function() {
+                            loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/locales/id.global.min.js', function() {
+                                setTimeout(initTaskCalendar, 100);
+                            });
+                        });
+                    });
+                });
+            });
+        } else {
+            loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/main.min.js', function() {
+                loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.15/main.min.js', function() {
+                    loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/interaction@6.1.15/main.min.js', function() {
+                        loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/locales/id.global.min.js', function() {
+                            setTimeout(initTaskCalendar, 100);
+                        });
+                    });
+                });
+            });
+        }
+        
+        // Handle Livewire updates
+        document.addEventListener('livewire:init', function() {
+            if (window.Livewire) {
+                Livewire.hook('morph.updated', () => {
+                    setTimeout(() => {
+                        const calendarEl = document.getElementById('task-calendar');
+                        if (calendarEl && window.taskCalendar) {
+                            try {
+                                const events = JSON.parse(calendarEl.dataset.events || '[]');
+                                window.taskCalendar.removeAllEvents();
+                                window.taskCalendar.addEventSource(events);
+                                const currentDate = new Date({{ $this->currentYear }}, {{ $this->currentMonth }} - 1, 1);
+                                window.taskCalendar.gotoDate(currentDate);
+                            } catch (error) {
+                                console.error('Error updating calendar:', error);
+                            }
+                        }
+                    }, 200);
+                });
+            }
+        });
+    </script>
 
     <style>
         /* FullCalendar Custom Styles */
