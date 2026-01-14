@@ -3,16 +3,17 @@
 namespace App\Filament\Employee\Pages;
 
 use App\Models\Task;
+use Filament\Forms;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Livewire\WithFileUploads;
 
-class MyTasks extends Page
+class MyTasks extends Page implements HasForms
 {
-    use WithFileUploads;
+    use InteractsWithForms;
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
     protected static string $view = 'filament.employee.pages.my-tasks';
     protected static ?string $navigationLabel = 'Kalender Pekerjaan';
@@ -25,12 +26,7 @@ class MyTasks extends Page
     public $showUploadModal = false;
     public $showCreateModal = false;
     public $notes = '';
-    
-    // For single file upload (S3 doesn't support multiple, so we upload one at a time)
-    public $proofImage;
-    public $uploadedImages = []; // Array to store paths of uploaded images
-    public $uploadProgress = 0;
-    public $isUploading = false;
+    public $proofImages = []; // For Filament FileUpload component
     
     // Form untuk create task
     public $newTaskTitle = '';
@@ -112,50 +108,45 @@ class MyTasks extends Page
     {
         $this->selectedTask = Task::with('employees')->find($taskId);
         $this->showUploadModal = true;
-        $this->proofImage = null;
-        $this->uploadedImages = [];
         $this->notes = $this->selectedTask->notes ?? '';
-        $this->uploadProgress = 0;
-        $this->isUploading = false;
+        
+        // Fill form with existing data - proof_images will be empty for new uploads
+        $this->form->fill([
+            'proof_images' => [], // Start with empty array for new uploads
+            'notes' => $this->notes,
+        ]);
     }
 
     public function closeModal(): void
     {
         $this->showUploadModal = false;
         $this->selectedTask = null;
-        $this->proofImage = null;
-        $this->uploadedImages = [];
+        $this->proofImages = [];
         $this->notes = '';
-        $this->uploadProgress = 0;
-        $this->isUploading = false;
+        $this->form->fill();
     }
     
-    public function updatedProofImage(): void
+    protected function getFormSchema(): array
     {
-        // Reset progress when new file is selected
-        $this->uploadProgress = 0;
-        $this->isUploading = true;
-        
-        // File is being uploaded, Livewire will handle it
-        // After upload completes, $proofImage will contain the TemporaryUploadedFile
-    }
-    
-    public function addAnotherImage(): void
-    {
-        // Add current image to uploadedImages array and reset proofImage
-        if ($this->proofImage instanceof TemporaryUploadedFile) {
-            // Store the file temporarily and add to array
-            $path = $this->proofImage->store('tasks/proofs/temp', 'public');
-            if ($path) {
-                $this->uploadedImages[] = $path;
-            }
-            $this->proofImage = null;
-            
-            \Filament\Notifications\Notification::make()
-                ->title('Foto ditambahkan. Upload foto berikutnya atau klik Simpan Bukti.')
-                ->success()
-                ->send();
-        }
+        return [
+            Forms\Components\FileUpload::make('proof_images')
+                ->label('Upload Foto Bukti Pekerjaan')
+                ->image()
+                ->directory('tasks/proofs')
+                ->disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')
+                ->visibility('public')
+                ->imageEditor()
+                ->multiple()
+                ->maxFiles(10)
+                ->acceptedFileTypes(['image/*'])
+                ->required()
+                ->columnSpanFull(),
+            Forms\Components\Textarea::make('notes')
+                ->label('Catatan (Opsional)')
+                ->rows(3)
+                ->placeholder('Tambahkan catatan tentang pekerjaan ini...')
+                ->columnSpanFull(),
+        ];
     }
     
     public function updateStatus($status): void
@@ -182,15 +173,13 @@ class MyTasks extends Page
             return;
         }
 
-        // Combine current proofImage and uploadedImages
-        $imagesToUpload = [];
-        if ($this->proofImage) {
-            $imagesToUpload[] = $this->proofImage;
-        }
-        $imagesToUpload = array_merge($imagesToUpload, $this->uploadedImages);
+        // Get form data
+        $data = $this->form->getState();
+        $proofImages = $data['proof_images'] ?? [];
+        $notes = $data['notes'] ?? '';
 
         // Validate that proof images are required
-        if (empty($imagesToUpload)) {
+        if (empty($proofImages)) {
             \Filament\Notifications\Notification::make()
                 ->title('Foto bukti wajib diupload')
                 ->warning()
@@ -199,61 +188,29 @@ class MyTasks extends Page
         }
 
         $existingProofImages = $this->selectedTask->proof_images ?? [];
-        $newProofImages = [];
         $isS3 = config('filesystems.default') === 's3';
+        $allProofImages = [];
 
-        // Upload new images
+        // Process images - Filament FileUpload already handles upload, we just need to move to S3 if needed
         try {
-            foreach ($imagesToUpload as $proofImage) {
-                $path = null;
+            foreach ($proofImages as $proofImage) {
+                $path = $proofImage;
                 
-                // Check if it's a TemporaryUploadedFile (from Livewire)
-                if ($proofImage instanceof TemporaryUploadedFile) {
-                    // Upload to local first (public disk) - Livewire will use local for temporary storage
-                    $path = $proofImage->store('tasks/proofs', 'public');
-                    
-                    // If using S3, move to S3 after upload
-                    if ($isS3 && $path) {
-                        $content = Storage::disk('public')->get($path);
-                        $s3Path = Storage::disk('s3_public')->put($path, $content, 'public');
-                        if ($s3Path) {
-                            // Delete from local after successful S3 upload
-                            Storage::disk('public')->delete($path);
-                            $path = $s3Path;
-                        }
+                // If using S3 and file is in local storage, move to S3
+                if ($isS3 && Storage::disk('public')->exists($proofImage)) {
+                    $content = Storage::disk('public')->get($proofImage);
+                    $s3Path = Storage::disk('s3_public')->put($proofImage, $content, 'public');
+                    if ($s3Path) {
+                        Storage::disk('public')->delete($proofImage);
+                        $path = $s3Path;
                     }
-                } elseif (is_string($proofImage)) {
-                    // Already a path, check if it's in local or S3
-                    if ($isS3 && Storage::disk('public')->exists($proofImage)) {
-                        // Move from local to S3
-                        $content = Storage::disk('public')->get($proofImage);
-                        $s3Path = Storage::disk('s3_public')->put($proofImage, $content, 'public');
-                        if ($s3Path) {
-                            Storage::disk('public')->delete($proofImage);
-                            $path = $s3Path;
-                        } else {
-                            $path = $proofImage;
-                        }
-                    } else {
-                        // Already in S3 or using local, keep it
-                        $path = $proofImage;
-                    }
-                } else {
-                    // Try to store it anyway
-                    $path = $proofImage->store('tasks/proofs', $isS3 ? 's3_public' : 'public');
                 }
                 
-                if ($path) {
-                    $newProofImages[] = $path;
-                }
+                $allProofImages[] = $path;
             }
             
-            if (empty($newProofImages)) {
-                throw new \Exception('Gagal menyimpan file');
-            }
-            
-            // Merge with existing images
-            $allProofImages = array_merge($existingProofImages, $newProofImages);
+            // Merge with existing images (keep existing ones)
+            $allProofImages = array_merge($existingProofImages, $allProofImages);
         } catch (\Exception $e) {
             \Filament\Notifications\Notification::make()
                 ->title('Error saat upload foto: ' . $e->getMessage())
@@ -276,7 +233,7 @@ class MyTasks extends Page
         // Update task
         $this->selectedTask->update([
             'proof_images' => $allProofImages,
-            'notes' => $this->notes,
+            'notes' => $notes,
             'status' => $newStatus,
         ]);
 

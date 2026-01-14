@@ -224,97 +224,22 @@
                             </div>
                         @endif
                         
-                        <form wire:submit.prevent="uploadProof" id="upload-proof-form">
-                            <div class="space-y-4">
-                                <div>
+                        <form wire:submit.prevent="uploadProof">
+                            {{ $this->form }}
+                            
+                            @if(!empty($selectedTask->proof_images))
+                                <div class="mt-4">
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Upload Foto Bukti Pekerjaan <span class="text-red-500">*</span>
+                                        Foto Bukti yang Sudah Terupload
                                     </label>
-                                    <input 
-                                        type="file" 
-                                        wire:model="proofImage" 
-                                        wire:loading.attr="disabled"
-                                        accept="image/*"
-                                        id="proof-image-input"
-                                        class="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900 dark:file:text-primary-300"
-                                        required
-                                    >
-                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Upload satu foto per kali. Klik "Tambah Foto Lain" untuk upload lebih banyak.</p>
-                                    
-                                    <!-- Progress Bar -->
-                                    <div id="upload-progress-container" class="mt-2 hidden">
-                                        <div class="flex items-center justify-between mb-1">
-                                            <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Upload Progress</span>
-                                            <span class="text-xs font-medium text-gray-700 dark:text-gray-300" id="upload-progress-text">0%</span>
-                                        </div>
-                                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                            <div 
-                                                id="upload-progress-bar" 
-                                                class="bg-primary-600 dark:bg-primary-500 h-2 rounded-full transition-all duration-300"
-                                                style="width: 0%"
-                                            ></div>
-                                        </div>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        @foreach($selectedTask->proof_images as $image)
+                                            <img src="{{ \Illuminate\Support\Facades\Storage::disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')->url($image) }}" alt="Proof" class="w-full h-24 object-cover rounded">
+                                        @endforeach
                                     </div>
-                                    
-                                    <div wire:loading wire:target="proofImage" class="mt-2 text-xs text-blue-600 dark:text-blue-400">
-                                        Mengupload foto...
-                                    </div>
-                                    <div wire:loading.remove wire:target="proofImage">
-                                        @if(isset($proofImage) && $proofImage)
-                                            <p class="mt-1 text-xs text-green-600 dark:text-green-400">✓ Foto siap ditambahkan</p>
-                                        @endif
-                                    </div>
-                                    @error('proofImage') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                                    
-                                    @if(!empty($uploadedImages) || (isset($proofImage) && $proofImage))
-                                        <div class="mt-2">
-                                            <p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Foto yang akan diupload:</p>
-                                            <ul class="text-xs text-gray-600 dark:text-gray-400 list-disc list-inside">
-                                                @if(isset($proofImage) && $proofImage)
-                                                    <li>Foto baru ({{ $proofImage->getClientOriginalName() }})</li>
-                                                @endif
-                                                @foreach($uploadedImages as $index => $img)
-                                                    <li>Foto {{ $index + 1 }}</li>
-                                                @endforeach
-                                            </ul>
-                                            @if(isset($proofImage) && $proofImage)
-                                                <button 
-                                                    type="button"
-                                                    wire:click="addAnotherImage"
-                                                    class="mt-2 text-xs text-primary-600 dark:text-primary-400 hover:underline"
-                                                >
-                                                    + Tambah Foto Lain
-                                                </button>
-                                            @endif
-                                        </div>
-                                    @endif
                                 </div>
-
-                                @if(!empty($selectedTask->proof_images))
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            Foto Bukti yang Sudah Terupload
-                                        </label>
-                                        <div class="grid grid-cols-3 gap-2">
-                                            @foreach($selectedTask->proof_images as $image)
-                                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('s3_public')->url($image) }}" alt="Proof" class="w-full h-24 object-cover rounded">
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                @endif
-
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Catatan (Opsional)
-                                    </label>
-                                    <textarea 
-                                        wire:model="notes" 
-                                        rows="3"
-                                        class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                                        placeholder="Tambahkan catatan tentang pekerjaan ini..."
-                                    ></textarea>
-                                </div>
-                            </div>
+                            @endif
+                            
                             <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
                                 <button 
                                     type="button"
@@ -325,14 +250,11 @@
                                 </button>
                                 <button 
                                     type="submit"
-                                    id="save-proof-btn"
                                     wire:loading.attr="disabled"
-                                    wire:target="proofImage,uploadProof"
-                                    @if((!isset($proofImage) || !$proofImage) && empty($uploadedImages)) disabled @endif
-                                    class="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white sm:mt-0 sm:col-start-1 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed {{ ((isset($proofImage) && $proofImage) || !empty($uploadedImages)) ? 'bg-primary-600 dark:bg-primary-500 hover:bg-primary-700 dark:hover:bg-primary-600' : 'bg-gray-400 dark:bg-gray-600' }}"
+                                    wire:target="uploadProof"
+                                    class="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 dark:bg-primary-500 text-base font-medium text-white hover:bg-primary-700 dark:hover:bg-primary-600 sm:mt-0 sm:col-start-1 sm:text-sm disabled:opacity-50"
                                 >
-                                    <span wire:loading.remove wire:target="proofImage,uploadProof">Simpan Bukti</span>
-                                    <span wire:loading wire:target="proofImage">Mengupload...</span>
+                                    <span wire:loading.remove wire:target="uploadProof">Simpan Bukti</span>
                                     <span wire:loading wire:target="uploadProof">Menyimpan...</span>
                                 </button>
                             </div>
@@ -458,148 +380,9 @@
             });
         }
         
-        // File upload progress tracking
-        function setupFileUploadProgress() {
-            const fileInput = document.getElementById('proof-image-input');
-            const progressContainer = document.getElementById('upload-progress-container');
-            const progressBar = document.getElementById('upload-progress-bar');
-            const progressText = document.getElementById('upload-progress-text');
-            const saveBtn = document.getElementById('save-proof-btn');
-            
-            if (!fileInput || !progressContainer) return;
-            
-            // Listen to Livewire file upload events
-            document.addEventListener('livewire:init', () => {
-                // Livewire 3 hooks for file upload progress
-                Livewire.hook('file.upload', ({ component, file, progress }) => {
-                    if (fileInput.files.length > 0) {
-                        progressContainer.classList.remove('hidden');
-                        const progressPercent = Math.min(progress || 0, 100);
-                        progressBar.style.width = progressPercent + '%';
-                        progressText.textContent = Math.round(progressPercent) + '%';
-                    }
-                });
-                
-                Livewire.hook('file.upload.success', ({ component, file }) => {
-                    if (fileInput.files.length > 0) {
-                        progressBar.style.width = '100%';
-                        progressText.textContent = '100%';
-                        // Enable save button after upload completes
-                        if (saveBtn) {
-                            setTimeout(() => {
-                                saveBtn.disabled = false;
-                                saveBtn.removeAttribute('disabled');
-                                saveBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed');
-                                saveBtn.classList.add('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
-                            }, 500);
-                        }
-                    }
-                });
-                
-                Livewire.hook('file.upload.failed', ({ component, file }) => {
-                    progressContainer.classList.add('hidden');
-                    if (saveBtn) {
-                        saveBtn.disabled = true;
-                    }
-                });
-            });
-            
-            // Also listen after Livewire is already initialized
-            if (window.Livewire && window.Livewire.hook) {
-                window.Livewire.hook('file.upload.success', ({ component, file }) => {
-                    if (fileInput.files.length > 0 && saveBtn) {
-                        setTimeout(() => {
-                            saveBtn.disabled = false;
-                            saveBtn.removeAttribute('disabled');
-                            saveBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed');
-                            saveBtn.classList.add('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
-                        }, 500);
-                    }
-                });
-            }
-            
-            // Listen for Livewire updates to enable button when file is ready
-            document.addEventListener('livewire:update', () => {
-                setTimeout(() => {
-                    if (fileInput && fileInput.files.length > 0 && saveBtn) {
-                        const isUploading = document.querySelector('[wire\\:loading][wire\\:target="proofImage"]');
-                        if (!isUploading || (isUploading && window.getComputedStyle(isUploading).display === 'none')) {
-                            // Upload complete, enable button
-                            saveBtn.disabled = false;
-                            saveBtn.removeAttribute('disabled');
-                            saveBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed');
-                            saveBtn.classList.add('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
-                        }
-                    }
-                }, 1000);
-            });
-            
-            // Polling check for upload completion (fallback)
-            let uploadCheckInterval = null;
-            fileInput.addEventListener('change', () => {
-                if (fileInput.files.length > 0) {
-                    // Clear any existing interval
-                    if (uploadCheckInterval) {
-                        clearInterval(uploadCheckInterval);
-                    }
-                    
-                    // Start checking for upload completion
-                    uploadCheckInterval = setInterval(() => {
-                        if (fileInput.files.length > 0 && saveBtn) {
-                            const isUploading = document.querySelector('[wire\\:loading][wire\\:target="proofImage"]');
-                            if (!isUploading || (isUploading && window.getComputedStyle(isUploading).display === 'none')) {
-                                // Upload seems complete
-                                saveBtn.disabled = false;
-                                saveBtn.removeAttribute('disabled');
-                                saveBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed');
-                                saveBtn.classList.add('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
-                                clearInterval(uploadCheckInterval);
-                            }
-                        }
-                    }, 500);
-                }
-            });
-            
-            // Reset on file change
-            fileInput.addEventListener('change', () => {
-                if (fileInput.files.length > 0) {
-                    progressContainer.classList.remove('hidden');
-                    progressBar.style.width = '0%';
-                    progressText.textContent = '0%';
-                    if (saveBtn) {
-                        saveBtn.disabled = true;
-                        saveBtn.classList.add('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed');
-                        saveBtn.classList.remove('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
-                    }
-                } else {
-                    progressContainer.classList.add('hidden');
-                    if (saveBtn) {
-                        saveBtn.disabled = true;
-                    }
-                }
-            });
-            
-            // Listen for Livewire updates to check if file is ready
-            Livewire.hook('morph.updated', ({ component }) => {
-                setTimeout(() => {
-                    if (fileInput && fileInput.files.length > 0 && saveBtn) {
-                        // Check if we can enable the button
-                        const isUploading = fileInput.closest('form').querySelector('[wire\\:loading][wire\\:target="proofImage"]');
-                        if (!isUploading || isUploading.style.display === 'none') {
-                            // Upload seems complete
-                            saveBtn.disabled = false;
-                            saveBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed');
-                            saveBtn.classList.add('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
-                        }
-                    }
-                }, 1000);
-            });
-        }
-        
         // Initial update
         document.addEventListener('DOMContentLoaded', function() {
             updateTaskBarColors();
-            setupFileUploadProgress();
             
             // Watch for dark mode changes
             const observer = new MutationObserver(updateTaskBarColors);
@@ -614,7 +397,6 @@
             document.addEventListener('DOMContentLoaded', updateTaskBarColors);
         } else {
             updateTaskBarColors();
-            setupFileUploadProgress();
         }
     </script>
 </x-filament-panels::page>
