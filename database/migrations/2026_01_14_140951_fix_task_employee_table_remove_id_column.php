@@ -12,16 +12,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // For MySQL, we need to modify the id column to have a default value
-        // Since UUID() is not available as default in MySQL, we'll use a trigger
-        // Or we can make it nullable temporarily and then add a trigger
-        
-        // Option 1: Make id nullable and use a trigger (more complex)
-        // Option 2: Remove id column and use composite primary key (simpler)
-        
-        // Let's go with Option 2 - remove id and use composite primary key
+        // Drop foreign key constraints first
         Schema::table('task_employee', function (Blueprint $table) {
-            // Drop the unique constraint first if it exists
+            $table->dropForeign(['task_id']);
+            $table->dropForeign(['employee_id']);
+        });
+        
+        // Drop the unique constraint
+        Schema::table('task_employee', function (Blueprint $table) {
             $table->dropUnique(['task_id', 'employee_id']);
         });
         
@@ -34,6 +32,10 @@ return new class extends Migration
             
             // Add composite primary key
             $table->primary(['task_id', 'employee_id']);
+            
+            // Re-add foreign key constraints
+            $table->foreign('task_id')->references('id')->on('tasks')->onDelete('cascade');
+            $table->foreign('employee_id')->references('id')->on('employees')->onDelete('cascade');
         });
     }
 
@@ -43,6 +45,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('task_employee', function (Blueprint $table) {
+            // Drop foreign key constraints
+            $table->dropForeign(['task_id']);
+            $table->dropForeign(['employee_id']);
+            
             // Drop composite primary key
             $table->dropPrimary(['task_id', 'employee_id']);
             
@@ -63,6 +69,10 @@ return new class extends Migration
         Schema::table('task_employee', function (Blueprint $table) {
             // Add back unique constraint
             $table->unique(['task_id', 'employee_id']);
+            
+            // Re-add foreign key constraints
+            $table->foreign('task_id')->references('id')->on('tasks')->onDelete('cascade');
+            $table->foreign('employee_id')->references('id')->on('employees')->onDelete('cascade');
         });
     }
 };
