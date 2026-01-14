@@ -49,9 +49,9 @@
                 <!-- Calendar Days Container -->
                 @php
                     $days = $this->getCalendarDays();
-                    $taskBars = $this->getTaskBars();
-                    $maxRows = $this->getMaxRows();
-                    $minHeight = max(200, 80 + ($maxRows * 50)); // Base height + row height
+                    $tasksByDay = $this->getTasksByDay();
+                    $maxTasksPerDay = $this->getMaxTasksPerDay();
+                    $minHeight = max(200, 80 + ($maxTasksPerDay * 50)); // Base height + task height
                 @endphp
 
                 @foreach($days as $index => $day)
@@ -62,65 +62,73 @@
                     </div>
                 @endforeach
                 
-                <!-- Task Bars Overlay - Absolute positioned -->
+                <!-- Task Bars Overlay - Absolute positioned at grid level -->
                 <div class="absolute inset-0 pointer-events-none" style="margin-top: 3.5rem;">
-                    @foreach($taskBars as $taskBar)
+                    @php
+                        $renderedTasks = []; // Track rendered tasks to calculate row position
+                    @endphp
+                    @foreach($days as $index => $day)
                         @php
-                            $task = $taskBar['task'];
-                            $startIndex = $taskBar['startIndex'];
-                            $span = $taskBar['span'];
-                            $row = $taskBar['row'];
-                            
-                            // Color definitions with inline styles
-                            $statusStyles = [
-                                'pending' => 'background-color: #fde68a; color: #78350f; border-color: #fbbf24;',
-                                'in_progress' => 'background-color: #fbbf24; color: #78350f; border-color: #f59e0b;',
-                                'completed' => 'background-color: #86efac; color: #14532d; border-color: #4ade80;',
-                                'cancelled' => 'background-color: #fca5a5; color: #7f1d1d; border-color: #f87171;',
-                            ];
-                            $darkStatusStyles = [
-                                'pending' => 'background-color: #92400e; color: #fef3c7; border-color: #d97706;',
-                                'in_progress' => 'background-color: #92400e; color: #fef3c7; border-color: #d97706;',
-                                'completed' => 'background-color: #166534; color: #dcfce7; border-color: #16a34a;',
-                                'cancelled' => 'background-color: #991b1b; color: #fee2e2; border-color: #dc2626;',
-                            ];
-                            $style = $statusStyles[$task['status']] ?? $statusStyles['pending'];
-                            $darkStyle = $darkStatusStyles[$task['status']] ?? $darkStatusStyles['pending'];
-                            
-                            // Calculate position - each cell is exactly 1/7 of width
-                            // StartIndex is the absolute index in the days array
-                            $col = $startIndex % 7; // Column (0-6)
-                            $cellWidthPercent = 100 / 7; // 14.2857% per cell
-                            $leftPercent = $col * $cellWidthPercent;
-                            $widthPercent = $span * $cellWidthPercent;
-                            
-                            // Calculate top offset based on calendar week row
-                            // Row already includes the week row (baseRow) + offset for overlaps
-                            // Each row is approximately 3rem (48px) spacing
-                            $topOffset = $row * 3; // Row spacing in rem (48px per row)
+                            $weekRow = intval($index / 7); // Week row (0-based)
+                            $tasksStartingToday = array_filter($tasksByDay[$index] ?? [], function($t) {
+                                return $t['isStartDay'];
+                            });
+                            $taskRowInWeek = 0;
                         @endphp
-                        
-                        <div 
-                            class="absolute text-xs p-2.5 rounded-lg cursor-pointer hover:opacity-90 transition-all border-2 pointer-events-auto shadow-sm font-medium task-bar-item"
-                            style="
-                                left: calc({{ $leftPercent }}% + 0.75rem); 
-                                width: calc({{ $widthPercent }}% - 0.75rem - ({{ $span - 1 }} * 1px)); 
-                                top: {{ $topOffset }}rem; 
-                                z-index: {{ 10 + $row }};
-                                box-sizing: border-box;
-                                {{ $style }}
-                            "
-                            data-dark-style="{{ $darkStyle }}"
-                            title="{{ $task['title'] }} ({{ $task['start'] }} - {{ $task['end'] }}) | {{ implode(', ', $task['employees']) }}"
-                            onclick="window.location.href='{{ \App\Filament\Resources\TaskResource::getUrl('edit', ['record' => $task['id']]) }}'"
-                        >
-                            <div class="font-semibold truncate mb-0.5">{{ $task['title'] }}</div>
-                            @if(!empty($task['employees']))
-                                <div class="text-[10px] opacity-90 mt-0.5 truncate">
-                                    {{ implode(', ', array_slice($task['employees'], 0, 2)) }}{{ count($task['employees']) > 2 ? '...' : '' }}
-                                </div>
-                            @endif
-                        </div>
+                        @foreach($tasksStartingToday as $taskInfo)
+                            @php
+                                $task = $taskInfo['task'];
+                                $span = $taskInfo['span'];
+                                
+                                // Color definitions
+                                $statusStyles = [
+                                    'pending' => 'background-color: #fde68a; color: #78350f; border-color: #fbbf24;',
+                                    'in_progress' => 'background-color: #fbbf24; color: #78350f; border-color: #f59e0b;',
+                                    'completed' => 'background-color: #86efac; color: #14532d; border-color: #4ade80;',
+                                    'cancelled' => 'background-color: #fca5a5; color: #7f1d1d; border-color: #f87171;',
+                                ];
+                                $darkStatusStyles = [
+                                    'pending' => 'background-color: #92400e; color: #fef3c7; border-color: #d97706;',
+                                    'in_progress' => 'background-color: #92400e; color: #fef3c7; border-color: #d97706;',
+                                    'completed' => 'background-color: #166534; color: #dcfce7; border-color: #16a34a;',
+                                    'cancelled' => 'background-color: #991b1b; color: #fee2e2; border-color: #dc2626;',
+                                ];
+                                $style = $statusStyles[$task['status']] ?? $statusStyles['pending'];
+                                $darkStyle = $darkStatusStyles[$task['status']] ?? $darkStatusStyles['pending'];
+                                
+                                // Calculate position based on grid
+                                $col = $index % 7; // Column (0-6)
+                                $cellWidthPercent = 100 / 7; // 14.2857% per cell
+                                $leftPercent = $col * $cellWidthPercent;
+                                $widthPercent = $span * $cellWidthPercent;
+                                
+                                // Calculate top offset: week row + task row in this day
+                                $topOffset = ($weekRow * 3) + ($taskRowInWeek * 3); // Week row + task row in day
+                                $taskRowInWeek++; // Increment for next task in same day
+                            @endphp
+                            
+                            <div 
+                                class="absolute text-xs p-2 rounded-lg cursor-pointer hover:opacity-90 transition-all border-2 font-medium shadow-sm task-bar-item pointer-events-auto"
+                                style="
+                                    left: calc({{ $leftPercent }}% + 0.75rem); 
+                                    width: calc({{ $widthPercent }}% - 0.75rem - ({{ $span - 1 }} * 1px)); 
+                                    top: {{ $topOffset }}rem; 
+                                    z-index: {{ 10 + $span }};
+                                    box-sizing: border-box;
+                                    {{ $style }}
+                                "
+                                data-dark-style="{{ $darkStyle }}"
+                                title="{{ $task['title'] }} ({{ $task['start'] }} - {{ $task['end'] }}) | {{ implode(', ', $task['employees']) }}"
+                                onclick="window.location.href='{{ \App\Filament\Resources\TaskResource::getUrl('edit', ['record' => $task['id']]) }}'"
+                            >
+                                <div class="font-semibold truncate mb-0.5">{{ $task['title'] }}</div>
+                                @if(!empty($task['employees']))
+                                    <div class="text-[10px] opacity-90 mt-0.5 truncate">
+                                        {{ implode(', ', array_slice($task['employees'], 0, 2)) }}{{ count($task['employees']) > 2 ? '...' : '' }}
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
                     @endforeach
                 </div>
             </div>
