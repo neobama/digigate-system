@@ -26,6 +26,7 @@ class MyTasks extends Page implements HasForms
     public $showUploadModal = false;
     public $showCreateModal = false;
     public $notes = '';
+    public $proof_images = []; // Required for Filament FileUpload component - must match field name
     
     // Form untuk create task
     public $newTaskTitle = '';
@@ -108,10 +109,11 @@ class MyTasks extends Page implements HasForms
         $this->selectedTask = Task::with('employees')->find($taskId);
         $this->showUploadModal = true;
         $this->notes = $this->selectedTask->notes ?? '';
+        $this->proof_images = [];
         
-        // Fill form with existing data - proof_images will be empty for new uploads
+        // Fill form
         $this->form->fill([
-            'proof_images' => [], // Start with empty array for new uploads
+            'proof_images' => $this->proof_images,
             'notes' => $this->notes,
         ]);
     }
@@ -121,6 +123,7 @@ class MyTasks extends Page implements HasForms
         $this->showUploadModal = false;
         $this->selectedTask = null;
         $this->notes = '';
+        $this->proof_images = [];
         $this->form->fill();
     }
     
@@ -139,13 +142,19 @@ class MyTasks extends Page implements HasForms
                 ->acceptedFileTypes(['image/*'])
                 ->required()
                 ->columnSpanFull()
-                ->dehydrated(true),
+                ->live()
+                ->afterStateUpdated(function ($state) {
+                    $this->proof_images = is_array($state) ? $state : [];
+                }),
             Forms\Components\Textarea::make('notes')
                 ->label('Catatan (Opsional)')
                 ->rows(3)
                 ->placeholder('Tambahkan catatan tentang pekerjaan ini...')
                 ->columnSpanFull()
-                ->dehydrated(true),
+                ->live()
+                ->afterStateUpdated(function ($state) {
+                    $this->notes = $state ?? '';
+                }),
         ];
     }
     
@@ -174,15 +183,19 @@ class MyTasks extends Page implements HasForms
         }
 
         try {
-            // Validate form first
-            $data = $this->form->getState();
+            // Validate form first and get state
+            $formData = $this->form->getState();
+            // Sync to properties
+            $this->proof_images = $formData['proof_images'] ?? [];
+            $this->notes = $formData['notes'] ?? '';
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Form validation failed, Filament will show errors automatically
             return;
         }
 
-        $proofImages = $data['proof_images'] ?? [];
-        $notes = $data['notes'] ?? '';
+        // Use properties
+        $proofImages = $this->proof_images;
+        $notes = $this->notes;
 
         // Validate that proof images are required
         if (empty($proofImages)) {
