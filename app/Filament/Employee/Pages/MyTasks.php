@@ -6,6 +6,7 @@ use App\Models\Task;
 use Filament\Pages\Page;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class MyTasks extends Page
@@ -21,11 +22,10 @@ class MyTasks extends Page
     public $selectedTask = null;
     public $showUploadModal = false;
     public $showCreateModal = false;
-    public $proofImages = [];
     public $notes = '';
     
-    // For single file upload (S3 doesn't support multiple)
-    public $proofImage;
+    // For multiple file upload (upload to local first, then move to S3)
+    public $proofImages = [];
     public $uploadProgress = 0;
     public $isUploading = false;
     
@@ -109,7 +109,7 @@ class MyTasks extends Page
     {
         $this->selectedTask = Task::with('employees')->find($taskId);
         $this->showUploadModal = true;
-        $this->proofImage = null;
+        $this->proofImages = [];
         $this->notes = $this->selectedTask->notes ?? '';
         $this->uploadProgress = 0;
         $this->isUploading = false;
@@ -120,20 +120,19 @@ class MyTasks extends Page
         $this->showUploadModal = false;
         $this->selectedTask = null;
         $this->proofImages = [];
-        $this->proofImage = null;
         $this->notes = '';
         $this->uploadProgress = 0;
         $this->isUploading = false;
     }
     
-    public function updatedProofImage(): void
+    public function updatedProofImages(): void
     {
-        // Reset progress when new file is selected
+        // Reset progress when new files are selected
         $this->uploadProgress = 0;
         $this->isUploading = true;
         
-        // File is being uploaded, Livewire will handle it
-        // After upload completes, $proofImage will contain the TemporaryUploadedFile
+        // Files are being uploaded, Livewire will handle it
+        // After upload completes, $proofImages will contain the TemporaryUploadedFile instances
     }
     
     public function updateStatus($status): void
@@ -160,8 +159,8 @@ class MyTasks extends Page
             return;
         }
 
-        // Validate that proof image is required
-        if (!$this->proofImage) {
+        // Validate that proof images are required
+        if (empty($this->proofImages)) {
             \Filament\Notifications\Notification::make()
                 ->title('Foto bukti wajib diupload')
                 ->warning()
@@ -169,29 +168,62 @@ class MyTasks extends Page
             return;
         }
 
-        $proofImages = $this->selectedTask->proof_images ?? [];
-        $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
+        $existingProofImages = $this->selectedTask->proof_images ?? [];
+        $newProofImages = [];
+        $isS3 = config('filesystems.default') === 's3';
 
-        // Upload new image (S3 doesn't support multiple, so we upload one at a time)
+        // Upload new images
         try {
-            $path = null;
-            
-            // Check if it's a TemporaryUploadedFile (from Livewire)
-            if ($this->proofImage instanceof TemporaryUploadedFile) {
-                $path = $this->proofImage->store('tasks/proofs', $disk);
-            } elseif (is_string($this->proofImage)) {
-                // Already a path, just use it
-                $path = $this->proofImage;
-            } else {
-                // Try to store it anyway
-                $path = $this->proofImage->store('tasks/proofs', $disk);
+            foreach ($this->proofImages as $proofImage) {
+                $path = null;
+                
+                // Check if it's a TemporaryUploadedFile (from Livewire)
+                if ($proofImage instanceof TemporaryUploadedFile) {
+                    // Upload to local first (public disk)
+                    $path = $proofImage->store('tasks/proofs', 'public');
+                    
+                    // If using S3, move to S3 after upload
+                    if ($isS3 && $path) {
+                        $content = Storage::disk('public')->get($path);
+                        $s3Path = Storage::disk('s3_public')->put($path, $content, 'public');
+                        if ($s3Path) {
+                            // Delete from local after successful S3 upload
+                            Storage::disk('public')->delete($path);
+                            $path = $s3Path;
+                        }
+                    }
+                } elseif (is_string($proofImage)) {
+                    // Already a path, check if it's in local or S3
+                    if ($isS3 && Storage::disk('public')->exists($proofImage)) {
+                        // Move from local to S3
+                        $content = Storage::disk('public')->get($proofImage);
+                        $s3Path = Storage::disk('s3_public')->put($proofImage, $content, 'public');
+                        if ($s3Path) {
+                            Storage::disk('public')->delete($proofImage);
+                            $path = $s3Path;
+                        } else {
+                            $path = $proofImage;
+                        }
+                    } else {
+                        // Already in S3 or using local, keep it
+                        $path = $proofImage;
+                    }
+                } else {
+                    // Try to store it anyway
+                    $path = $proofImage->store('tasks/proofs', $isS3 ? 's3_public' : 'public');
+                }
+                
+                if ($path) {
+                    $newProofImages[] = $path;
+                }
             }
             
-            if (!$path) {
+            if (empty($newProofImages)) {
                 throw new \Exception('Gagal menyimpan file');
             }
             
-            $proofImages[] = $path;
+            // Merge with existing images
+            $allProofImages = array_merge($existingProofImages, $newProofImages);
         } catch (\Exception $e) {
             \Filament\Notifications\Notification::make()
                 ->title('Error saat upload foto: ' . $e->getMessage())
@@ -213,7 +245,7 @@ class MyTasks extends Page
 
         // Update task
         $this->selectedTask->update([
-            'proof_images' => $proofImages,
+            'proof_images' => $allProofImages,
             'notes' => $this->notes,
             'status' => $newStatus,
         ]);
