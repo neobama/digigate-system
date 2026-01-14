@@ -1,10 +1,4 @@
 <x-filament-panels::page>
-    @push('styles')
-        <!-- FullCalendar CSS -->
-        <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/main.min.css" rel="stylesheet" />
-        <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.15/main.min.css" rel="stylesheet" />
-    @endpush
-
     <div class="space-y-6">
         <!-- Calendar Header -->
         <div class="flex items-center justify-between">
@@ -42,14 +36,88 @@
             </a>
         </div>
 
-        <!-- FullCalendar Container -->
-        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-lg p-4">
-            <div 
-                id="task-calendar" 
-                data-events="{{ json_encode($this->getFullCalendarEvents()) }}"
-                wire:ignore
-                style="min-height: 600px;"
-            ></div>
+        <!-- Calendar Grid -->
+        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-lg">
+            <div class="grid grid-cols-7 relative">
+                <!-- Day Headers -->
+                @foreach(['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'] as $day)
+                    <div class="bg-gray-50 dark:bg-gray-900 p-4 text-center text-sm font-bold text-gray-700 dark:text-gray-300 border-b-2 border-gray-200 dark:border-gray-700">
+                        {{ $day }}
+                    </div>
+                @endforeach
+
+                <!-- Calendar Days Container -->
+                @php
+                    $days = $this->getCalendarDays();
+                    $taskBars = $this->getTaskBars();
+                    $maxRows = $this->getMaxRows();
+                    $minHeight = max(200, 80 + ($maxRows * 50)); // Base height + row height
+                @endphp
+
+                @foreach($days as $index => $day)
+                    <div class="bg-white dark:bg-gray-800 p-3 border-r border-b border-gray-200 dark:border-gray-700 relative {{ !$day['isCurrentMonth'] ? 'bg-gray-50 dark:bg-gray-900' : '' }}" style="min-height: {{ $minHeight }}px;">
+                        <div class="text-base font-semibold mb-2 {{ !$day['isCurrentMonth'] ? 'text-gray-400 dark:text-gray-600' : ($day['isToday'] ? 'text-white bg-primary-600 dark:bg-primary-500 rounded-full w-8 h-8 flex items-center justify-center' : 'text-gray-900 dark:text-gray-100') }}">
+                            {{ $day['day'] }}
+                        </div>
+                    </div>
+                @endforeach
+                
+                <!-- Task Bars Overlay - Absolute positioned -->
+                <div class="absolute inset-0 pointer-events-none" style="margin-top: 3.5rem; padding: 0.75rem;">
+                    @foreach($taskBars as $taskBar)
+                        @php
+                            $task = $taskBar['task'];
+                            $startIndex = $taskBar['startIndex'];
+                            $span = $taskBar['span'];
+                            $row = $taskBar['row'];
+                            
+                            // Color definitions with inline styles
+                            $statusStyles = [
+                                'pending' => 'background-color: #fde68a; color: #78350f; border-color: #fbbf24;',
+                                'in_progress' => 'background-color: #fbbf24; color: #78350f; border-color: #f59e0b;',
+                                'completed' => 'background-color: #86efac; color: #14532d; border-color: #4ade80;',
+                                'cancelled' => 'background-color: #fca5a5; color: #7f1d1d; border-color: #f87171;',
+                            ];
+                            $darkStatusStyles = [
+                                'pending' => 'background-color: #92400e; color: #fef3c7; border-color: #d97706;',
+                                'in_progress' => 'background-color: #92400e; color: #fef3c7; border-color: #d97706;',
+                                'completed' => 'background-color: #166534; color: #dcfce7; border-color: #16a34a;',
+                                'cancelled' => 'background-color: #991b1b; color: #fee2e2; border-color: #dc2626;',
+                            ];
+                            $style = $statusStyles[$task['status']] ?? $statusStyles['pending'];
+                            $darkStyle = $darkStatusStyles[$task['status']] ?? $darkStatusStyles['pending'];
+                            
+                            // Calculate position - each cell is exactly 1/7 of width
+                            $col = $startIndex % 7;
+                            $cellWidth = 100 / 7; // 14.2857% per cell
+                            $leftPercent = ($col / 7) * 100;
+                            $widthPercent = ($span / 7) * 100;
+                            $topOffset = $row * 3; // Row spacing in rem (48px per row)
+                        @endphp
+                        
+                        <div 
+                            class="absolute text-xs p-2.5 rounded-lg cursor-pointer hover:opacity-90 transition-all border-2 pointer-events-auto shadow-sm font-medium task-bar-item"
+                            style="
+                                left: calc({{ $leftPercent }}% + 0.75rem); 
+                                width: calc({{ $widthPercent }}% - 1.5rem); 
+                                top: {{ $topOffset }}rem; 
+                                z-index: {{ 10 + $row }};
+                                {{ $style }}
+                            "
+                            data-dark-style="{{ $darkStyle }}"
+                            title="{{ $task['title'] }} - {{ implode(', ', $task['employees']) }}"
+                            onclick="window.location.href='{{ \App\Filament\Resources\TaskResource::getUrl('edit', ['record' => $task['id']]) }}'"
+                        >
+                            <div class="font-semibold truncate mb-0.5">{{ $task['title'] }}</div>
+                            @if(!empty($task['employees']))
+                                <div class="text-[10px] opacity-90 mt-0.5 truncate">
+                                    {{ implode(', ', array_slice($task['employees'], 0, 2)) }}{{ count($task['employees']) > 2 ? '...' : '' }}
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
         </div>
 
         <!-- Legend -->
@@ -74,238 +142,31 @@
     </div>
 
     <script>
-        // Load scripts sequentially
-        function loadScript(src, callback) {
-            const script = document.createElement('script');
-            script.src = src;
-            script.onload = callback;
-            script.onerror = function() {
-                console.error('Failed to load script:', src);
-            };
-            document.head.appendChild(script);
-        }
-
-        function initTaskCalendar() {
-            if (window.taskCalendar) {
-                return;
-            }
+        // Update task bar colors based on dark mode
+        function updateTaskBarColors() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const taskBars = document.querySelectorAll('.task-bar-item');
             
-            const calendarEl = document.getElementById('task-calendar');
-            if (!calendarEl) {
-                console.error('Calendar element not found');
-                return;
-            }
-            
-            if (typeof FullCalendar === 'undefined') {
-                console.error('FullCalendar is not defined');
-                return;
-            }
-            
-            try {
-                const events = JSON.parse(calendarEl.dataset.events || '[]');
-                
-                window.taskCalendar = new FullCalendar.Calendar(calendarEl, {
-                    plugins: [FullCalendar.dayGridPlugin, FullCalendar.interactionPlugin],
-                    locale: 'id',
-                    initialView: 'dayGridMonth',
-                    headerToolbar: {
-                        left: 'prev,next today',
-                        center: 'title',
-                        right: ''
-                    },
-                    firstDay: 1,
-                    height: 'auto',
-                    events: events,
-                    eventDisplay: 'block',
-                    eventColor: function(info) {
-                        const status = info.event.extendedProps.status;
-                        const statusColors = {
-                            'pending': '#fde68a',
-                            'in_progress': '#fbbf24',
-                            'completed': '#86efac',
-                            'cancelled': '#fca5a5'
-                        };
-                        return statusColors[status] || statusColors['pending'];
-                    },
-                    eventTextColor: function(info) {
-                        const status = info.event.extendedProps.status;
-                        const textColors = {
-                            'pending': '#78350f',
-                            'in_progress': '#78350f',
-                            'completed': '#14532d',
-                            'cancelled': '#7f1d1d'
-                        };
-                        return textColors[status] || textColors['pending'];
-                    },
-                    eventClick: function(info) {
-                        const url = info.event.extendedProps.editUrl;
-                        if (url) {
-                            window.location.href = url;
-                        }
-                    },
-                    eventDidMount: function(info) {
-                        info.el.style.borderRadius = '0.5rem';
-                        info.el.style.borderWidth = '2px';
-                        info.el.style.fontWeight = '600';
-                        info.el.style.padding = '0.5rem';
-                        info.el.style.cursor = 'pointer';
-                    }
-                });
-                
-                window.taskCalendar.render();
-                console.log('FullCalendar initialized successfully');
-            } catch (error) {
-                console.error('Error initializing FullCalendar:', error);
-            }
-        }
-
-        // Load scripts in order
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function() {
-                loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/main.min.js', function() {
-                    loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.15/main.min.js', function() {
-                        loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/interaction@6.1.15/main.min.js', function() {
-                            loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/locales/id.global.min.js', function() {
-                                setTimeout(initTaskCalendar, 100);
-                            });
-                        });
-                    });
-                });
-            });
-        } else {
-            loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/main.min.js', function() {
-                loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.15/main.min.js', function() {
-                    loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/interaction@6.1.15/main.min.js', function() {
-                        loadScript('https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/locales/id.global.min.js', function() {
-                            setTimeout(initTaskCalendar, 100);
-                        });
-                    });
-                });
+            taskBars.forEach(bar => {
+                if (isDark && bar.dataset.darkStyle) {
+                    // Apply dark style
+                    const currentStyle = bar.getAttribute('style');
+                    const baseStyle = currentStyle.split(';').filter(s => !s.includes('background-color') && !s.includes('color') && !s.includes('border-color')).join(';');
+                    bar.setAttribute('style', baseStyle + '; ' + bar.dataset.darkStyle);
+                }
             });
         }
         
-        // Handle Livewire updates
-        document.addEventListener('livewire:init', function() {
-            if (window.Livewire) {
-                Livewire.hook('morph.updated', () => {
-                    setTimeout(() => {
-                        const calendarEl = document.getElementById('task-calendar');
-                        if (calendarEl && window.taskCalendar) {
-                            try {
-                                const events = JSON.parse(calendarEl.dataset.events || '[]');
-                                window.taskCalendar.removeAllEvents();
-                                window.taskCalendar.addEventSource(events);
-                                const currentDate = new Date({{ $this->currentYear }}, {{ $this->currentMonth }} - 1, 1);
-                                window.taskCalendar.gotoDate(currentDate);
-                            } catch (error) {
-                                console.error('Error updating calendar:', error);
-                            }
-                        }
-                    }, 200);
-                });
-            }
+        // Initial update
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTaskBarColors();
+            
+            // Watch for dark mode changes
+            const observer = new MutationObserver(updateTaskBarColors);
+            observer.observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
         });
     </script>
-
-    <style>
-        /* FullCalendar Custom Styles */
-        .fc {
-            font-family: inherit;
-        }
-        
-        .fc-toolbar-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: rgb(17, 24, 39);
-        }
-        
-        .dark .fc-toolbar-title {
-            color: rgb(243, 244, 246);
-        }
-        
-        .fc-button {
-            background-color: white;
-            border-color: rgb(209, 213, 219);
-            color: rgb(55, 65, 81);
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-        }
-        
-        .dark .fc-button {
-            background-color: rgb(31, 41, 55);
-            border-color: rgb(55, 65, 75);
-            color: rgb(209, 213, 219);
-        }
-        
-        .fc-button:hover {
-            background-color: rgb(249, 250, 251);
-        }
-        
-        .dark .fc-button:hover {
-            background-color: rgb(55, 65, 75);
-        }
-        
-        .fc-button-primary:not(:disabled).fc-button-active {
-            background-color: rgb(217, 119, 6);
-            border-color: rgb(217, 119, 6);
-            color: white;
-        }
-        
-        .fc-daygrid-day {
-            background-color: white;
-            min-height: 120px;
-        }
-        
-        .dark .fc-daygrid-day {
-            background-color: rgb(31, 41, 55);
-        }
-        
-        .fc-daygrid-day-number {
-            color: rgb(17, 24, 39);
-            font-weight: 600;
-        }
-        
-        .dark .fc-daygrid-day-number {
-            color: rgb(243, 244, 246);
-        }
-        
-        .fc-day-today {
-            background-color: rgb(254, 252, 232) !important;
-        }
-        
-        .dark .fc-day-today {
-            background-color: rgb(41, 37, 36) !important;
-        }
-        
-        .fc-col-header-cell {
-            background-color: rgb(249, 250, 251);
-            border-color: rgb(229, 231, 235);
-        }
-        
-        .dark .fc-col-header-cell {
-            background-color: rgb(17, 24, 27);
-            border-color: rgb(55, 65, 75);
-        }
-        
-        .fc-col-header-cell-cushion {
-            color: rgb(55, 65, 81);
-            font-weight: 700;
-        }
-        
-        .dark .fc-col-header-cell-cushion {
-            color: rgb(209, 213, 219);
-        }
-        
-        .fc-event {
-            border-radius: 0.5rem;
-            border-width: 2px;
-            font-weight: 600;
-            padding: 0.5rem;
-            cursor: pointer;
-        }
-        
-        .fc-event:hover {
-            opacity: 0.9;
-        }
-    </style>
 </x-filament-panels::page>
