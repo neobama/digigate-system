@@ -16,6 +16,8 @@ class TaskCalendar extends Page
     protected static ?string $title = 'Kalender Pekerjaan';
     
     protected static ?string $navigationLabel = 'Kalender';
+    
+    protected static bool $shouldRegisterNavigation = false; // Don't register as separate navigation item
 
     public $currentMonth;
     public $currentYear;
