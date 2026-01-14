@@ -195,26 +195,38 @@ class TaskCalendar extends Page
             $task = $taskBar['task'];
             $endIndex = min($startIndex + $span - 1, count($days) - 1);
             
-            // Find available row for this task
+            // Calculate which week rows this task spans
+            $startWeekRow = intval($startIndex / 7);
+            $endWeekRow = intval($endIndex / 7);
+            
+            // Find available row for this task (check all week rows it spans)
+            // We need to find a row that's available across all week rows
             $row = 0;
             $placed = false;
+            
             while (!$placed && $row < 20) {
                 $canPlace = true;
                 
-                // Check if this row position conflicts with any existing task in the same row
-                // We need to check if the date ranges overlap
-                if (isset($placedTasksByRow[$row])) {
-                    foreach ($placedTasksByRow[$row] as $placedTask) {
-                        $existingStart = $placedTask['startIndex'];
-                        $existingEnd = $placedTask['endIndex'];
-                        
-                        // Check if date ranges overlap
-                        // Two ranges overlap if they share any common day
-                        // Overlap: !(end1 < start2 || start1 > end2)
-                        // Or: start1 <= end2 && start2 <= end1
-                        if ($startIndex <= $existingEnd && $existingStart <= $endIndex) {
-                            $canPlace = false;
-                            break;
+                // Check overlap in each week row this task spans
+                for ($weekRow = $startWeekRow; $weekRow <= $endWeekRow; $weekRow++) {
+                    $weekRowKey = $weekRow . '_' . $row;
+                    
+                    if (isset($placedTasksByRow[$weekRowKey])) {
+                        foreach ($placedTasksByRow[$weekRowKey] as $placedTask) {
+                            $existingStart = $placedTask['startIndex'];
+                            $existingEnd = $placedTask['endIndex'];
+                            
+                            // Calculate the segment range for this week row
+                            $weekStartIndex = $weekRow * 7;
+                            $weekEndIndex = min(($weekRow + 1) * 7 - 1, count($days) - 1);
+                            $segmentStart = max($startIndex, $weekStartIndex);
+                            $segmentEnd = min($endIndex, $weekEndIndex);
+                            
+                            // Check if date ranges overlap in this week row
+                            if ($segmentStart <= $existingEnd && $existingStart <= $segmentEnd) {
+                                $canPlace = false;
+                                break 2; // Break both loops
+                            }
                         }
                     }
                 }
@@ -226,25 +238,45 @@ class TaskCalendar extends Page
                 }
             }
             
-            // Add task to start day with row information
-            $tasksByDay[$startIndex][] = [
-                'task' => $task,
-                'isStartDay' => true,
-                'span' => $span,
-                'row' => $row,
-                'startIndex' => $startIndex,
-                'endIndex' => $endIndex,
-            ];
+            // Split task into segments for each week row it spans
+            $currentStartIndex = $startIndex;
+            $remainingSpan = $span;
             
-            // Track this placed task for future overlap checks (grouped by row)
-            if (!isset($placedTasksByRow[$row])) {
-                $placedTasksByRow[$row] = [];
+            while ($remainingSpan > 0 && $currentStartIndex < count($days)) {
+                $currentWeekRow = intval($currentStartIndex / 7);
+                $currentCol = $currentStartIndex % 7;
+                
+                // Calculate how many days are left in this week row
+                $daysLeftInWeek = 7 - $currentCol;
+                $segmentSpan = min($remainingSpan, $daysLeftInWeek);
+                $segmentEndIndex = $currentStartIndex + $segmentSpan - 1;
+                
+                // Add segment to the appropriate day (using the same row number for all segments)
+                $tasksByDay[$currentStartIndex][] = [
+                    'task' => $task,
+                    'isStartDay' => ($currentStartIndex === $startIndex),
+                    'span' => $segmentSpan,
+                    'row' => $row, // Same row number for all segments
+                    'startIndex' => $currentStartIndex,
+                    'endIndex' => $segmentEndIndex,
+                    'weekRow' => $currentWeekRow,
+                ];
+                
+                // Track this segment for future overlap checks
+                $weekRowKey = $currentWeekRow . '_' . $row;
+                if (!isset($placedTasksByRow[$weekRowKey])) {
+                    $placedTasksByRow[$weekRowKey] = [];
+                }
+                $placedTasksByRow[$weekRowKey][] = [
+                    'startIndex' => $currentStartIndex,
+                    'endIndex' => $segmentEndIndex,
+                    'span' => $segmentSpan,
+                ];
+                
+                // Move to next week row
+                $currentStartIndex += $segmentSpan;
+                $remainingSpan -= $segmentSpan;
             }
-            $placedTasksByRow[$row][] = [
-                'startIndex' => $startIndex,
-                'endIndex' => $endIndex,
-                'span' => $span,
-            ];
         }
         
         return $tasksByDay;
