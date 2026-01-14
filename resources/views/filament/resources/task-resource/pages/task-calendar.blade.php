@@ -50,10 +50,12 @@
                 @php
                     $days = $this->getCalendarDays();
                     $taskBars = $this->getTaskBars();
+                    $maxRows = $this->getMaxRows();
+                    $minHeight = max(180, 60 + ($maxRows * 44)); // Base height + row height
                 @endphp
 
                 @foreach($days as $index => $day)
-                    <div class="min-h-[180px] bg-white dark:bg-gray-800 p-3 border-r border-b border-gray-200 dark:border-gray-700 relative {{ !$day['isCurrentMonth'] ? 'bg-gray-50 dark:bg-gray-900' : '' }}">
+                    <div class="bg-white dark:bg-gray-800 p-3 border-r border-b border-gray-200 dark:border-gray-700 relative {{ !$day['isCurrentMonth'] ? 'bg-gray-50 dark:bg-gray-900' : '' }}" style="min-height: {{ $minHeight }}px;">
                         <div class="text-base font-semibold mb-2 {{ !$day['isCurrentMonth'] ? 'text-gray-400 dark:text-gray-600' : ($day['isToday'] ? 'text-white bg-primary-600 dark:bg-primary-500 rounded-full w-8 h-8 flex items-center justify-center' : 'text-gray-900 dark:text-gray-100') }}">
                             {{ $day['day'] }}
                         </div>
@@ -70,31 +72,32 @@
                                 $span = $taskBar['span'];
                                 $row = $taskBar['row'];
                                 
-                                // Use Filament color system with dark mode support
+                                // Use more visible colors with better contrast
                                 $statusColors = [
-                                    'pending' => 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700',
-                                    'in_progress' => 'bg-primary-100 dark:bg-primary-900/50 text-primary-800 dark:text-primary-200 border-primary-300 dark:border-primary-700',
-                                    'completed' => 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 border-green-300 dark:border-green-700',
-                                    'cancelled' => 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 border-red-300 dark:border-red-700',
+                                    'pending' => 'bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 border-amber-400 dark:border-amber-600',
+                                    'in_progress' => 'bg-primary-200 dark:bg-primary-800 text-primary-900 dark:text-primary-100 border-primary-400 dark:border-primary-600',
+                                    'completed' => 'bg-green-200 dark:bg-green-800 text-green-900 dark:text-green-100 border-green-400 dark:border-green-600',
+                                    'cancelled' => 'bg-red-200 dark:bg-red-800 text-red-900 dark:text-red-100 border-red-400 dark:border-red-600',
                                 ];
                                 $color = $statusColors[$task['status']] ?? $statusColors['pending'];
                                 
-                                // Calculate position
+                                // Calculate position more accurately
                                 $col = $startIndex % 7;
-                                $leftPercent = ($col / 7) * 100;
-                                $widthPercent = ($span / 7) * 100;
-                                $topOffset = $row * 2.75; // Row spacing
+                                $cellWidth = 100 / 7; // Percentage per cell (14.2857%)
+                                $leftPercent = $col * $cellWidth;
+                                $widthPercent = $span * $cellWidth;
+                                $topOffset = $row * 2.75; // Row spacing in rem (44px per row)
                             @endphp
                             
                             <div 
-                                class="absolute text-xs p-2.5 rounded-lg cursor-pointer hover:opacity-90 transition-all border-2 {{ $color }} pointer-events-auto shadow-sm"
+                                class="absolute text-xs p-2.5 rounded-lg cursor-pointer hover:opacity-90 transition-all border-2 {{ $color }} pointer-events-auto shadow-sm font-medium"
                                 style="left: calc({{ $leftPercent }}% + 0.75rem); width: calc({{ $widthPercent }}% - 1.5rem); top: {{ $topOffset }}rem; z-index: {{ 10 + $row }};"
                                 title="{{ $task['title'] }} - {{ implode(', ', $task['employees']) }}"
                                 onclick="window.location.href='{{ \App\Filament\Resources\TaskResource::getUrl('edit', ['record' => $task['id']]) }}'"
                             >
                                 <div class="font-semibold truncate mb-0.5">{{ $task['title'] }}</div>
                                 @if(!empty($task['employees']))
-                                    <div class="text-[10px] opacity-80 dark:opacity-70 mt-0.5 truncate">
+                                    <div class="text-[10px] opacity-90 dark:opacity-80 mt-0.5 truncate">
                                         {{ implode(', ', array_slice($task['employees'], 0, 2)) }}{{ count($task['employees']) > 2 ? '...' : '' }}
                                     </div>
                                 @endif
@@ -108,19 +111,19 @@
         <!-- Legend -->
         <div class="flex items-center gap-6 text-sm pt-4 border-t-2 border-gray-200 dark:border-gray-700">
             <div class="flex items-center gap-2.5">
-                <div class="w-5 h-5 bg-amber-100 dark:bg-amber-900/50 border-2 border-amber-300 dark:border-amber-700 rounded"></div>
+                <div class="w-5 h-5 bg-amber-200 dark:bg-amber-800 border-2 border-amber-400 dark:border-amber-600 rounded"></div>
                 <span class="text-gray-700 dark:text-gray-300 font-medium">Pending</span>
             </div>
             <div class="flex items-center gap-2.5">
-                <div class="w-5 h-5 bg-primary-100 dark:bg-primary-900/50 border-2 border-primary-300 dark:border-primary-700 rounded"></div>
+                <div class="w-5 h-5 bg-primary-200 dark:bg-primary-800 border-2 border-primary-400 dark:border-primary-600 rounded"></div>
                 <span class="text-gray-700 dark:text-gray-300 font-medium">In Progress</span>
             </div>
             <div class="flex items-center gap-2.5">
-                <div class="w-5 h-5 bg-green-100 dark:bg-green-900/50 border-2 border-green-300 dark:border-green-700 rounded"></div>
+                <div class="w-5 h-5 bg-green-200 dark:bg-green-800 border-2 border-green-400 dark:border-green-600 rounded"></div>
                 <span class="text-gray-700 dark:text-gray-300 font-medium">Completed</span>
             </div>
             <div class="flex items-center gap-2.5">
-                <div class="w-5 h-5 bg-red-100 dark:bg-red-900/50 border-2 border-red-300 dark:border-red-700 rounded"></div>
+                <div class="w-5 h-5 bg-red-200 dark:bg-red-800 border-2 border-red-400 dark:border-red-600 rounded"></div>
                 <span class="text-gray-700 dark:text-gray-300 font-medium">Cancelled</span>
             </div>
         </div>

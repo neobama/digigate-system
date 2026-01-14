@@ -139,9 +139,9 @@ class TaskCalendar extends Page
             }
             
             if ($startDayIndex !== null) {
-                // Calculate span - can span across weeks
-                $span = 0;
-                $currentIdx = $startDayIndex;
+                // Calculate span - count days from start to end (within visible range)
+                $span = 1; // Start with 1 for the start day
+                $currentIdx = $startDayIndex + 1; // Start checking from next day
                 
                 // Count how many days from start to end (within visible range)
                 while ($currentIdx < count($days)) {
@@ -152,11 +152,6 @@ class TaskCalendar extends Page
                     $currentIdx++;
                     // Limit to reasonable span
                     if ($span >= 35) break;
-                }
-                
-                // Ensure minimum span of 1
-                if ($span < 1) {
-                    $span = 1;
                 }
                 
                 // Calculate row position (to avoid overlaps)
@@ -201,5 +196,14 @@ class TaskCalendar extends Page
         }
         
         return $taskBars;
+    }
+
+    public function getMaxRows(): int
+    {
+        $taskBars = $this->getTaskBars();
+        if (empty($taskBars)) {
+            return 0;
+        }
+        return max(array_column($taskBars, 'row')) + 1;
     }
 }
