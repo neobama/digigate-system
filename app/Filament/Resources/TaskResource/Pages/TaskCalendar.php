@@ -114,40 +114,55 @@ class TaskCalendar extends Page
             $tasksByDay[$idx] = [];
         }
         
-        // Assign tasks to their respective days
+        // Assign tasks to their respective days - only render on start day
         foreach ($this->tasks as $task) {
             $taskStartStr = $task['start'];
             $taskEndStr = $task['end'];
             
+            // Find the start day index
+            $startDayIndex = null;
             foreach ($days as $idx => $day) {
                 $dayDateStr = $day['date']->format('Y-m-d');
-                
-                // Check if this day is within task range
-                if ($dayDateStr >= $taskStartStr && $dayDateStr <= $taskEndStr) {
-                    // Calculate if this is the start day
-                    $isStartDay = ($dayDateStr === $taskStartStr);
-                    
-                    // Calculate span from this day to end
-                    $span = 1;
-                    $currentIdx = $idx;
-                    while ($currentIdx < count($days) - 1) {
-                        $currentIdx++;
-                        $nextDayStr = $days[$currentIdx]['date']->format('Y-m-d');
-                        if ($nextDayStr > $taskEndStr) {
-                            break;
-                        }
-                        if ($nextDayStr <= $taskEndStr) {
-                            $span++;
-                        }
-                        if ($span >= 35) break;
-                    }
-                    
-                    $tasksByDay[$idx][] = [
-                        'task' => $task,
-                        'isStartDay' => $isStartDay,
-                        'span' => $span,
-                    ];
+                if ($dayDateStr === $taskStartStr) {
+                    $startDayIndex = $idx;
+                    break;
                 }
+            }
+            
+            // If task doesn't start in visible range, find first visible day that overlaps
+            if ($startDayIndex === null) {
+                foreach ($days as $idx => $day) {
+                    $dayDateStr = $day['date']->format('Y-m-d');
+                    if ($dayDateStr >= $taskStartStr && $dayDateStr <= $taskEndStr) {
+                        $startDayIndex = $idx;
+                        break;
+                    }
+                }
+            }
+            
+            // Only add task if it's in visible range
+            if ($startDayIndex !== null) {
+                // Calculate span from start to end
+                $span = 1;
+                $currentIdx = $startDayIndex;
+                while ($currentIdx < count($days) - 1) {
+                    $currentIdx++;
+                    $nextDayStr = $days[$currentIdx]['date']->format('Y-m-d');
+                    if ($nextDayStr > $taskEndStr) {
+                        break;
+                    }
+                    if ($nextDayStr <= $taskEndStr) {
+                        $span++;
+                    }
+                    if ($span >= 35) break;
+                }
+                
+                // Only add to start day
+                $tasksByDay[$startDayIndex][] = [
+                    'task' => $task,
+                    'isStartDay' => true,
+                    'span' => $span,
+                ];
             }
         }
         

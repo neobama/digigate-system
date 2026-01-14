@@ -51,11 +51,18 @@
                     $days = $this->getCalendarDays();
                     $tasksByDay = $this->getTasksByDay();
                     $maxTasksPerDay = $this->getMaxTasksPerDay();
-                    $minHeight = max(200, 80 + ($maxTasksPerDay * 50)); // Base height + task height
+                    // Calculate min height based on max tasks per day
+                    // Each task bar is approximately 3rem (48px) tall
+                    $minHeight = max(200, 80 + ($maxTasksPerDay * 48)); // Base height + task height in px
                 @endphp
 
                 @foreach($days as $index => $day)
-                    <div class="bg-white dark:bg-gray-800 p-3 border-r border-b border-gray-200 dark:border-gray-700 relative {{ !$day['isCurrentMonth'] ? 'bg-gray-50 dark:bg-gray-900' : '' }}" style="min-height: {{ $minHeight }}px;">
+                    <div 
+                        class="bg-white dark:bg-gray-800 p-3 border-r border-b border-gray-200 dark:border-gray-700 relative {{ !$day['isCurrentMonth'] ? 'bg-gray-50 dark:bg-gray-900' : '' }}" 
+                        style="min-height: {{ $minHeight }}px;"
+                        data-day-index="{{ $index }}"
+                        data-day-date="{{ $day['date']->format('Y-m-d') }}"
+                    >
                         <div class="text-base font-semibold mb-2 {{ !$day['isCurrentMonth'] ? 'text-gray-400 dark:text-gray-600' : ($day['isToday'] ? 'text-white bg-primary-600 dark:bg-primary-500 rounded-full w-8 h-8 flex items-center justify-center' : 'text-gray-900 dark:text-gray-100') }}">
                             {{ $day['day'] }}
                         </div>
@@ -64,16 +71,13 @@
                 
                 <!-- Task Bars Overlay - Absolute positioned at grid level -->
                 <div class="absolute inset-0 pointer-events-none" style="margin-top: 3.5rem;">
-                    @php
-                        $renderedTasks = []; // Track rendered tasks to calculate row position
-                    @endphp
                     @foreach($days as $index => $day)
                         @php
                             $weekRow = intval($index / 7); // Week row (0-based)
                             $tasksStartingToday = array_filter($tasksByDay[$index] ?? [], function($t) {
                                 return $t['isStartDay'];
                             });
-                            $taskRowInWeek = 0;
+                            $taskRowInDay = 0;
                         @endphp
                         @foreach($tasksStartingToday as $taskInfo)
                             @php
@@ -96,15 +100,18 @@
                                 $style = $statusStyles[$task['status']] ?? $statusStyles['pending'];
                                 $darkStyle = $darkStatusStyles[$task['status']] ?? $darkStatusStyles['pending'];
                                 
-                                // Calculate position based on grid
+                                // Calculate position based on grid - simple and direct
                                 $col = $index % 7; // Column (0-6)
                                 $cellWidthPercent = 100 / 7; // 14.2857% per cell
                                 $leftPercent = $col * $cellWidthPercent;
                                 $widthPercent = $span * $cellWidthPercent;
                                 
-                                // Calculate top offset: week row + task row in this day
-                                $topOffset = ($weekRow * 3) + ($taskRowInWeek * 3); // Week row + task row in day
-                                $taskRowInWeek++; // Increment for next task in same day
+                                // Calculate top offset: week row * cell height + task row in day * task height
+                                // Each cell has minHeight in px, convert to rem (16px = 1rem)
+                                // Overlay starts at margin-top: 3.5rem (after header)
+                                $cellHeightRem = $minHeight / 16; // Convert px to rem
+                                $topOffset = ($weekRow * $cellHeightRem) + ($taskRowInDay * 3); // Week row + task row in day
+                                $taskRowInDay++; // Increment for next task in same day
                             @endphp
                             
                             <div 
@@ -118,7 +125,10 @@
                                     {{ $style }}
                                 "
                                 data-dark-style="{{ $darkStyle }}"
-                                title="{{ $task['title'] }} ({{ $task['start'] }} - {{ $task['end'] }}) | {{ implode(', ', $task['employees']) }}"
+                                data-task-start="{{ $task['start'] }}"
+                                data-task-end="{{ $task['end'] }}"
+                                data-day-index="{{ $index }}"
+                                title="{{ $task['title'] }} | Start: {{ $task['start'] }}, End: {{ $task['end'] }} | DayIndex: {{ $index }}, WeekRow: {{ $weekRow }}, TaskRow: {{ $taskRowInDay - 1 }}, Top: {{ $topOffset }}rem | {{ implode(', ', $task['employees']) }}"
                                 onclick="window.location.href='{{ \App\Filament\Resources\TaskResource::getUrl('edit', ['record' => $task['id']]) }}'"
                             >
                                 <div class="font-semibold truncate mb-0.5">{{ $task['title'] }}</div>
