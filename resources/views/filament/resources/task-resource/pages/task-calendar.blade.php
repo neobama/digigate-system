@@ -63,7 +63,7 @@
                 @endforeach
                 
                 <!-- Task Bars Overlay - Absolute positioned -->
-                <div class="absolute inset-0 pointer-events-none" style="margin-top: 3.5rem; padding: 0.75rem;">
+                <div class="absolute inset-0 pointer-events-none" style="margin-top: 3.5rem;">
                     @foreach($taskBars as $taskBar)
                         @php
                             $task = $taskBar['task'];
@@ -88,7 +88,8 @@
                             $darkStyle = $darkStatusStyles[$task['status']] ?? $darkStatusStyles['pending'];
                             
                             // Calculate position - each cell is exactly 1/7 of width
-                            $col = $startIndex % 7;
+                            // StartIndex is the absolute index in the days array
+                            $col = $startIndex % 7; // Column (0-6)
                             $cellWidthPercent = 100 / 7; // 14.2857% per cell
                             $leftPercent = $col * $cellWidthPercent;
                             $widthPercent = $span * $cellWidthPercent;
@@ -99,13 +100,14 @@
                             class="absolute text-xs p-2.5 rounded-lg cursor-pointer hover:opacity-90 transition-all border-2 pointer-events-auto shadow-sm font-medium task-bar-item"
                             style="
                                 left: calc({{ $leftPercent }}% + 0.75rem); 
-                                width: calc({{ $widthPercent }}% - 1.5rem - ({{ $span - 1 }} * 1px)); 
+                                width: calc({{ $widthPercent }}% - 0.75rem - ({{ $span - 1 }} * 1px)); 
                                 top: {{ $topOffset }}rem; 
                                 z-index: {{ 10 + $row }};
+                                box-sizing: border-box;
                                 {{ $style }}
                             "
                             data-dark-style="{{ $darkStyle }}"
-                            title="{{ $task['title'] }} ({{ $task['start'] }} - {{ $task['end'] }}) | StartIdx: {{ $startIndex }}, Col: {{ $col }}, Span: {{ $span }} | {{ implode(', ', $task['employees']) }}"
+                            title="{{ $task['title'] }} ({{ $task['start'] }} - {{ $task['end'] }}) | {{ implode(', ', $task['employees']) }}"
                             onclick="window.location.href='{{ \App\Filament\Resources\TaskResource::getUrl('edit', ['record' => $task['id']]) }}'"
                         >
                             <div class="font-semibold truncate mb-0.5">{{ $task['title'] }}</div>
