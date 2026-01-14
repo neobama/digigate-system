@@ -175,13 +175,19 @@ class TaskCalendar extends Page
         }
         
         // Second pass: calculate row positions to avoid overlaps
-        // Sort tasks by start index to process them in order
+        // Sort tasks by start index, then by end index (shorter tasks first when same start)
         usort($taskBars, function($a, $b) {
-            return $a['startIndex'] <=> $b['startIndex'];
+            $startCompare = $a['startIndex'] <=> $b['startIndex'];
+            if ($startCompare !== 0) {
+                return $startCompare;
+            }
+            // If same start, shorter tasks first
+            return ($a['startIndex'] + $a['span']) <=> ($b['startIndex'] + $b['span']);
         });
         
         // Track all placed tasks with their ranges for overlap detection
-        $placedTasks = [];
+        // Group by row for faster lookup
+        $placedTasksByRow = [];
         
         foreach ($taskBars as $taskBar) {
             $startIndex = $taskBar['startIndex'];
@@ -197,14 +203,16 @@ class TaskCalendar extends Page
                 
                 // Check if this row position conflicts with any existing task in the same row
                 // We need to check if the date ranges overlap
-                foreach ($placedTasks as $placedTask) {
-                    if ($placedTask['row'] == $row) {
+                if (isset($placedTasksByRow[$row])) {
+                    foreach ($placedTasksByRow[$row] as $placedTask) {
                         $existingStart = $placedTask['startIndex'];
                         $existingEnd = $placedTask['endIndex'];
                         
                         // Check if date ranges overlap
-                        // Two ranges overlap if: !(end1 < start2 || start1 > end2)
-                        if (!($endIndex < $existingStart || $startIndex > $existingEnd)) {
+                        // Two ranges overlap if they share any common day
+                        // Overlap: !(end1 < start2 || start1 > end2)
+                        // Or: start1 <= end2 && start2 <= end1
+                        if ($startIndex <= $existingEnd && $existingStart <= $endIndex) {
                             $canPlace = false;
                             break;
                         }
@@ -228,9 +236,11 @@ class TaskCalendar extends Page
                 'endIndex' => $endIndex,
             ];
             
-            // Track this placed task for future overlap checks
-            $placedTasks[] = [
-                'row' => $row,
+            // Track this placed task for future overlap checks (grouped by row)
+            if (!isset($placedTasksByRow[$row])) {
+                $placedTasksByRow[$row] = [];
+            }
+            $placedTasksByRow[$row][] = [
                 'startIndex' => $startIndex,
                 'endIndex' => $endIndex,
                 'span' => $span,
