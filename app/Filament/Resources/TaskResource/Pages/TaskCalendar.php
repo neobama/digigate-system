@@ -114,7 +114,8 @@ class TaskCalendar extends Page
             $tasksByDay[$idx] = [];
         }
         
-        // Assign tasks to their respective days - only render on start day
+        // First pass: collect all tasks with their positions
+        $taskBars = [];
         foreach ($this->tasks as $task) {
             $taskStartStr = $task['start'];
             $taskEndStr = $task['end'];
@@ -157,13 +158,68 @@ class TaskCalendar extends Page
                     if ($span >= 35) break;
                 }
                 
-                // Only add to start day
-                $tasksByDay[$startDayIndex][] = [
+                $taskBars[] = [
                     'task' => $task,
-                    'isStartDay' => true,
+                    'startIndex' => $startDayIndex,
                     'span' => $span,
                 ];
             }
+        }
+        
+        // Second pass: calculate row positions to avoid overlaps
+        // Sort tasks by start index to process them in order
+        usort($taskBars, function($a, $b) {
+            return $a['startIndex'] <=> $b['startIndex'];
+        });
+        
+        foreach ($taskBars as $taskBar) {
+            $startIndex = $taskBar['startIndex'];
+            $span = $taskBar['span'];
+            $task = $taskBar['task'];
+            $endIndex = min($startIndex + $span - 1, count($days) - 1);
+            
+            // Find available row for this task
+            $row = 0;
+            $placed = false;
+            while (!$placed && $row < 20) {
+                $canPlace = true;
+                
+                // Check if this row position conflicts with existing tasks
+                // We need to check all days that this task spans
+                for ($checkIdx = $startIndex; $checkIdx <= $endIndex; $checkIdx++) {
+                    $existingTasks = $tasksByDay[$checkIdx] ?? [];
+                    
+                    foreach ($existingTasks as $existingTask) {
+                        if (isset($existingTask['row']) && $existingTask['row'] == $row) {
+                            // Check if they overlap in the same row
+                            $existingStart = $existingTask['startIndex'] ?? $checkIdx;
+                            $existingSpan = $existingTask['span'] ?? 1;
+                            $existingEnd = $existingStart + $existingSpan - 1;
+                            
+                            // Check if ranges overlap
+                            if (!($endIndex < $existingStart || $startIndex > $existingEnd)) {
+                                $canPlace = false;
+                                break 2;
+                            }
+                        }
+                    }
+                }
+                
+                if ($canPlace) {
+                    $placed = true;
+                } else {
+                    $row++;
+                }
+            }
+            
+            // Add task to start day with row information
+            $tasksByDay[$startIndex][] = [
+                'task' => $task,
+                'isStartDay' => true,
+                'span' => $span,
+                'row' => $row,
+                'startIndex' => $startIndex,
+            ];
         }
         
         return $tasksByDay;
@@ -172,16 +228,17 @@ class TaskCalendar extends Page
     public function getMaxTasksPerDay(): int
     {
         $tasksByDay = $this->getTasksByDay();
-        $maxTasks = 0;
+        $maxRow = 0;
         
         foreach ($tasksByDay as $dayTasks) {
-            $count = count($dayTasks);
-            if ($count > $maxTasks) {
-                $maxTasks = $count;
+            foreach ($dayTasks as $taskInfo) {
+                if (isset($taskInfo['row']) && $taskInfo['row'] > $maxRow) {
+                    $maxRow = $taskInfo['row'];
+                }
             }
         }
         
-        return $maxTasks;
+        return $maxRow + 1; // +1 because row is 0-based
     }
 
     public function getFullCalendarEvents(): array

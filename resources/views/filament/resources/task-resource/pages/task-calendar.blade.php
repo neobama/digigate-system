@@ -83,22 +83,47 @@
                             @php
                                 $task = $taskInfo['task'];
                                 $span = $taskInfo['span'];
+                                $row = $taskInfo['row'] ?? 0;
                                 
-                                // Color definitions
-                                $statusStyles = [
-                                    'pending' => 'background-color: #fde68a; color: #78350f; border-color: #fbbf24;',
-                                    'in_progress' => 'background-color: #fbbf24; color: #78350f; border-color: #f59e0b;',
-                                    'completed' => 'background-color: #86efac; color: #14532d; border-color: #4ade80;',
-                                    'cancelled' => 'background-color: #fca5a5; color: #7f1d1d; border-color: #f87171;',
+                                // Color definitions based on status
+                                $statusColors = [
+                                    'pending' => [
+                                        'bg' => '#fde68a',
+                                        'text' => '#78350f',
+                                        'border' => '#fbbf24',
+                                        'dark_bg' => '#92400e',
+                                        'dark_text' => '#fef3c7',
+                                        'dark_border' => '#d97706',
+                                    ],
+                                    'in_progress' => [
+                                        'bg' => '#fbbf24',
+                                        'text' => '#78350f',
+                                        'border' => '#f59e0b',
+                                        'dark_bg' => '#92400e',
+                                        'dark_text' => '#fef3c7',
+                                        'dark_border' => '#d97706',
+                                    ],
+                                    'completed' => [
+                                        'bg' => '#86efac',
+                                        'text' => '#14532d',
+                                        'border' => '#4ade80',
+                                        'dark_bg' => '#166534',
+                                        'dark_text' => '#dcfce7',
+                                        'dark_border' => '#16a34a',
+                                    ],
+                                    'cancelled' => [
+                                        'bg' => '#fca5a5',
+                                        'text' => '#7f1d1d',
+                                        'border' => '#f87171',
+                                        'dark_bg' => '#991b1b',
+                                        'dark_text' => '#fee2e2',
+                                        'dark_border' => '#dc2626',
+                                    ],
                                 ];
-                                $darkStatusStyles = [
-                                    'pending' => 'background-color: #92400e; color: #fef3c7; border-color: #d97706;',
-                                    'in_progress' => 'background-color: #92400e; color: #fef3c7; border-color: #d97706;',
-                                    'completed' => 'background-color: #166534; color: #dcfce7; border-color: #16a34a;',
-                                    'cancelled' => 'background-color: #991b1b; color: #fee2e2; border-color: #dc2626;',
-                                ];
-                                $style = $statusStyles[$task['status']] ?? $statusStyles['pending'];
-                                $darkStyle = $darkStatusStyles[$task['status']] ?? $darkStatusStyles['pending'];
+                                
+                                $colors = $statusColors[$task['status']] ?? $statusColors['pending'];
+                                $style = "background-color: {$colors['bg']}; color: {$colors['text']}; border-color: {$colors['border']};";
+                                $darkStyle = "background-color: {$colors['dark_bg']}; color: {$colors['dark_text']}; border-color: {$colors['dark_border']};";
                                 
                                 // Calculate position based on grid - simple and direct
                                 $col = $index % 7; // Column (0-6)
@@ -106,12 +131,11 @@
                                 $leftPercent = $col * $cellWidthPercent;
                                 $widthPercent = $span * $cellWidthPercent;
                                 
-                                // Calculate top offset: week row * cell height + task row in day * task height
+                                // Calculate top offset: week row * cell height + task row * task height
                                 // Each cell has minHeight in px, convert to rem (16px = 1rem)
                                 // Overlay starts at margin-top: 3.5rem (after header)
                                 $cellHeightRem = $minHeight / 16; // Convert px to rem
-                                $topOffset = ($weekRow * $cellHeightRem) + ($taskRowInDay * 3); // Week row + task row in day
-                                $taskRowInDay++; // Increment for next task in same day
+                                $topOffset = ($weekRow * $cellHeightRem) + ($row * 3); // Week row + task row
                             @endphp
                             
                             <div 
@@ -120,15 +144,13 @@
                                     left: calc({{ $leftPercent }}% + 0.75rem); 
                                     width: calc({{ $widthPercent }}% - 0.75rem - ({{ $span - 1 }} * 1px)); 
                                     top: {{ $topOffset }}rem; 
-                                    z-index: {{ 10 + $span }};
+                                    z-index: {{ 10 + $row }};
                                     box-sizing: border-box;
                                     {{ $style }}
                                 "
                                 data-dark-style="{{ $darkStyle }}"
-                                data-task-start="{{ $task['start'] }}"
-                                data-task-end="{{ $task['end'] }}"
-                                data-day-index="{{ $index }}"
-                                title="{{ $task['title'] }} | Start: {{ $task['start'] }}, End: {{ $task['end'] }} | DayIndex: {{ $index }}, WeekRow: {{ $weekRow }}, TaskRow: {{ $taskRowInDay - 1 }}, Top: {{ $topOffset }}rem | {{ implode(', ', $task['employees']) }}"
+                                data-task-status="{{ $task['status'] }}"
+                                title="{{ $task['title'] }} ({{ $task['start'] }} - {{ $task['end'] }}) | {{ implode(', ', $task['employees']) }}"
                                 onclick="window.location.href='{{ \App\Filament\Resources\TaskResource::getUrl('edit', ['record' => $task['id']]) }}'"
                             >
                                 <div class="font-semibold truncate mb-0.5">{{ $task['title'] }}</div>
@@ -171,12 +193,37 @@
             const isDark = document.documentElement.classList.contains('dark');
             const taskBars = document.querySelectorAll('.task-bar-item');
             
+            // Define color styles
+            const lightStyles = {
+                'pending': 'background-color: #fde68a; color: #78350f; border-color: #fbbf24;',
+                'in_progress': 'background-color: #fbbf24; color: #78350f; border-color: #f59e0b;',
+                'completed': 'background-color: #86efac; color: #14532d; border-color: #4ade80;',
+                'cancelled': 'background-color: #fca5a5; color: #7f1d1d; border-color: #f87171;',
+            };
+            
             taskBars.forEach(bar => {
-                if (isDark && bar.dataset.darkStyle) {
-                    // Apply dark style
-                    const currentStyle = bar.getAttribute('style');
-                    const baseStyle = currentStyle.split(';').filter(s => !s.includes('background-color') && !s.includes('color') && !s.includes('border-color')).join(';');
-                    bar.setAttribute('style', baseStyle + '; ' + bar.dataset.darkStyle);
+                const status = bar.dataset.taskStatus || 'pending';
+                const darkStyle = bar.dataset.darkStyle || '';
+                
+                // Get base style (position, size, etc.) - remove color-related styles
+                const currentStyle = bar.getAttribute('style') || '';
+                const baseStyle = currentStyle
+                    .split(';')
+                    .filter(s => {
+                        const trimmed = s.trim();
+                        return trimmed && 
+                               !trimmed.includes('background-color') && 
+                               !trimmed.includes('color:') && 
+                               !trimmed.includes('border-color');
+                    })
+                    .join(';');
+                
+                // Apply appropriate style
+                if (isDark && darkStyle) {
+                    bar.setAttribute('style', baseStyle + (baseStyle ? '; ' : '') + darkStyle);
+                } else {
+                    const lightStyle = lightStyles[status] || lightStyles['pending'];
+                    bar.setAttribute('style', baseStyle + (baseStyle ? '; ' : '') + lightStyle);
                 }
             });
         }
