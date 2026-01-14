@@ -258,11 +258,13 @@
                                     <div wire:loading wire:target="proofImage" class="mt-2 text-xs text-blue-600 dark:text-blue-400">
                                         Mengupload foto...
                                     </div>
+                                    <div wire:loading.remove wire:target="proofImage">
+                                        @if($proofImage)
+                                            <p class="mt-1 text-xs text-green-600 dark:text-green-400">✓ Foto siap disimpan</p>
+                                        @endif
+                                    </div>
                                     @error('proofImage') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Upload satu foto per kali. Status akan otomatis berubah setelah upload bukti selesai (100%).</p>
-                                    <div id="upload-complete-message" class="mt-1 text-xs text-green-600 dark:text-green-400 hidden">
-                                        ✓ Foto siap disimpan
-                                    </div>
                                 </div>
 
                                 @if(!empty($selectedTask->proof_images))
@@ -301,10 +303,14 @@
                                 <button 
                                     type="submit"
                                     id="save-proof-btn"
-                                    disabled
-                                    class="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-gray-400 dark:bg-gray-600 text-base font-medium text-white cursor-not-allowed sm:mt-0 sm:col-start-1 sm:text-sm disabled:opacity-50"
+                                    wire:loading.attr="disabled"
+                                    wire:target="proofImage,uploadProof"
+                                    @if(!$proofImage) disabled @endif
+                                    class="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white sm:mt-0 sm:col-start-1 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed {{ $proofImage ? 'bg-primary-600 dark:bg-primary-500 hover:bg-primary-700 dark:hover:bg-primary-600' : 'bg-gray-400 dark:bg-gray-600' }}"
                                 >
-                                    Simpan Bukti
+                                    <span wire:loading.remove wire:target="proofImage,uploadProof">Simpan Bukti</span>
+                                    <span wire:loading wire:target="proofImage">Mengupload...</span>
+                                    <span wire:loading wire:target="uploadProof">Menyimpan...</span>
                                 </button>
                             </div>
                         </form>
@@ -435,66 +441,99 @@
             const progressContainer = document.getElementById('upload-progress-container');
             const progressBar = document.getElementById('upload-progress-bar');
             const progressText = document.getElementById('upload-progress-text');
-            const completeMessage = document.getElementById('upload-complete-message');
             const saveBtn = document.getElementById('save-proof-btn');
             
             if (!fileInput || !progressContainer) return;
             
             // Listen to Livewire file upload events
             document.addEventListener('livewire:init', () => {
-                // Livewire 3 hooks
-                Livewire.hook('file.upload', ({ component, file, progress, upload }) => {
-                    if (fileInput.files.length > 0 && file.name === fileInput.files[0]?.name) {
+                // Livewire 3 hooks for file upload progress
+                Livewire.hook('file.upload', ({ component, file, progress }) => {
+                    if (fileInput.files.length > 0) {
                         progressContainer.classList.remove('hidden');
-                        const progressPercent = Math.min(progress, 100);
+                        const progressPercent = Math.min(progress || 0, 100);
                         progressBar.style.width = progressPercent + '%';
                         progressText.textContent = Math.round(progressPercent) + '%';
-                        
-                        if (progressPercent >= 100) {
+                    }
+                });
+                
+                Livewire.hook('file.upload.success', ({ component, file }) => {
+                    if (fileInput.files.length > 0) {
+                        progressBar.style.width = '100%';
+                        progressText.textContent = '100%';
+                        // Enable save button after upload completes
+                        if (saveBtn) {
                             setTimeout(() => {
-                                completeMessage.classList.remove('hidden');
                                 saveBtn.disabled = false;
-                                saveBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed', 'disabled:opacity-50');
+                                saveBtn.removeAttribute('disabled');
+                                saveBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed');
                                 saveBtn.classList.add('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
-                            }, 300);
+                            }, 500);
                         }
                     }
                 });
                 
                 Livewire.hook('file.upload.failed', ({ component, file }) => {
                     progressContainer.classList.add('hidden');
-                    completeMessage.classList.add('hidden');
-                    saveBtn.disabled = true;
-                    saveBtn.classList.add('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed', 'disabled:opacity-50');
-                    saveBtn.classList.remove('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
-                });
-                
-                Livewire.hook('file.upload.success', ({ component, file }) => {
-                    if (fileInput.files.length > 0 && file.name === fileInput.files[0]?.name) {
-                        progressBar.style.width = '100%';
-                        progressText.textContent = '100%';
-                        completeMessage.classList.remove('hidden');
-                        saveBtn.disabled = false;
-                        saveBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed', 'disabled:opacity-50');
-                        saveBtn.classList.add('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
+                    if (saveBtn) {
+                        saveBtn.disabled = true;
                     }
                 });
             });
             
-            // Also listen for Livewire events after initialization
-            window.addEventListener('livewire:file-upload-progress', (event) => {
-                const progress = event.detail.progress || 0;
-                progressContainer.classList.remove('hidden');
-                progressBar.style.width = progress + '%';
-                progressText.textContent = Math.round(progress) + '%';
-                
-                if (progress >= 100) {
-                    setTimeout(() => {
-                        completeMessage.classList.remove('hidden');
-                        saveBtn.disabled = false;
-                        saveBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed', 'disabled:opacity-50');
-                        saveBtn.classList.add('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
-                    }, 300);
+            // Also listen after Livewire is already initialized
+            if (window.Livewire && window.Livewire.hook) {
+                window.Livewire.hook('file.upload.success', ({ component, file }) => {
+                    if (fileInput.files.length > 0 && saveBtn) {
+                        setTimeout(() => {
+                            saveBtn.disabled = false;
+                            saveBtn.removeAttribute('disabled');
+                            saveBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed');
+                            saveBtn.classList.add('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
+                        }, 500);
+                    }
+                });
+            }
+            
+            // Listen for Livewire updates to enable button when file is ready
+            document.addEventListener('livewire:update', () => {
+                setTimeout(() => {
+                    if (fileInput && fileInput.files.length > 0 && saveBtn) {
+                        const isUploading = document.querySelector('[wire\\:loading][wire\\:target="proofImage"]');
+                        if (!isUploading || (isUploading && window.getComputedStyle(isUploading).display === 'none')) {
+                            // Upload complete, enable button
+                            saveBtn.disabled = false;
+                            saveBtn.removeAttribute('disabled');
+                            saveBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed');
+                            saveBtn.classList.add('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
+                        }
+                    }
+                }, 1000);
+            });
+            
+            // Polling check for upload completion (fallback)
+            let uploadCheckInterval = null;
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length > 0) {
+                    // Clear any existing interval
+                    if (uploadCheckInterval) {
+                        clearInterval(uploadCheckInterval);
+                    }
+                    
+                    // Start checking for upload completion
+                    uploadCheckInterval = setInterval(() => {
+                        if (fileInput.files.length > 0 && saveBtn) {
+                            const isUploading = document.querySelector('[wire\\:loading][wire\\:target="proofImage"]');
+                            if (!isUploading || (isUploading && window.getComputedStyle(isUploading).display === 'none')) {
+                                // Upload seems complete
+                                saveBtn.disabled = false;
+                                saveBtn.removeAttribute('disabled');
+                                saveBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed');
+                                saveBtn.classList.add('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
+                                clearInterval(uploadCheckInterval);
+                            }
+                        }
+                    }, 500);
                 }
             });
             
@@ -504,15 +543,33 @@
                     progressContainer.classList.remove('hidden');
                     progressBar.style.width = '0%';
                     progressText.textContent = '0%';
-                    completeMessage.classList.add('hidden');
-                    saveBtn.disabled = true;
-                    saveBtn.classList.add('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed', 'disabled:opacity-50');
-                    saveBtn.classList.remove('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
+                    if (saveBtn) {
+                        saveBtn.disabled = true;
+                        saveBtn.classList.add('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed');
+                        saveBtn.classList.remove('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
+                    }
                 } else {
                     progressContainer.classList.add('hidden');
-                    completeMessage.classList.add('hidden');
-                    saveBtn.disabled = true;
+                    if (saveBtn) {
+                        saveBtn.disabled = true;
+                    }
                 }
+            });
+            
+            // Listen for Livewire updates to check if file is ready
+            Livewire.hook('morph.updated', ({ component }) => {
+                setTimeout(() => {
+                    if (fileInput && fileInput.files.length > 0 && saveBtn) {
+                        // Check if we can enable the button
+                        const isUploading = fileInput.closest('form').querySelector('[wire\\:loading][wire\\:target="proofImage"]');
+                        if (!isUploading || isUploading.style.display === 'none') {
+                            // Upload seems complete
+                            saveBtn.disabled = false;
+                            saveBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed');
+                            saveBtn.classList.add('bg-primary-600', 'dark:bg-primary-500', 'hover:bg-primary-700', 'dark:hover:bg-primary-600');
+                        }
+                    }
+                }, 1000);
             });
         }
         

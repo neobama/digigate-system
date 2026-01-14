@@ -109,6 +109,10 @@ class MyTasks extends Page
     {
         $this->selectedTask = Task::with('employees')->find($taskId);
         $this->showUploadModal = true;
+        $this->proofImage = null;
+        $this->notes = $this->selectedTask->notes ?? '';
+        $this->uploadProgress = 0;
+        $this->isUploading = false;
     }
 
     public function closeModal(): void
@@ -128,8 +132,8 @@ class MyTasks extends Page
         $this->uploadProgress = 0;
         $this->isUploading = true;
         
-        // Simulate progress (Livewire will handle actual upload)
-        $this->dispatch('upload-started');
+        // File is being uploaded, Livewire will handle it
+        // After upload completes, $proofImage will contain the TemporaryUploadedFile
     }
     
     public function updateStatus($status): void
