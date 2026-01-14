@@ -148,6 +148,7 @@
                                     box-sizing: border-box;
                                     {{ $style }}
                                 "
+                                data-light-style="{{ $style }}"
                                 data-dark-style="{{ $darkStyle }}"
                                 data-task-status="{{ $task['status'] }}"
                                 title="{{ $task['title'] }} ({{ $task['start'] }} - {{ $task['end'] }}) | {{ implode(', ', $task['employees']) }}"
@@ -193,16 +194,8 @@
             const isDark = document.documentElement.classList.contains('dark');
             const taskBars = document.querySelectorAll('.task-bar-item');
             
-            // Define color styles
-            const lightStyles = {
-                'pending': 'background-color: #fde68a; color: #78350f; border-color: #fbbf24;',
-                'in_progress': 'background-color: #fbbf24; color: #78350f; border-color: #f59e0b;',
-                'completed': 'background-color: #86efac; color: #14532d; border-color: #4ade80;',
-                'cancelled': 'background-color: #fca5a5; color: #7f1d1d; border-color: #f87171;',
-            };
-            
             taskBars.forEach(bar => {
-                const status = bar.dataset.taskStatus || 'pending';
+                const lightStyle = bar.dataset.lightStyle || '';
                 const darkStyle = bar.dataset.darkStyle || '';
                 
                 // Get base style (position, size, etc.) - remove color-related styles
@@ -221,8 +214,7 @@
                 // Apply appropriate style
                 if (isDark && darkStyle) {
                     bar.setAttribute('style', baseStyle + (baseStyle ? '; ' : '') + darkStyle);
-                } else {
-                    const lightStyle = lightStyles[status] || lightStyles['pending'];
+                } else if (lightStyle) {
                     bar.setAttribute('style', baseStyle + (baseStyle ? '; ' : '') + lightStyle);
                 }
             });
@@ -239,5 +231,12 @@
                 attributeFilter: ['class']
             });
         });
+        
+        // Also update immediately if DOM is already loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', updateTaskBarColors);
+        } else {
+            updateTaskBarColors();
+        }
     </script>
 </x-filament-panels::page>
