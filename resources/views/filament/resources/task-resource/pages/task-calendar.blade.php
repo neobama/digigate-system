@@ -89,9 +89,9 @@
                             
                             // Calculate position - each cell is exactly 1/7 of width
                             $col = $startIndex % 7;
-                            $cellWidth = 100 / 7; // 14.2857% per cell
-                            $leftPercent = ($col / 7) * 100;
-                            $widthPercent = ($span / 7) * 100;
+                            $cellWidthPercent = 100 / 7; // 14.2857% per cell
+                            $leftPercent = $col * $cellWidthPercent;
+                            $widthPercent = $span * $cellWidthPercent;
                             $topOffset = $row * 3; // Row spacing in rem (48px per row)
                         @endphp
                         
@@ -99,13 +99,13 @@
                             class="absolute text-xs p-2.5 rounded-lg cursor-pointer hover:opacity-90 transition-all border-2 pointer-events-auto shadow-sm font-medium task-bar-item"
                             style="
                                 left: calc({{ $leftPercent }}% + 0.75rem); 
-                                width: calc({{ $widthPercent }}% - 1.5rem); 
+                                width: calc({{ $widthPercent }}% - 1.5rem - ({{ $span - 1 }} * 1px)); 
                                 top: {{ $topOffset }}rem; 
                                 z-index: {{ 10 + $row }};
                                 {{ $style }}
                             "
                             data-dark-style="{{ $darkStyle }}"
-                            title="{{ $task['title'] }} - {{ implode(', ', $task['employees']) }}"
+                            title="{{ $task['title'] }} ({{ \Carbon\Carbon::parse($task['start'])->format('d M') }} - {{ \Carbon\Carbon::parse($task['end'])->format('d M') }}) - {{ implode(', ', $task['employees']) }}"
                             onclick="window.location.href='{{ \App\Filament\Resources\TaskResource::getUrl('edit', ['record' => $task['id']]) }}'"
                         >
                             <div class="font-semibold truncate mb-0.5">{{ $task['title'] }}</div>

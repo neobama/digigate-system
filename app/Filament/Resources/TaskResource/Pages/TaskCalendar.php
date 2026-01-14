@@ -139,17 +139,21 @@ class TaskCalendar extends Page
             }
             
             if ($startDayIndex !== null) {
-                // Calculate span - count days from start to end (within visible range)
+                // Calculate span - count days from start to end (inclusive, within visible range)
                 $span = 1; // Start with 1 for the start day
-                $currentIdx = $startDayIndex + 1; // Start checking from next day
+                $currentIdx = $startDayIndex;
                 
-                // Count how many days from start to end (within visible range)
-                while ($currentIdx < count($days)) {
+                // Count how many days from start to end (inclusive)
+                while ($currentIdx < count($days) - 1) {
+                    $currentIdx++;
+                    // Check if this day is still within task range
                     if ($days[$currentIdx]['date']->gt($taskEnd)) {
                         break;
                     }
-                    $span++;
-                    $currentIdx++;
+                    // If this day is within range, include it
+                    if ($days[$currentIdx]['date']->lte($taskEnd)) {
+                        $span++;
+                    }
                     // Limit to reasonable span
                     if ($span >= 35) break;
                 }
