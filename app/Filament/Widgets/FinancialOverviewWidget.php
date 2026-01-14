@@ -20,9 +20,11 @@ class FinancialOverviewWidget extends BaseWidget
 
         // Pemasukan dari Invoice Paid dan Delivered
         // Include both 'paid' and 'delivered' status (delivered means already paid)
+        // Use paid_date instead of invoice_date for revenue recognition
         $invoiceIncome = Invoice::whereIn('status', ['paid', 'delivered'])
-            ->whereMonth('invoice_date', $month)
-            ->whereYear('invoice_date', $year)
+            ->whereNotNull('paid_date')
+            ->whereMonth('paid_date', $month)
+            ->whereYear('paid_date', $year)
             ->sum('total_amount');
 
         // Pemasukan Manual

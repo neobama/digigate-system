@@ -34,16 +34,18 @@ class FinancialReportExport implements FromCollection, WithHeadings, WithMapping
 
         // Incomes from Invoices
         // Include both 'paid' and 'delivered' status (delivered means already paid)
+        // Use paid_date instead of invoice_date for revenue recognition
         $invoices = Invoice::whereIn('status', ['paid', 'delivered'])
-            ->whereMonth('invoice_date', $this->month)
-            ->whereYear('invoice_date', $this->year)
+            ->whereNotNull('paid_date')
+            ->whereMonth('paid_date', $this->month)
+            ->whereYear('paid_date', $this->year)
             ->get();
 
         foreach ($invoices as $invoice) {
             $data->push([
                 'type' => 'Pemasukan',
                 'category' => 'Invoice',
-                'date' => \Carbon\Carbon::parse($invoice->invoice_date),
+                'date' => \Carbon\Carbon::parse($invoice->paid_date),
                 'description' => 'Invoice #' . $invoice->invoice_number . ' - ' . $invoice->client_name,
                 'amount' => $invoice->total_amount,
                 'debit' => $invoice->total_amount,

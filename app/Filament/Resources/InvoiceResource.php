@@ -148,13 +148,20 @@ class InvoiceResource extends Resource
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->hidden(fn (Invoice $record) => $record->status !== 'proforma')
-                    ->action(fn (Invoice $record) => $record->update(['status' => 'paid'])),
+                    ->action(fn (Invoice $record) => $record->update(['status' => 'paid', 'paid_date' => now()])),
                 Tables\Actions\Action::make('markAsDelivered')
                     ->label('Set Delivered')
                     ->icon('heroicon-o-truck')
                     ->color('info')
                     ->hidden(fn (Invoice $record) => $record->status !== 'paid')
-                    ->action(fn (Invoice $record) => $record->update(['status' => 'delivered'])),
+                    ->action(function (Invoice $record) {
+                        // If paid_date is not set, set it now (in case status changed directly)
+                        $updateData = ['status' => 'delivered'];
+                        if (!$record->paid_date) {
+                            $updateData['paid_date'] = now();
+                        }
+                        $record->update($updateData);
+                    }),
                 Tables\Actions\Action::make('generateProformaPdf')
                     ->label('Generate Proforma Invoice')
                     ->icon('heroicon-o-document-arrow-down')
