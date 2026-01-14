@@ -1,4 +1,8 @@
 <x-filament-panels::page>
+    @push('scripts')
+        @vite(['resources/js/app.js'])
+    @endpush
+
     <div class="space-y-6">
         <!-- Calendar Header -->
         <div class="flex items-center justify-between">
@@ -36,96 +40,156 @@
             </a>
         </div>
 
-        <!-- Calendar Grid -->
-        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-lg">
-            <div class="grid grid-cols-7 relative">
-                <!-- Day Headers -->
-                @foreach(['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'] as $day)
-                    <div class="bg-gray-50 dark:bg-gray-900 p-4 text-center text-sm font-bold text-gray-700 dark:text-gray-300 border-b-2 border-gray-200 dark:border-gray-700">
-                        {{ $day }}
-                    </div>
-                @endforeach
-
-                <!-- Calendar Days Container -->
-                @php
-                    $days = $this->getCalendarDays();
-                    $taskBars = $this->getTaskBars();
-                    $maxRows = $this->getMaxRows();
-                    $minHeight = max(180, 60 + ($maxRows * 44)); // Base height + row height
-                @endphp
-
-                @foreach($days as $index => $day)
-                    <div class="bg-white dark:bg-gray-800 p-3 border-r border-b border-gray-200 dark:border-gray-700 relative {{ !$day['isCurrentMonth'] ? 'bg-gray-50 dark:bg-gray-900' : '' }}" style="min-height: {{ $minHeight }}px;">
-                        <div class="text-base font-semibold mb-2 {{ !$day['isCurrentMonth'] ? 'text-gray-400 dark:text-gray-600' : ($day['isToday'] ? 'text-white bg-primary-600 dark:bg-primary-500 rounded-full w-8 h-8 flex items-center justify-center' : 'text-gray-900 dark:text-gray-100') }}">
-                            {{ $day['day'] }}
-                        </div>
-                    </div>
-                @endforeach
-                
-                <!-- Task Bars Overlay -->
-                <div class="absolute inset-0 pointer-events-none" style="margin-top: 3.5rem; padding: 0.75rem;">
-                    <div class="grid grid-cols-7 h-full relative">
-                        @foreach($taskBars as $taskBar)
-                            @php
-                                $task = $taskBar['task'];
-                                $startIndex = $taskBar['startIndex'];
-                                $span = $taskBar['span'];
-                                $row = $taskBar['row'];
-                                
-                                // Use more visible colors with better contrast
-                                $statusColors = [
-                                    'pending' => 'bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 border-amber-400 dark:border-amber-600',
-                                    'in_progress' => 'bg-primary-200 dark:bg-primary-800 text-primary-900 dark:text-primary-100 border-primary-400 dark:border-primary-600',
-                                    'completed' => 'bg-green-200 dark:bg-green-800 text-green-900 dark:text-green-100 border-green-400 dark:border-green-600',
-                                    'cancelled' => 'bg-red-200 dark:bg-red-800 text-red-900 dark:text-red-100 border-red-400 dark:border-red-600',
-                                ];
-                                $color = $statusColors[$task['status']] ?? $statusColors['pending'];
-                                
-                                // Calculate position more accurately
-                                $col = $startIndex % 7;
-                                $cellWidth = 100 / 7; // Percentage per cell (14.2857%)
-                                $leftPercent = $col * $cellWidth;
-                                $widthPercent = $span * $cellWidth;
-                                $topOffset = $row * 2.75; // Row spacing in rem (44px per row)
-                            @endphp
-                            
-                            <div 
-                                class="absolute text-xs p-2.5 rounded-lg cursor-pointer hover:opacity-90 transition-all border-2 {{ $color }} pointer-events-auto shadow-sm font-medium"
-                                style="left: calc({{ $leftPercent }}% + 0.75rem); width: calc({{ $widthPercent }}% - 1.5rem); top: {{ $topOffset }}rem; z-index: {{ 10 + $row }};"
-                                title="{{ $task['title'] }} - {{ implode(', ', $task['employees']) }}"
-                                onclick="window.location.href='{{ \App\Filament\Resources\TaskResource::getUrl('edit', ['record' => $task['id']]) }}'"
-                            >
-                                <div class="font-semibold truncate mb-0.5">{{ $task['title'] }}</div>
-                                @if(!empty($task['employees']))
-                                    <div class="text-[10px] opacity-90 dark:opacity-80 mt-0.5 truncate">
-                                        {{ implode(', ', array_slice($task['employees'], 0, 2)) }}{{ count($task['employees']) > 2 ? '...' : '' }}
-                                    </div>
-                                @endif
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
+        <!-- FullCalendar Container -->
+        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-lg p-4">
+            <div 
+                id="task-calendar" 
+                data-events="{{ json_encode($this->getFullCalendarEvents()) }}"
+                wire:ignore
+            ></div>
         </div>
 
         <!-- Legend -->
         <div class="flex items-center gap-6 text-sm pt-4 border-t-2 border-gray-200 dark:border-gray-700">
             <div class="flex items-center gap-2.5">
-                <div class="w-5 h-5 bg-amber-200 dark:bg-amber-800 border-2 border-amber-400 dark:border-amber-600 rounded"></div>
+                <div class="w-5 h-5 rounded border-2" style="background-color: #fde68a; border-color: #fbbf24;"></div>
                 <span class="text-gray-700 dark:text-gray-300 font-medium">Pending</span>
             </div>
             <div class="flex items-center gap-2.5">
-                <div class="w-5 h-5 bg-primary-200 dark:bg-primary-800 border-2 border-primary-400 dark:border-primary-600 rounded"></div>
+                <div class="w-5 h-5 rounded border-2" style="background-color: #fbbf24; border-color: #f59e0b;"></div>
                 <span class="text-gray-700 dark:text-gray-300 font-medium">In Progress</span>
             </div>
             <div class="flex items-center gap-2.5">
-                <div class="w-5 h-5 bg-green-200 dark:bg-green-800 border-2 border-green-400 dark:border-green-600 rounded"></div>
+                <div class="w-5 h-5 rounded border-2" style="background-color: #86efac; border-color: #4ade80;"></div>
                 <span class="text-gray-700 dark:text-gray-300 font-medium">Completed</span>
             </div>
             <div class="flex items-center gap-2.5">
-                <div class="w-5 h-5 bg-red-200 dark:bg-red-800 border-2 border-red-400 dark:border-red-600 rounded"></div>
+                <div class="w-5 h-5 rounded border-2" style="background-color: #fca5a5; border-color: #f87171;"></div>
                 <span class="text-gray-700 dark:text-gray-300 font-medium">Cancelled</span>
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Update calendar when Livewire updates
+            if (window.Livewire) {
+                Livewire.hook('morph.updated', () => {
+                    setTimeout(() => {
+                        const calendarEl = document.getElementById('task-calendar');
+                        if (calendarEl && window.taskCalendar) {
+                            const events = JSON.parse(calendarEl.dataset.events || '[]');
+                            window.taskCalendar.removeAllEvents();
+                            window.taskCalendar.addEventSource(events);
+                            // Navigate to current month
+                            const currentDate = new Date({{ $this->currentYear }}, {{ $this->currentMonth }} - 1, 1);
+                            window.taskCalendar.gotoDate(currentDate);
+                        }
+                    }, 100);
+                });
+            }
+        });
+    </script>
+
+    <style>
+        /* FullCalendar Custom Styles */
+        .fc {
+            font-family: inherit;
+        }
+        
+        .fc-toolbar-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: rgb(17, 24, 39);
+        }
+        
+        .dark .fc-toolbar-title {
+            color: rgb(243, 244, 246);
+        }
+        
+        .fc-button {
+            background-color: white;
+            border-color: rgb(209, 213, 219);
+            color: rgb(55, 65, 81);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+        }
+        
+        .dark .fc-button {
+            background-color: rgb(31, 41, 55);
+            border-color: rgb(55, 65, 75);
+            color: rgb(209, 213, 219);
+        }
+        
+        .fc-button:hover {
+            background-color: rgb(249, 250, 251);
+        }
+        
+        .dark .fc-button:hover {
+            background-color: rgb(55, 65, 75);
+        }
+        
+        .fc-button-primary:not(:disabled).fc-button-active {
+            background-color: rgb(217, 119, 6);
+            border-color: rgb(217, 119, 6);
+            color: white;
+        }
+        
+        .fc-daygrid-day {
+            background-color: white;
+            min-height: 120px;
+        }
+        
+        .dark .fc-daygrid-day {
+            background-color: rgb(31, 41, 55);
+        }
+        
+        .fc-daygrid-day-number {
+            color: rgb(17, 24, 39);
+            font-weight: 600;
+        }
+        
+        .dark .fc-daygrid-day-number {
+            color: rgb(243, 244, 246);
+        }
+        
+        .fc-day-today {
+            background-color: rgb(254, 252, 232) !important;
+        }
+        
+        .dark .fc-day-today {
+            background-color: rgb(41, 37, 36) !important;
+        }
+        
+        .fc-col-header-cell {
+            background-color: rgb(249, 250, 251);
+            border-color: rgb(229, 231, 235);
+        }
+        
+        .dark .fc-col-header-cell {
+            background-color: rgb(17, 24, 27);
+            border-color: rgb(55, 65, 75);
+        }
+        
+        .fc-col-header-cell-cushion {
+            color: rgb(55, 65, 81);
+            font-weight: 700;
+        }
+        
+        .dark .fc-col-header-cell-cushion {
+            color: rgb(209, 213, 219);
+        }
+        
+        .fc-event {
+            border-radius: 0.5rem;
+            border-width: 2px;
+            font-weight: 600;
+            padding: 0.5rem;
+            cursor: pointer;
+        }
+        
+        .fc-event:hover {
+            opacity: 0.9;
+        }
+    </style>
 </x-filament-panels::page>

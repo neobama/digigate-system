@@ -206,4 +206,19 @@ class TaskCalendar extends Page
         }
         return max(array_column($taskBars, 'row')) + 1;
     }
+
+    public function getFullCalendarEvents(): array
+    {
+        return array_map(function ($task) {
+            return [
+                'id' => $task['id'],
+                'title' => $task['title'],
+                'start' => $task['start'],
+                'end' => Carbon::parse($task['end'])->addDay()->format('Y-m-d'), // FullCalendar end is exclusive
+                'status' => $task['status'],
+                'employees' => $task['employees'],
+                'editUrl' => \App\Filament\Resources\TaskResource::getUrl('edit', ['record' => $task['id']]),
+            ];
+        }, $this->tasks);
+    }
 }
