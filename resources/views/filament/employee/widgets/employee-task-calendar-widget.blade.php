@@ -77,12 +77,12 @@
                     <div class="absolute inset-0 pointer-events-none" style="margin-top: 2.5rem;">
                         @foreach($days as $index => $day)
                             @php
-                                $weekRow = intval($index / 7); // Week row (0-based)
-                                $tasksStartingToday = array_filter($tasksByDay[$index] ?? [], function($t) {
-                                    return $t['isStartDay'];
+                                // Render segments that start at this day index
+                                $taskSegments = array_filter($tasksByDay[$index] ?? [], function($t) use ($index) {
+                                    return ($t['startIndex'] ?? $index) === $index;
                                 });
                             @endphp
-                            @foreach($tasksStartingToday as $taskInfo)
+                            @foreach($taskSegments as $taskInfo)
                                 @php
                                     $task = $taskInfo['task'];
                                     $span = $taskInfo['span'];
