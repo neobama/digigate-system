@@ -85,4 +85,59 @@ class TaskCalendar extends Page
         $this->currentYear = now()->year;
         $this->loadTasks();
     }
+
+    public function getCalendarDays(): array
+    {
+        $startOfMonth = Carbon::create($this->currentYear, $this->currentMonth, 1);
+        $endOfMonth = $startOfMonth->copy()->endOfMonth();
+        $startDate = $startOfMonth->copy()->startOfWeek(Carbon::MONDAY);
+        $endDate = $endOfMonth->copy()->endOfWeek(Carbon::SUNDAY);
+        
+        $days = [];
+        $currentDate = $startDate->copy();
+        
+        while ($currentDate <= $endDate) {
+            $days[] = [
+                'date' => $currentDate->copy(),
+                'day' => $currentDate->day,
+                'isCurrentMonth' => $currentDate->month == $this->currentMonth,
+                'isToday' => $currentDate->isToday(),
+            ];
+            $currentDate->addDay();
+        }
+        
+        return $days;
+    }
+
+    public function getTasksForDay($date): array
+    {
+        $dateStr = $date->format('Y-m-d');
+        $tasksForDay = [];
+        
+        foreach ($this->tasks as $task) {
+            $taskStart = Carbon::parse($task['start']);
+            $taskEnd = Carbon::parse($task['end']);
+            
+            if ($date->between($taskStart, $taskEnd)) {
+                // Calculate if this is the start day
+                $isStart = $date->format('Y-m-d') == $task['start'];
+                
+                // Calculate span
+                $startDate = Carbon::parse($task['start']);
+                $endDate = Carbon::parse($task['end']);
+                
+                // Calculate how many days from start to end of week
+                $weekEnd = $date->copy()->endOfWeek(Carbon::SUNDAY);
+                $maxSpan = $date->diffInDays(min($endDate, $weekEnd)) + 1;
+                
+                $tasksForDay[] = [
+                    'task' => $task,
+                    'isStart' => $isStart,
+                    'span' => $maxSpan,
+                ];
+            }
+        }
+        
+        return $tasksForDay;
+    }
 }
