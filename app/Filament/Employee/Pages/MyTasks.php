@@ -23,6 +23,9 @@ class MyTasks extends Page
     public $proofImages = [];
     public $notes = '';
     
+    // For single file upload (S3 doesn't support multiple)
+    public $proofImage;
+    
     // Form untuk create task
     public $newTaskTitle = '';
     public $newTaskDescription = '';
@@ -110,7 +113,26 @@ class MyTasks extends Page
         $this->showUploadModal = false;
         $this->selectedTask = null;
         $this->proofImages = [];
+        $this->proofImage = null;
         $this->notes = '';
+    }
+    
+    public function updateStatus($status): void
+    {
+        if (!$this->selectedTask) {
+            return;
+        }
+        
+        $this->selectedTask->update([
+            'status' => $status,
+        ]);
+        
+        $this->loadTasks();
+        
+        \Filament\Notifications\Notification::make()
+            ->title('Status pekerjaan berhasil diubah')
+            ->success()
+            ->send();
     }
 
     public function uploadProof(): void
@@ -119,27 +141,46 @@ class MyTasks extends Page
             return;
         }
 
+        // Validate that proof image is provided
+        if (!$this->proofImage) {
+            \Filament\Notifications\Notification::make()
+                ->title('Silakan pilih foto bukti terlebih dahulu')
+                ->warning()
+                ->send();
+            return;
+        }
+
         $proofImages = $this->selectedTask->proof_images ?? [];
         $disk = config('filesystems.default') === 's3' ? 's3_public' : 'public';
 
-        // Upload new images
-        foreach ($this->proofImages as $image) {
-            $path = $image->store('tasks/proofs', $disk);
-            $proofImages[] = $path;
+        // Upload new image (S3 doesn't support multiple, so we upload one at a time)
+        $path = $this->proofImage->store('tasks/proofs', $disk);
+        $proofImages[] = $path;
+
+        // Determine new status based on current status
+        $newStatus = $this->selectedTask->status;
+        if ($this->selectedTask->status === 'pending') {
+            // If pending and uploading proof, change to in_progress
+            $newStatus = 'in_progress';
+        } elseif ($this->selectedTask->status === 'in_progress') {
+            // If already in_progress and uploading proof, change to completed
+            $newStatus = 'completed';
         }
+        // If already completed or cancelled, keep the status
 
         // Update task
         $this->selectedTask->update([
             'proof_images' => $proofImages,
             'notes' => $this->notes,
-            'status' => $this->selectedTask->status === 'pending' ? 'in_progress' : $this->selectedTask->status,
+            'status' => $newStatus,
         ]);
 
         $this->loadTasks();
         $this->closeModal();
         
+        $statusMessage = $newStatus === 'completed' ? 'Status berubah ke Completed' : 'Status berubah ke In Progress';
         \Filament\Notifications\Notification::make()
-            ->title('Bukti pekerjaan berhasil diupload')
+            ->title('Bukti pekerjaan berhasil diupload. ' . $statusMessage)
             ->success()
             ->send();
     }

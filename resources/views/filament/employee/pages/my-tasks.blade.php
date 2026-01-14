@@ -210,20 +210,34 @@
                                 </span>
                             </div>
                         </div>
+                        
+                        <!-- Status Update Buttons -->
+                        @if($selectedTask->status === 'pending')
+                            <div class="mb-4">
+                                <button 
+                                    type="button"
+                                    wire:click="updateStatus('in_progress')"
+                                    class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 dark:bg-blue-500 text-base font-medium text-white hover:bg-blue-700 dark:hover:bg-blue-600 sm:text-sm"
+                                >
+                                    Mulai Pekerjaan (Ubah ke In Progress)
+                                </button>
+                            </div>
+                        @endif
+                        
                         <form wire:submit.prevent="uploadProof">
                             <div class="space-y-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Upload Foto Bukti Pekerjaan
+                                        Upload Foto Bukti Pekerjaan (Satu per satu)
                                     </label>
                                     <input 
                                         type="file" 
-                                        wire:model="proofImages" 
-                                        multiple 
+                                        wire:model="proofImage" 
                                         accept="image/*"
                                         class="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-primary-900 dark:file:text-primary-300"
                                     >
-                                    @error('proofImages') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    @error('proofImage') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Upload satu foto per kali. Status akan otomatis berubah ke Completed setelah upload bukti.</p>
                                 </div>
 
                                 @if(!empty($selectedTask->proof_images))
