@@ -92,7 +92,7 @@ class TaskCalendar extends Page
         
         while ($currentDate <= $endDate) {
             $days[] = [
-                'date' => $currentDate->copy(),
+                'date' => $currentDate->copy()->startOfDay(),
                 'day' => $currentDate->day,
                 'isCurrentMonth' => $currentDate->month == $this->currentMonth,
                 'isToday' => $currentDate->isToday(),
@@ -115,23 +115,28 @@ class TaskCalendar extends Page
                 continue;
             }
             
-            $taskStart = Carbon::parse($task['start']);
-            $taskEnd = Carbon::parse($task['end']);
+            $taskStart = Carbon::parse($task['start'])->startOfDay();
+            $taskEnd = Carbon::parse($task['end'])->startOfDay();
             
-            // Find start day index - only if task starts within visible calendar range
+            // Find start day index - match exact date using format comparison for accuracy
             $startDayIndex = null;
+            $taskStartStr = $taskStart->format('Y-m-d');
+            
             foreach ($days as $idx => $day) {
-                if ($day['date']->format('Y-m-d') == $taskStart->format('Y-m-d')) {
+                $dayDateStr = $day['date']->format('Y-m-d');
+                if ($dayDateStr === $taskStartStr) {
                     $startDayIndex = $idx;
                     break;
                 }
             }
             
-            // If task doesn't start in visible range, find first visible day
+            // If task doesn't start in visible range, find first visible day that overlaps
             if ($startDayIndex === null) {
+                $taskEndStr = $taskEnd->format('Y-m-d');
                 foreach ($days as $idx => $day) {
-                    if ($day['date']->format('Y-m-d') >= $taskStart->format('Y-m-d') && 
-                        $day['date']->format('Y-m-d') <= $taskEnd->format('Y-m-d')) {
+                    $dayDateStr = $day['date']->format('Y-m-d');
+                    // Check if this day is within task range
+                    if ($dayDateStr >= $taskStartStr && $dayDateStr <= $taskEndStr) {
                         $startDayIndex = $idx;
                         break;
                     }
@@ -144,14 +149,17 @@ class TaskCalendar extends Page
                 $currentIdx = $startDayIndex;
                 
                 // Count how many days from start to end (inclusive)
+                $taskEndStr = $taskEnd->format('Y-m-d');
                 while ($currentIdx < count($days) - 1) {
                     $currentIdx++;
+                    $dayDateStr = $days[$currentIdx]['date']->format('Y-m-d');
+                    
                     // Check if this day is still within task range
-                    if ($days[$currentIdx]['date']->gt($taskEnd)) {
+                    if ($dayDateStr > $taskEndStr) {
                         break;
                     }
                     // If this day is within range, include it
-                    if ($days[$currentIdx]['date']->lte($taskEnd)) {
+                    if ($dayDateStr <= $taskEndStr) {
                         $span++;
                     }
                     // Limit to reasonable span
