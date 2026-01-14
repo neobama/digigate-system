@@ -154,7 +154,7 @@
                                     data-dark-style="{{ $darkStyle }}"
                                     data-task-status="{{ $task['status'] }}"
                                     title="{{ $task['title'] }} ({{ $task['start'] }} - {{ $task['end'] }})"
-                                    onclick="window.location.href='{{ \App\Filament\Resources\TaskResource::getUrl('edit', ['record' => $task['id']]) }}'"
+                                    onclick="window.location.href='{{ \App\Filament\Employee\Pages\MyTasks::getUrl() }}'"
                                 >
                                     <div class="font-semibold truncate mb-0.5">{{ $task['title'] }}</div>
                                 </div>
