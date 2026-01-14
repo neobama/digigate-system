@@ -4,24 +4,18 @@ namespace App\Filament\Resources\TaskResource\Pages;
 
 use App\Filament\Resources\TaskResource;
 use App\Models\Task;
-use Filament\Pages\Page;
+use Filament\Resources\Pages\Page;
 use Illuminate\Support\Carbon;
 
 class TaskCalendar extends Page
 {
+    protected static string $resource = TaskResource::class;
+    
     protected static string $view = 'filament.resources.task-resource.pages.task-calendar';
+    
     protected static ?string $title = 'Kalender Pekerjaan';
+    
     protected static ?string $navigationLabel = 'Kalender';
-    
-    public static function getUrl(array $parameters = [], bool $isAbsolute = true, ?string $panel = null, ?\Illuminate\Database\Eloquent\Model $tenant = null): string
-    {
-        return static::getResource()::getUrl('calendar', $parameters, $isAbsolute, $panel, $tenant);
-    }
-    
-    public static function getResource(): string
-    {
-        return TaskResource::class;
-    }
 
     public $currentMonth;
     public $currentYear;
