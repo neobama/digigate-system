@@ -105,7 +105,7 @@
                                 {{ $style }}
                             "
                             data-dark-style="{{ $darkStyle }}"
-                            title="{{ $task['title'] }} ({{ \Carbon\Carbon::parse($task['start'])->format('d M') }} - {{ \Carbon\Carbon::parse($task['end'])->format('d M') }}) - {{ implode(', ', $task['employees']) }}"
+                            title="{{ $task['title'] }} ({{ $task['start'] }} - {{ $task['end'] }}) | StartIdx: {{ $startIndex }}, Col: {{ $col }}, Span: {{ $span }} | {{ implode(', ', $task['employees']) }}"
                             onclick="window.location.href='{{ \App\Filament\Resources\TaskResource::getUrl('edit', ['record' => $task['id']]) }}'"
                         >
                             <div class="font-semibold truncate mb-0.5">{{ $task['title'] }}</div>
