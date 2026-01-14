@@ -11,6 +11,7 @@ class EmployeeTaskCalendarWidget extends Widget
 {
     protected static string $view = 'filament.employee.widgets.employee-task-calendar-widget';
     protected static ?int $sort = 2;
+    protected int | string | array $columnSpan = 'full';
 
     public $currentMonth;
     public $currentYear;
