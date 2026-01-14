@@ -26,7 +26,6 @@ class MyTasks extends Page implements HasForms
     public $showUploadModal = false;
     public $showCreateModal = false;
     public $notes = '';
-    public $proofImages = []; // For Filament FileUpload component
     
     // Form untuk create task
     public $newTaskTitle = '';
@@ -121,7 +120,6 @@ class MyTasks extends Page implements HasForms
     {
         $this->showUploadModal = false;
         $this->selectedTask = null;
-        $this->proofImages = [];
         $this->notes = '';
         $this->form->fill();
     }
@@ -140,12 +138,14 @@ class MyTasks extends Page implements HasForms
                 ->maxFiles(10)
                 ->acceptedFileTypes(['image/*'])
                 ->required()
-                ->columnSpanFull(),
+                ->columnSpanFull()
+                ->dehydrated(true),
             Forms\Components\Textarea::make('notes')
                 ->label('Catatan (Opsional)')
                 ->rows(3)
                 ->placeholder('Tambahkan catatan tentang pekerjaan ini...')
-                ->columnSpanFull(),
+                ->columnSpanFull()
+                ->dehydrated(true),
         ];
     }
     
@@ -173,8 +173,14 @@ class MyTasks extends Page implements HasForms
             return;
         }
 
-        // Get form data
-        $data = $this->form->getState();
+        try {
+            // Validate form first
+            $data = $this->form->getState();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Form validation failed, Filament will show errors automatically
+            return;
+        }
+
         $proofImages = $data['proof_images'] ?? [];
         $notes = $data['notes'] ?? '';
 
