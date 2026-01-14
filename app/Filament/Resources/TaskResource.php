@@ -43,7 +43,7 @@ class TaskResource extends Resource
                         ->label('Tanggal Selesai')
                         ->required()
                         ->default(now())
-                        ->after('start_date'),
+                        ->afterOrEqual('start_date'),
                     Forms\Components\Select::make('employees')
                         ->label('Assign ke Karyawan')
                         ->multiple()
