@@ -107,12 +107,18 @@ class TaskCalendarWidget extends Widget
         
         $days = $this->getCalendarDays();
         $taskBars = [];
+        $processedTaskIds = []; // Track processed tasks to avoid duplicates
         
         foreach ($this->tasks as $task) {
+            // Skip if this task ID was already processed
+            if (in_array($task['id'], $processedTaskIds)) {
+                continue;
+            }
+            
             $taskStart = Carbon::parse($task['start']);
             $taskEnd = Carbon::parse($task['end']);
             
-            // Find start day index
+            // Find start day index - only if task starts within visible calendar range
             $startDayIndex = null;
             foreach ($days as $idx => $day) {
                 if ($day['date']->format('Y-m-d') == $taskStart->format('Y-m-d')) {
@@ -121,30 +127,36 @@ class TaskCalendarWidget extends Widget
                 }
             }
             
+            // If task doesn't start in visible range, find first visible day
+            if ($startDayIndex === null) {
+                foreach ($days as $idx => $day) {
+                    if ($day['date']->format('Y-m-d') >= $taskStart->format('Y-m-d') && 
+                        $day['date']->format('Y-m-d') <= $taskEnd->format('Y-m-d')) {
+                        $startDayIndex = $idx;
+                        break;
+                    }
+                }
+            }
+            
             if ($startDayIndex !== null) {
                 // Calculate span - can span across weeks
-                $span = 1;
+                $span = 0;
                 $currentIdx = $startDayIndex;
-                $startWeek = intval($startDayIndex / 7);
                 
-                while ($currentIdx < count($days) && $days[$currentIdx]['date']->lte($taskEnd)) {
-                    $currentWeek = intval($currentIdx / 7);
-                    // Don't span beyond the task end date
+                // Count how many days from start to end (within visible range)
+                while ($currentIdx < count($days)) {
                     if ($days[$currentIdx]['date']->gt($taskEnd)) {
                         break;
                     }
-                    // Allow spanning across weeks
-                    if ($currentWeek > $startWeek && ($currentIdx % 7) == 0) {
-                        // New week, but we can continue
-                        $span++;
-                        $currentIdx++;
-                        $startWeek = $currentWeek;
-                    } else {
-                        $span++;
-                        $currentIdx++;
-                    }
-                    // Limit to reasonable span (e.g., 35 days max)
+                    $span++;
+                    $currentIdx++;
+                    // Limit to reasonable span
                     if ($span >= 35) break;
+                }
+                
+                // Ensure minimum span of 1
+                if ($span < 1) {
+                    $span = 1;
                 }
                 
                 // Calculate row position (to avoid overlaps)
@@ -182,6 +194,9 @@ class TaskCalendarWidget extends Widget
                     'span' => $span,
                     'row' => $row,
                 ];
+                
+                // Mark this task as processed
+                $processedTaskIds[] = $task['id'];
             }
         }
         
