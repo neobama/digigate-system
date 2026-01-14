@@ -98,123 +98,147 @@ class TaskCalendarWidget extends Widget
         return $days;
     }
 
-    public function getTaskBars(): array
+    public function getTasksByDay(): array
     {
-        $startOfMonth = Carbon::create($this->currentYear, $this->currentMonth, 1);
-        $endOfMonth = $startOfMonth->copy()->endOfMonth();
-        $startDate = $startOfMonth->copy()->startOfWeek(Carbon::MONDAY);
-        $endDate = $endOfMonth->copy()->endOfWeek(Carbon::SUNDAY);
-        
         $days = $this->getCalendarDays();
-        $taskBars = [];
-        $processedTaskIds = []; // Track processed tasks to avoid duplicates
+        $tasksByDay = [];
         
+        // Initialize empty arrays for each day
+        foreach ($days as $idx => $day) {
+            $tasksByDay[$idx] = [];
+        }
+        
+        // First pass: collect all tasks with their positions
+        $taskBars = [];
         foreach ($this->tasks as $task) {
-            // Skip if this task ID was already processed
-            if (in_array($task['id'], $processedTaskIds)) {
-                continue;
-            }
+            $taskStartStr = $task['start'];
+            $taskEndStr = $task['end'];
             
-            $taskStart = Carbon::parse($task['start']);
-            $taskEnd = Carbon::parse($task['end']);
-            
-            // Find start day index - only if task starts within visible calendar range
+            // Find the start day index
             $startDayIndex = null;
             foreach ($days as $idx => $day) {
-                if ($day['date']->format('Y-m-d') == $taskStart->format('Y-m-d')) {
+                $dayDateStr = $day['date']->format('Y-m-d');
+                if ($dayDateStr === $taskStartStr) {
                     $startDayIndex = $idx;
                     break;
                 }
             }
             
-            // If task doesn't start in visible range, find first visible day
+            // If task doesn't start in visible range, find first visible day that overlaps
             if ($startDayIndex === null) {
                 foreach ($days as $idx => $day) {
-                    if ($day['date']->format('Y-m-d') >= $taskStart->format('Y-m-d') && 
-                        $day['date']->format('Y-m-d') <= $taskEnd->format('Y-m-d')) {
+                    $dayDateStr = $day['date']->format('Y-m-d');
+                    if ($dayDateStr >= $taskStartStr && $dayDateStr <= $taskEndStr) {
                         $startDayIndex = $idx;
                         break;
                     }
                 }
             }
             
+            // Only add task if it's in visible range
             if ($startDayIndex !== null) {
-                // Calculate span - count days from start to end (within visible range)
-                $span = 1; // Start with 1 for the start day
-                $currentIdx = $startDayIndex + 1; // Start checking from next day
-                
-                // Count how many days from start to end (within visible range)
-                while ($currentIdx < count($days)) {
-                    if ($days[$currentIdx]['date']->gt($taskEnd)) {
+                // Calculate span from start to end
+                $span = 1;
+                $currentIdx = $startDayIndex;
+                while ($currentIdx < count($days) - 1) {
+                    $currentIdx++;
+                    $nextDayStr = $days[$currentIdx]['date']->format('Y-m-d');
+                    if ($nextDayStr > $taskEndStr) {
                         break;
                     }
-                    $span++;
-                    $currentIdx++;
-                    // Limit to reasonable span
+                    if ($nextDayStr <= $taskEndStr) {
+                        $span++;
+                    }
                     if ($span >= 35) break;
                 }
-                
-                // Calculate row position - based on calendar week row, then add offset for overlaps
-                $baseRow = intval($startDayIndex / 7); // Which week row (0-based) in the calendar
-                
-                // Check for overlaps in the same week row and find available row offset
-                $rowOffset = 0;
-                $placed = false;
-                while (!$placed && $rowOffset < 10) {
-                    $row = $baseRow + $rowOffset;
-                    $canPlace = true;
-                    
-                    for ($i = 0; $i < $span && ($startDayIndex + $i) < count($days); $i++) {
-                        $checkIdx = $startDayIndex + $i;
-                        // Check if this position is already taken by another task in the same row
-                        foreach ($taskBars as $existingBar) {
-                            $existingBaseRow = intval($existingBar['startIndex'] / 7);
-                            $existingRowOffset = $existingBar['row'] - $existingBaseRow;
-                            $existingRow = $existingBaseRow + $existingRowOffset;
-                            
-                            if ($existingRow == $row) {
-                                $existingStart = $existingBar['startIndex'];
-                                $existingSpan = $existingBar['span'];
-                                $existingEnd = $existingStart + $existingSpan - 1;
-                                
-                                if (($checkIdx >= $existingStart && $checkIdx <= $existingEnd) ||
-                                    ($startDayIndex <= $existingEnd && ($startDayIndex + $span - 1) >= $existingStart)) {
-                                    $canPlace = false;
-                                    break 2;
-                                }
-                            }
-                        }
-                    }
-                    if ($canPlace) {
-                        $placed = true;
-                    } else {
-                        $rowOffset++;
-                    }
-                }
-                
-                $row = $baseRow + $rowOffset;
                 
                 $taskBars[] = [
                     'task' => $task,
                     'startIndex' => $startDayIndex,
                     'span' => $span,
-                    'row' => $row,
                 ];
-                
-                // Mark this task as processed
-                $processedTaskIds[] = $task['id'];
             }
         }
         
-        return $taskBars;
+        // Second pass: calculate row positions to avoid overlaps
+        // Sort tasks by start index to process them in order
+        usort($taskBars, function($a, $b) {
+            return $a['startIndex'] <=> $b['startIndex'];
+        });
+        
+        // Track all placed tasks with their ranges for overlap detection
+        $placedTasks = [];
+        
+        foreach ($taskBars as $taskBar) {
+            $startIndex = $taskBar['startIndex'];
+            $span = $taskBar['span'];
+            $task = $taskBar['task'];
+            $endIndex = min($startIndex + $span - 1, count($days) - 1);
+            
+            // Find available row for this task
+            $row = 0;
+            $placed = false;
+            while (!$placed && $row < 20) {
+                $canPlace = true;
+                
+                // Check if this row position conflicts with any existing task in the same row
+                // We need to check if the date ranges overlap
+                foreach ($placedTasks as $placedTask) {
+                    if ($placedTask['row'] == $row) {
+                        $existingStart = $placedTask['startIndex'];
+                        $existingEnd = $placedTask['endIndex'];
+                        
+                        // Check if date ranges overlap
+                        // Two ranges overlap if: !(end1 < start2 || start1 > end2)
+                        if (!($endIndex < $existingStart || $startIndex > $existingEnd)) {
+                            $canPlace = false;
+                            break;
+                        }
+                    }
+                }
+                
+                if ($canPlace) {
+                    $placed = true;
+                } else {
+                    $row++;
+                }
+            }
+            
+            // Add task to start day with row information
+            $tasksByDay[$startIndex][] = [
+                'task' => $task,
+                'isStartDay' => true,
+                'span' => $span,
+                'row' => $row,
+                'startIndex' => $startIndex,
+                'endIndex' => $endIndex,
+            ];
+            
+            // Track this placed task for future overlap checks
+            $placedTasks[] = [
+                'row' => $row,
+                'startIndex' => $startIndex,
+                'endIndex' => $endIndex,
+                'span' => $span,
+            ];
+        }
+        
+        return $tasksByDay;
     }
 
-    public function getMaxRows(): int
+    public function getMaxTasksPerDay(): int
     {
-        $taskBars = $this->getTaskBars();
-        if (empty($taskBars)) {
-            return 0;
+        $tasksByDay = $this->getTasksByDay();
+        $maxRow = 0;
+        
+        foreach ($tasksByDay as $dayTasks) {
+            foreach ($dayTasks as $taskInfo) {
+                if (isset($taskInfo['row']) && $taskInfo['row'] > $maxRow) {
+                    $maxRow = $taskInfo['row'];
+                }
+            }
         }
-        return max(array_column($taskBars, 'row')) + 1;
+        
+        return $maxRow + 1; // +1 because row is 0-based
     }
 }

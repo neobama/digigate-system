@@ -12,14 +12,14 @@
             </div>
         </x-slot>
 
-        <div class="space-y-4">
+        <div class="space-y-3">
             <!-- Calendar Header -->
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <button 
                         type="button"
                         wire:click="previousMonth"
-                        class="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        class="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
                     >
                         ←
                     </button>
@@ -29,14 +29,14 @@
                     <button 
                         type="button"
                         wire:click="nextMonth"
-                        class="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        class="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
                     >
                         →
                     </button>
                     <button 
                         type="button"
                         wire:click="goToToday"
-                        class="px-3 py-1.5 text-sm font-medium text-white bg-primary-600 dark:bg-primary-500 border border-transparent rounded-md hover:bg-primary-700 dark:hover:bg-primary-600 transition-colors ml-2"
+                        class="px-3 py-1.5 text-sm font-medium text-white bg-primary-600 dark:bg-primary-500 border border-transparent rounded-lg hover:bg-primary-700 dark:hover:bg-primary-600 transition-colors shadow-sm ml-2"
                     >
                         Hari Ini
                     </button>
@@ -44,11 +44,11 @@
             </div>
 
             <!-- Calendar Grid -->
-            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm relative">
-                <div class="grid grid-cols-7">
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-lg relative">
+                <div class="grid grid-cols-7" style="grid-template-columns: repeat(7, minmax(0, 1fr));">
                     <!-- Day Headers -->
                     @foreach(['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'] as $day)
-                        <div class="bg-gray-50 dark:bg-gray-900 p-2 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                        <div class="bg-gray-50 dark:bg-gray-900 p-2 text-center text-xs font-bold text-gray-700 dark:text-gray-300 border-b-2 border-gray-200 dark:border-gray-700">
                             {{ $day }}
                         </div>
                     @endforeach
@@ -56,61 +56,115 @@
                     <!-- Calendar Days Container -->
                     @php
                         $days = $this->getCalendarDays();
-                        $taskBars = $this->getTaskBars();
-                        $maxRows = $this->getMaxRows();
-                        $minHeight = max(140, 50 + ($maxRows * 36)); // Base height + row height
+                        $tasksByDay = $this->getTasksByDay();
+                        $maxTasksPerDay = $this->getMaxTasksPerDay();
+                        // Calculate min height based on max tasks per day - smaller for widget
+                        $minHeight = max(120, 50 + ($maxTasksPerDay * 36)); // Base height + task height in px
                     @endphp
 
                     @foreach($days as $index => $day)
-                        <div class="bg-white dark:bg-gray-800 p-2 border-r border-b border-gray-100 dark:border-gray-700 relative {{ !$day['isCurrentMonth'] ? 'bg-gray-50 dark:bg-gray-900' : '' }}" style="min-height: {{ $minHeight }}px;">
-                            <div class="text-xs font-medium mb-1 {{ !$day['isCurrentMonth'] ? 'text-gray-400 dark:text-gray-600' : ($day['isToday'] ? 'text-white bg-primary-600 dark:bg-primary-500 rounded-full w-6 h-6 flex items-center justify-center text-xs' : 'text-gray-700 dark:text-gray-300') }}">
+                        <div 
+                            class="bg-white dark:bg-gray-800 p-2 border-r border-b border-gray-200 dark:border-gray-700 relative {{ !$day['isCurrentMonth'] ? 'bg-gray-50 dark:bg-gray-900' : '' }}" 
+                            style="min-height: {{ $minHeight }}px;"
+                        >
+                            <div class="text-xs font-semibold mb-1 {{ !$day['isCurrentMonth'] ? 'text-gray-400 dark:text-gray-600' : ($day['isToday'] ? 'text-white bg-primary-600 dark:bg-primary-500 rounded-full w-6 h-6 flex items-center justify-center' : 'text-gray-900 dark:text-gray-100') }}">
                                 {{ $day['day'] }}
                             </div>
                         </div>
                     @endforeach
                     
-                    <!-- Task Bars Overlay -->
-                    <div class="absolute inset-0 pointer-events-none" style="margin-top: 2.5rem; padding: 0.5rem;">
-                        <div class="grid grid-cols-7 h-full relative">
-                            @foreach($taskBars as $taskBar)
+                    <!-- Task Bars Overlay - Absolute positioned at grid level -->
+                    <div class="absolute inset-0 pointer-events-none" style="margin-top: 2.5rem;">
+                        @foreach($days as $index => $day)
+                            @php
+                                $weekRow = intval($index / 7); // Week row (0-based)
+                                $tasksStartingToday = array_filter($tasksByDay[$index] ?? [], function($t) {
+                                    return $t['isStartDay'];
+                                });
+                            @endphp
+                            @foreach($tasksStartingToday as $taskInfo)
                                 @php
-                                    $task = $taskBar['task'];
-                                    $startIndex = $taskBar['startIndex'];
-                                    $span = $taskBar['span'];
-                                    $row = $taskBar['row'];
+                                    $task = $taskInfo['task'];
+                                    $span = $taskInfo['span'];
+                                    $row = $taskInfo['row'] ?? 0;
                                     
-                                    // Use more visible colors with better contrast
+                                    // Color definitions based on status
                                     $statusColors = [
-                                        'pending' => 'bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 border-amber-400 dark:border-amber-600',
-                                        'in_progress' => 'bg-primary-200 dark:bg-primary-800 text-primary-900 dark:text-primary-100 border-primary-400 dark:border-primary-600',
-                                        'completed' => 'bg-green-200 dark:bg-green-800 text-green-900 dark:text-green-100 border-green-400 dark:border-green-600',
-                                        'cancelled' => 'bg-red-200 dark:bg-red-800 text-red-900 dark:text-red-100 border-red-400 dark:border-red-600',
+                                        'pending' => [
+                                            'bg' => '#fde68a',
+                                            'text' => '#78350f',
+                                            'border' => '#fbbf24',
+                                            'dark_bg' => '#92400e',
+                                            'dark_text' => '#fef3c7',
+                                            'dark_border' => '#d97706',
+                                        ],
+                                        'in_progress' => [
+                                            'bg' => '#93c5fd',
+                                            'text' => '#1e3a8a',
+                                            'border' => '#3b82f6',
+                                            'dark_bg' => '#1e40af',
+                                            'dark_text' => '#dbeafe',
+                                            'dark_border' => '#60a5fa',
+                                        ],
+                                        'completed' => [
+                                            'bg' => '#86efac',
+                                            'text' => '#14532d',
+                                            'border' => '#4ade80',
+                                            'dark_bg' => '#166534',
+                                            'dark_text' => '#dcfce7',
+                                            'dark_border' => '#16a34a',
+                                        ],
+                                        'cancelled' => [
+                                            'bg' => '#fca5a5',
+                                            'text' => '#7f1d1d',
+                                            'border' => '#f87171',
+                                            'dark_bg' => '#991b1b',
+                                            'dark_text' => '#fee2e2',
+                                            'dark_border' => '#dc2626',
+                                        ],
                                     ];
-                                    $color = $statusColors[$task['status']] ?? $statusColors['pending'];
                                     
-                                    // Calculate position more accurately
-                                    $col = $startIndex % 7;
-                                    $cellWidth = 100 / 7; // Percentage per cell
-                                    $leftPercent = $col * $cellWidth;
-                                    $widthPercent = $span * $cellWidth;
-                                    $topOffset = $row * 2.25; // Row spacing in rem
+                                    $colors = $statusColors[$task['status']] ?? $statusColors['pending'];
+                                    $style = "background-color: {$colors['bg']}; color: {$colors['text']}; border-color: {$colors['border']};";
+                                    $darkStyle = "background-color: {$colors['dark_bg']}; color: {$colors['dark_text']}; border-color: {$colors['dark_border']};";
+                                    
+                                    // Calculate position based on grid - simple and direct
+                                    $col = $index % 7; // Column (0-6)
+                                    $cellWidthPercent = 100 / 7; // 14.2857% per cell
+                                    $leftPercent = $col * $cellWidthPercent;
+                                    $widthPercent = $span * $cellWidthPercent;
+                                    
+                                    // Calculate top offset: week row * cell height + task row * task height
+                                    // Each cell has minHeight in px, convert to rem (16px = 1rem)
+                                    $cellHeightRem = $minHeight / 16; // Convert px to rem
+                                    $topOffset = ($weekRow * $cellHeightRem) + ($row * 2.25); // Week row + task row (smaller spacing for widget)
                                 @endphp
                                 
                                 <div 
-                                    class="absolute text-xs p-1.5 rounded-md cursor-pointer hover:opacity-90 transition-all border-2 {{ $color }} pointer-events-auto shadow-sm font-medium"
-                                    style="left: calc({{ $leftPercent }}% + 0.5rem); width: calc({{ $widthPercent }}% - 1rem); top: {{ $topOffset }}rem; z-index: {{ 10 + $row }};"
-                                    title="{{ $task['title'] }} - {{ implode(', ', $task['employees']) }}"
+                                    class="absolute text-[10px] p-1.5 rounded-md cursor-pointer hover:opacity-90 transition-all border-2 font-medium shadow-sm task-bar-item pointer-events-auto"
+                                    style="
+                                        left: calc({{ $leftPercent }}% + 0.5rem); 
+                                        width: calc({{ $widthPercent }}% - 0.5rem - ({{ $span - 1 }} * 1px)); 
+                                        top: {{ $topOffset }}rem; 
+                                        z-index: {{ 10 + $row }};
+                                        box-sizing: border-box;
+                                        {{ $style }}
+                                    "
+                                    data-light-style="{{ $style }}"
+                                    data-dark-style="{{ $darkStyle }}"
+                                    data-task-status="{{ $task['status'] }}"
+                                    title="{{ $task['title'] }} ({{ $task['start'] }} - {{ $task['end'] }}) | {{ implode(', ', $task['employees']) }}"
                                     onclick="window.location.href='{{ \App\Filament\Resources\TaskResource::getUrl('edit', ['record' => $task['id']]) }}'"
                                 >
                                     <div class="font-semibold truncate mb-0.5">{{ $task['title'] }}</div>
                                     @if(!empty($task['employees']))
-                                        <div class="text-[10px] opacity-90 dark:opacity-80 mt-0.5 truncate">
+                                        <div class="text-[9px] opacity-90 mt-0.5 truncate">
                                             {{ implode(', ', array_slice($task['employees'], 0, 2)) }}{{ count($task['employees']) > 2 ? '...' : '' }}
                                         </div>
                                     @endif
                                 </div>
                             @endforeach
-                        </div>
+                        @endforeach
                     </div>
                 </div>
             </div>
@@ -118,22 +172,74 @@
             <!-- Legend -->
             <div class="flex items-center gap-4 text-xs pt-2 border-t border-gray-200 dark:border-gray-700">
                 <div class="flex items-center gap-1.5">
-                    <div class="w-3 h-3 bg-amber-200 dark:bg-amber-800 border border-amber-400 dark:border-amber-600 rounded"></div>
-                    <span class="text-gray-600 dark:text-gray-400">Pending</span>
+                    <div class="w-3 h-3 rounded border-2" style="background-color: #fde68a; border-color: #fbbf24;"></div>
+                    <span class="text-gray-600 dark:text-gray-400 font-medium">Pending</span>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <div class="w-3 h-3 bg-primary-200 dark:bg-primary-800 border border-primary-400 dark:border-primary-600 rounded"></div>
-                    <span class="text-gray-600 dark:text-gray-400">In Progress</span>
+                    <div class="w-3 h-3 rounded border-2" style="background-color: #93c5fd; border-color: #3b82f6;"></div>
+                    <span class="text-gray-600 dark:text-gray-400 font-medium">In Progress</span>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <div class="w-3 h-3 bg-green-200 dark:bg-green-800 border border-green-400 dark:border-green-600 rounded"></div>
-                    <span class="text-gray-600 dark:text-gray-400">Completed</span>
+                    <div class="w-3 h-3 rounded border-2" style="background-color: #86efac; border-color: #4ade80;"></div>
+                    <span class="text-gray-600 dark:text-gray-400 font-medium">Completed</span>
                 </div>
                 <div class="flex items-center gap-1.5">
-                    <div class="w-3 h-3 bg-red-200 dark:bg-red-800 border border-red-400 dark:border-red-600 rounded"></div>
-                    <span class="text-gray-600 dark:text-gray-400">Cancelled</span>
+                    <div class="w-3 h-3 rounded border-2" style="background-color: #fca5a5; border-color: #f87171;"></div>
+                    <span class="text-gray-600 dark:text-gray-400 font-medium">Cancelled</span>
                 </div>
             </div>
         </div>
     </x-filament::section>
+
+    <script>
+        // Update task bar colors based on dark mode
+        function updateTaskBarColors() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const taskBars = document.querySelectorAll('.task-bar-item');
+            
+            taskBars.forEach(bar => {
+                const lightStyle = bar.dataset.lightStyle || '';
+                const darkStyle = bar.dataset.darkStyle || '';
+                
+                // Get base style (position, size, etc.) - remove color-related styles
+                const currentStyle = bar.getAttribute('style') || '';
+                const baseStyle = currentStyle
+                    .split(';')
+                    .filter(s => {
+                        const trimmed = s.trim();
+                        return trimmed && 
+                               !trimmed.includes('background-color') && 
+                               !trimmed.includes('color:') && 
+                               !trimmed.includes('border-color');
+                    })
+                    .join(';');
+                
+                // Apply appropriate style
+                if (isDark && darkStyle) {
+                    bar.setAttribute('style', baseStyle + (baseStyle ? '; ' : '') + darkStyle);
+                } else if (lightStyle) {
+                    bar.setAttribute('style', baseStyle + (baseStyle ? '; ' : '') + lightStyle);
+                }
+            });
+        }
+        
+        // Initial update
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTaskBarColors();
+            
+            // Watch for dark mode changes
+            const observer = new MutationObserver(updateTaskBarColors);
+            observer.observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
+        });
+        
+        // Also update immediately if DOM is already loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', updateTaskBarColors);
+        } else {
+            updateTaskBarColors();
+        }
+    </script>
 </x-filament-widgets::widget>

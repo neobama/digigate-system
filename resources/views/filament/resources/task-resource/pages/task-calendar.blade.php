@@ -96,12 +96,12 @@
                                         'dark_border' => '#d97706',
                                     ],
                                     'in_progress' => [
-                                        'bg' => '#fbbf24',
-                                        'text' => '#78350f',
-                                        'border' => '#f59e0b',
-                                        'dark_bg' => '#92400e',
-                                        'dark_text' => '#fef3c7',
-                                        'dark_border' => '#d97706',
+                                        'bg' => '#93c5fd',
+                                        'text' => '#1e3a8a',
+                                        'border' => '#3b82f6',
+                                        'dark_bg' => '#1e40af',
+                                        'dark_text' => '#dbeafe',
+                                        'dark_border' => '#60a5fa',
                                     ],
                                     'completed' => [
                                         'bg' => '#86efac',
@@ -174,7 +174,7 @@
                 <span class="text-gray-700 dark:text-gray-300 font-medium">Pending</span>
             </div>
             <div class="flex items-center gap-2.5">
-                <div class="w-5 h-5 rounded border-2" style="background-color: #fbbf24; border-color: #f59e0b;"></div>
+                <div class="w-5 h-5 rounded border-2" style="background-color: #93c5fd; border-color: #3b82f6;"></div>
                 <span class="text-gray-700 dark:text-gray-300 font-medium">In Progress</span>
             </div>
             <div class="flex items-center gap-2.5">
