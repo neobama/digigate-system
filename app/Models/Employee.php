@@ -30,4 +30,9 @@ class Employee extends Model
     {
         return $this->hasMany(Logbook::class);
     }
+
+    public function tasks(): BelongsToMany
+    {
+        return $this->belongsToMany(Task::class, 'task_employee');
+    }
 }

@@ -12,6 +12,7 @@ class Dashboard extends BaseDashboard
     public function getWidgets(): array
     {
         return [
+            \App\Filament\Employee\Widgets\EmployeeTaskCalendarWidget::class,
             \App\Filament\Employee\Widgets\StockSummaryWidget::class,
             \App\Filament\Employee\Widgets\UnassembledInvoicesWidget::class,
         ];
