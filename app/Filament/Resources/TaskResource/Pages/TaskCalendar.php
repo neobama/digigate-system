@@ -103,35 +103,88 @@ class TaskCalendar extends Page
         return $days;
     }
 
-    public function getTasksForDay($date): array
+    public function getTaskBars(): array
     {
-        $dateStr = $date->format('Y-m-d');
-        $tasksForDay = [];
+        $days = $this->getCalendarDays();
+        $taskBars = [];
         
         foreach ($this->tasks as $task) {
             $taskStart = Carbon::parse($task['start']);
             $taskEnd = Carbon::parse($task['end']);
             
-            if ($date->between($taskStart, $taskEnd)) {
-                // Calculate if this is the start day
-                $isStart = $date->format('Y-m-d') == $task['start'];
+            // Find start day index
+            $startDayIndex = null;
+            foreach ($days as $idx => $day) {
+                if ($day['date']->format('Y-m-d') == $taskStart->format('Y-m-d')) {
+                    $startDayIndex = $idx;
+                    break;
+                }
+            }
+            
+            if ($startDayIndex !== null) {
+                // Calculate span - can span across weeks
+                $span = 1;
+                $currentIdx = $startDayIndex;
+                $startWeek = intval($startDayIndex / 7);
                 
-                // Calculate span
-                $startDate = Carbon::parse($task['start']);
-                $endDate = Carbon::parse($task['end']);
+                while ($currentIdx < count($days) && $days[$currentIdx]['date']->lte($taskEnd)) {
+                    $currentWeek = intval($currentIdx / 7);
+                    // Don't span beyond the task end date
+                    if ($days[$currentIdx]['date']->gt($taskEnd)) {
+                        break;
+                    }
+                    // Allow spanning across weeks
+                    if ($currentWeek > $startWeek && ($currentIdx % 7) == 0) {
+                        // New week, but we can continue
+                        $span++;
+                        $currentIdx++;
+                        $startWeek = $currentWeek;
+                    } else {
+                        $span++;
+                        $currentIdx++;
+                    }
+                    // Limit to reasonable span (e.g., 35 days max)
+                    if ($span >= 35) break;
+                }
                 
-                // Calculate how many days from start to end of week
-                $weekEnd = $date->copy()->endOfWeek(Carbon::SUNDAY);
-                $maxSpan = $date->diffInDays(min($endDate, $weekEnd)) + 1;
+                // Calculate row position (to avoid overlaps)
+                $row = 0;
+                $placed = false;
+                while (!$placed && $row < 10) {
+                    $canPlace = true;
+                    for ($i = 0; $i < $span && ($startDayIndex + $i) < count($days); $i++) {
+                        $checkIdx = $startDayIndex + $i;
+                        // Check if this position is already taken
+                        foreach ($taskBars as $existingBar) {
+                            if ($existingBar['row'] == $row) {
+                                $existingStart = $existingBar['startIndex'];
+                                $existingSpan = $existingBar['span'];
+                                $existingEnd = $existingStart + $existingSpan - 1;
+                                
+                                if (($checkIdx >= $existingStart && $checkIdx <= $existingEnd) ||
+                                    ($startDayIndex <= $existingEnd && ($startDayIndex + $span - 1) >= $existingStart)) {
+                                    $canPlace = false;
+                                    break 2;
+                                }
+                            }
+                        }
+                    }
+                    if ($canPlace) {
+                        $placed = true;
+                    } else {
+                        $row++;
+                    }
+                }
                 
-                $tasksForDay[] = [
+                $taskBars[] = [
                     'task' => $task,
-                    'isStart' => $isStart,
-                    'span' => $maxSpan,
+                    'startIndex' => $startDayIndex,
+                    'span' => $span,
+                    'row' => $row,
                 ];
             }
         }
         
-        return $tasksForDay;
+        return $taskBars;
     }
 }

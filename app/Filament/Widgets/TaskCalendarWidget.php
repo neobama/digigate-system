@@ -98,53 +98,93 @@ class TaskCalendarWidget extends Widget
         return $days;
     }
 
-    public function getTaskPositions(): array
+    public function getTaskBars(): array
     {
         $startOfMonth = Carbon::create($this->currentYear, $this->currentMonth, 1);
         $endOfMonth = $startOfMonth->copy()->endOfMonth();
         $startDate = $startOfMonth->copy()->startOfWeek(Carbon::MONDAY);
         $endDate = $endOfMonth->copy()->endOfWeek(Carbon::SUNDAY);
         
-        $taskPositions = [];
+        $days = $this->getCalendarDays();
+        $taskBars = [];
         
         foreach ($this->tasks as $task) {
             $taskStart = Carbon::parse($task['start']);
             $taskEnd = Carbon::parse($task['end']);
             
-            // Calculate which week row this task should be in
-            $weekStart = $taskStart->copy()->startOfWeek(Carbon::MONDAY);
-            $weekNumber = (int) $weekStart->diffInWeeks($startDate);
-            
-            // Calculate column start (0-6 for Mon-Sun)
-            $columnStart = $taskStart->dayOfWeek == 0 ? 6 : $taskStart->dayOfWeek - 1;
-            
-            // Calculate span (number of days)
-            $span = $taskStart->diffInDays($taskEnd) + 1;
-            
-            // Clamp to visible calendar range
-            if ($taskStart->lt($startDate)) {
-                $columnStart = 0;
-                $span = $taskEnd->diffInDays($startDate) + 1;
-                if ($span > 7) $span = 7;
+            // Find start day index
+            $startDayIndex = null;
+            foreach ($days as $idx => $day) {
+                if ($day['date']->format('Y-m-d') == $taskStart->format('Y-m-d')) {
+                    $startDayIndex = $idx;
+                    break;
+                }
             }
             
-            if ($taskEnd->gt($endDate)) {
-                $maxSpan = 7 - $columnStart;
-                $span = min($span, $maxSpan);
+            if ($startDayIndex !== null) {
+                // Calculate span - can span across weeks
+                $span = 1;
+                $currentIdx = $startDayIndex;
+                $startWeek = intval($startDayIndex / 7);
+                
+                while ($currentIdx < count($days) && $days[$currentIdx]['date']->lte($taskEnd)) {
+                    $currentWeek = intval($currentIdx / 7);
+                    // Don't span beyond the task end date
+                    if ($days[$currentIdx]['date']->gt($taskEnd)) {
+                        break;
+                    }
+                    // Allow spanning across weeks
+                    if ($currentWeek > $startWeek && ($currentIdx % 7) == 0) {
+                        // New week, but we can continue
+                        $span++;
+                        $currentIdx++;
+                        $startWeek = $currentWeek;
+                    } else {
+                        $span++;
+                        $currentIdx++;
+                    }
+                    // Limit to reasonable span (e.g., 35 days max)
+                    if ($span >= 35) break;
+                }
+                
+                // Calculate row position (to avoid overlaps)
+                $row = 0;
+                $placed = false;
+                while (!$placed && $row < 10) {
+                    $canPlace = true;
+                    for ($i = 0; $i < $span && ($startDayIndex + $i) < count($days); $i++) {
+                        $checkIdx = $startDayIndex + $i;
+                        // Check if this position is already taken
+                        foreach ($taskBars as $existingBar) {
+                            if ($existingBar['row'] == $row) {
+                                $existingStart = $existingBar['startIndex'];
+                                $existingSpan = $existingBar['span'];
+                                $existingEnd = $existingStart + $existingSpan - 1;
+                                
+                                if (($checkIdx >= $existingStart && $checkIdx <= $existingEnd) ||
+                                    ($startDayIndex <= $existingEnd && ($startDayIndex + $span - 1) >= $existingStart)) {
+                                    $canPlace = false;
+                                    break 2;
+                                }
+                            }
+                        }
+                    }
+                    if ($canPlace) {
+                        $placed = true;
+                    } else {
+                        $row++;
+                    }
+                }
+                
+                $taskBars[] = [
+                    'task' => $task,
+                    'startIndex' => $startDayIndex,
+                    'span' => $span,
+                    'row' => $row,
+                ];
             }
-            
-            // Ensure span doesn't exceed week boundary
-            $maxSpanInWeek = 7 - $columnStart;
-            $span = min($span, $maxSpanInWeek);
-            
-            $taskPositions[] = [
-                'task' => $task,
-                'week' => $weekNumber,
-                'column' => $columnStart,
-                'span' => max(1, $span),
-            ];
         }
         
-        return $taskPositions;
+        return $taskBars;
     }
 }
