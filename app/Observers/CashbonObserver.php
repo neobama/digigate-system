@@ -79,23 +79,33 @@ class CashbonObserver
             
             // Notify employee if status is approved or paid
             if (in_array($newStatus, ['approved', 'paid']) && !empty($employee->phone_number)) {
-                $employeeMessage = "💰 *Update Cashbon Anda*\n\n";
-                $employeeMessage .= "Alasan: {$cashbon->reason}\n";
-                $employeeMessage .= "Jumlah: Rp " . number_format($cashbon->amount, 0, ',', '.') . "\n";
-                
-                if ($newStatus === 'approved') {
-                    $employeeMessage .= "✅ Status: *Disetujui*\n\n";
-                    if ($cashbon->installment_months) {
-                        $employeeMessage .= "Cashbon akan dicicil selama {$cashbon->installment_months} bulan.";
-                    } else {
-                        $employeeMessage .= "Cashbon akan langsung dipotong di bulan pertama.";
+                try {
+                    $employeeMessage = "💰 *Update Cashbon Anda*\n\n";
+                    $employeeMessage .= "Alasan: {$cashbon->reason}\n";
+                    $employeeMessage .= "Jumlah: Rp " . number_format($cashbon->amount, 0, ',', '.') . "\n";
+                    
+                    if ($newStatus === 'approved') {
+                        $employeeMessage .= "✅ Status: *Disetujui*\n\n";
+                        if ($cashbon->installment_months) {
+                            $employeeMessage .= "Cashbon akan dicicil selama {$cashbon->installment_months} bulan.";
+                        } else {
+                            $employeeMessage .= "Cashbon akan langsung dipotong di bulan pertama.";
+                        }
+                    } elseif ($newStatus === 'paid') {
+                        $employeeMessage .= "✅ Status: *Sudah Dibayar*\n\n";
+                        $employeeMessage .= "Cashbon Anda sudah dibayar.";
                     }
-                } elseif ($newStatus === 'paid') {
-                    $employeeMessage .= "✅ Status: *Sudah Dibayar*\n\n";
-                    $employeeMessage .= "Cashbon Anda sudah dibayar.";
+                    
+                    $this->whatsapp->sendMessage($employee->phone_number, $employeeMessage);
+                } catch (\Exception $e) {
+                    // Log error but don't stop the process
+                    \Log::error('Failed to send WhatsApp notification to employee for cashbon', [
+                        'cashbon_id' => $cashbon->id,
+                        'employee_id' => $employee->id,
+                        'phone' => $employee->phone_number,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
-                
-                $this->whatsapp->sendMessage($employee->phone_number, $employeeMessage);
             }
         }
     }

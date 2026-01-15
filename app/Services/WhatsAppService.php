@@ -24,7 +24,12 @@ class WhatsAppService
     public function formatPhoneNumber(string $phoneNumber): string
     {
         // Remove all non-numeric characters
-        $phoneNumber = preg_replace('/[^0-9]/', '', $phoneNumber);
+        $phoneNumber = preg_replace('/[^0-9]/', '', trim($phoneNumber));
+        
+        // Validate phone number is not empty
+        if (empty($phoneNumber)) {
+            throw new \InvalidArgumentException('Phone number cannot be empty');
+        }
         
         // If starts with 0, replace with 62
         if (str_starts_with($phoneNumber, '0')) {
@@ -45,16 +50,23 @@ class WhatsAppService
     public function sendMessage(string $phoneNumber, string $message): bool
     {
         try {
+            // Validate phone number
+            if (empty($phoneNumber) || trim($phoneNumber) === '') {
+                Log::warning('Empty phone number provided for WhatsApp message');
+                return false;
+            }
+            
             $chatId = $this->formatPhoneNumber($phoneNumber);
             
-            $response = Http::withHeaders([
-                'Content-Type' => 'application/json',
-                'X-Api-Key' => $this->apiKey,
-            ])->post($this->apiUrl, [
-                'session' => $this->session,
-                'chatId' => $chatId,
-                'text' => $message,
-            ]);
+            $response = Http::timeout(10)
+                ->withHeaders([
+                    'Content-Type' => 'application/json',
+                    'X-Api-Key' => $this->apiKey,
+                ])->post($this->apiUrl, [
+                    'session' => $this->session,
+                    'chatId' => $chatId,
+                    'text' => $message,
+                ]);
 
             if ($response->successful()) {
                 Log::info('WhatsApp message sent successfully', [
@@ -71,10 +83,17 @@ class WhatsAppService
                 ]);
                 return false;
             }
+        } catch (\InvalidArgumentException $e) {
+            Log::error('Invalid phone number format for WhatsApp message', [
+                'phone' => $phoneNumber,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
         } catch (\Exception $e) {
             Log::error('Exception while sending WhatsApp message', [
                 'phone' => $phoneNumber,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
             return false;
         }
