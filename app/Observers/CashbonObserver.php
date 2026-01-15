@@ -61,13 +61,42 @@ class CashbonObserver
             $cashbon->load('employee');
             $employee = $cashbon->employee;
             
-            $message = "💰 *Update Cashbon*\n\n";
-            $message .= "Karyawan: {$employee->name}\n";
-            $message .= "Alasan: {$cashbon->reason}\n";
-            $message .= "Jumlah: Rp " . number_format($cashbon->amount, 0, ',', '.') . "\n";
-            $message .= "Status: " . ucfirst($cashbon->status);
+            if (!$employee) {
+                return; // Skip if employee not found
+            }
             
-            $this->whatsapp->sendToAdmin($message);
+            $oldStatus = $cashbon->getOriginal('status');
+            $newStatus = $cashbon->status;
+            
+            // Notify admin about status change
+            $adminMessage = "💰 *Update Cashbon*\n\n";
+            $adminMessage .= "Karyawan: {$employee->name}\n";
+            $adminMessage .= "Alasan: {$cashbon->reason}\n";
+            $adminMessage .= "Jumlah: Rp " . number_format($cashbon->amount, 0, ',', '.') . "\n";
+            $adminMessage .= "Status: " . ucfirst($oldStatus) . " → " . ucfirst($newStatus);
+            
+            $this->whatsapp->sendToAdmin($adminMessage);
+            
+            // Notify employee if status is approved or paid
+            if (in_array($newStatus, ['approved', 'paid']) && !empty($employee->phone_number)) {
+                $employeeMessage = "💰 *Update Cashbon Anda*\n\n";
+                $employeeMessage .= "Alasan: {$cashbon->reason}\n";
+                $employeeMessage .= "Jumlah: Rp " . number_format($cashbon->amount, 0, ',', '.') . "\n";
+                
+                if ($newStatus === 'approved') {
+                    $employeeMessage .= "✅ Status: *Disetujui*\n\n";
+                    if ($cashbon->installment_months) {
+                        $employeeMessage .= "Cashbon akan dicicil selama {$cashbon->installment_months} bulan.";
+                    } else {
+                        $employeeMessage .= "Cashbon akan langsung dipotong di bulan pertama.";
+                    }
+                } elseif ($newStatus === 'paid') {
+                    $employeeMessage .= "✅ Status: *Sudah Dibayar*\n\n";
+                    $employeeMessage .= "Cashbon Anda sudah dibayar.";
+                }
+                
+                $this->whatsapp->sendMessage($employee->phone_number, $employeeMessage);
+            }
         }
     }
 

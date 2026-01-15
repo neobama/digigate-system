@@ -60,13 +60,47 @@ class ReimbursementObserver
             $reimbursement->load('employee');
             $employee = $reimbursement->employee;
             
-            $message = "📋 *Update Reimbursement*\n\n";
-            $message .= "Karyawan: {$employee->name}\n";
-            $message .= "Keperluan: {$reimbursement->purpose}\n";
-            $message .= "Jumlah: Rp " . number_format($reimbursement->amount, 0, ',', '.') . "\n";
-            $message .= "Status: " . ucfirst($reimbursement->status);
+            if (!$employee) {
+                return; // Skip if employee not found
+            }
             
-            $this->whatsapp->sendToAdmin($message);
+            $oldStatus = $reimbursement->getOriginal('status');
+            $newStatus = $reimbursement->status;
+            
+            // Notify admin about status change
+            $adminMessage = "📋 *Update Reimbursement*\n\n";
+            $adminMessage .= "Karyawan: {$employee->name}\n";
+            $adminMessage .= "Keperluan: {$reimbursement->purpose}\n";
+            $adminMessage .= "Jumlah: Rp " . number_format($reimbursement->amount, 0, ',', '.') . "\n";
+            $adminMessage .= "Status: " . ucfirst($oldStatus) . " → " . ucfirst($newStatus);
+            
+            $this->whatsapp->sendToAdmin($adminMessage);
+            
+            // Notify employee if status is approved or paid
+            if (in_array($newStatus, ['approved', 'paid']) && !empty($employee->phone_number)) {
+                $employeeMessage = "📋 *Update Reimbursement Anda*\n\n";
+                $employeeMessage .= "Keperluan: {$reimbursement->purpose}\n";
+                
+                // Safely format date
+                $expenseDate = $reimbursement->expense_date;
+                if ($expenseDate instanceof \Carbon\Carbon) {
+                    $employeeMessage .= "Tanggal: " . $expenseDate->format('d/m/Y') . "\n";
+                } elseif (is_string($expenseDate)) {
+                    $employeeMessage .= "Tanggal: " . \Carbon\Carbon::parse($expenseDate)->format('d/m/Y') . "\n";
+                }
+                
+                $employeeMessage .= "Jumlah: Rp " . number_format($reimbursement->amount, 0, ',', '.') . "\n";
+                
+                if ($newStatus === 'approved') {
+                    $employeeMessage .= "✅ Status: *Disetujui*\n\n";
+                    $employeeMessage .= "Reimbursement Anda telah disetujui dan akan segera diproses.";
+                } elseif ($newStatus === 'paid') {
+                    $employeeMessage .= "✅ Status: *Sudah Dibayar*\n\n";
+                    $employeeMessage .= "Reimbursement Anda sudah dibayar.";
+                }
+                
+                $this->whatsapp->sendMessage($employee->phone_number, $employeeMessage);
+            }
         }
     }
 
