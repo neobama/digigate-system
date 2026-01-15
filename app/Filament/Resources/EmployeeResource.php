@@ -42,6 +42,12 @@ class EmployeeResource extends Resource
                         ->label('Posisi')
                         ->required()
                         ->maxLength(255),
+                    Forms\Components\TextInput::make('phone_number')
+                        ->label('Nomor WhatsApp')
+                        ->tel()
+                        ->placeholder('081234567890')
+                        ->helperText('Format: 081234567890 (untuk notifikasi WhatsApp)')
+                        ->maxLength(20),
                     Forms\Components\TextInput::make('base_salary')
                         ->label('Gaji')
                         ->numeric()
@@ -111,6 +117,10 @@ class EmployeeResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('position')
                     ->label('Posisi')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('phone_number')
+                    ->label('Nomor WhatsApp')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('base_salary')

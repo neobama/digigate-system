@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Employee extends Model
 {
     use HasUuids;
-    protected $fillable = ['user_id', 'nik', 'name', 'birth_date', 'position', 'base_salary', 'bpjs_allowance', 'is_active'];
+    protected $fillable = ['user_id', 'nik', 'name', 'birth_date', 'position', 'phone_number', 'base_salary', 'bpjs_allowance', 'is_active'];
 
     protected $casts = [
         'birth_date' => 'date',

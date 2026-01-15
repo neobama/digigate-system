@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'whatsapp' => [
+        'api_url' => env('WHATSAPP_API_URL', 'http://10.11.10.55:3000/api/sendText'),
+        'api_key' => env('WHATSAPP_API_KEY', '1d7a97d985a245f699b0eb42567670aa'),
+        'session' => env('WHATSAPP_SESSION', 'default'),
+        'admin_phone' => env('WHATSAPP_ADMIN_PHONE', '081511207866'),
+    ],
+
 ];
