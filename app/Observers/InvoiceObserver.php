@@ -56,17 +56,35 @@ class InvoiceObserver
         $message .= "Client: {$invoice->client_name}\n";
         $message .= "Total: Rp " . number_format($invoice->total_amount, 0, ',', '.') . "\n";
         
-        // Add assembly information
+        // Add invoice items (perangkat yang dibeli)
+        if (!empty($invoice->items) && is_array($invoice->items)) {
+            $message .= "\n📦 *Detail Perangkat:*\n";
+            foreach ($invoice->items as $index => $item) {
+                $itemName = $item['name'] ?? 'Perangkat ' . ($index + 1);
+                $quantity = $item['quantity'] ?? 1;
+                $message .= "• {$itemName} (Qty: {$quantity})\n";
+            }
+        }
+        
+        // Add assembly information (perangkat yang perlu di-assembly)
         if ($invoice->assemblies->isNotEmpty()) {
-            $message .= "\n📦 *Perangkat yang perlu di-assembly:*\n";
+            $message .= "\n🔧 *Perangkat yang perlu di-assembly:*\n";
             foreach ($invoice->assemblies as $assembly) {
                 $message .= "• {$assembly->product_type}";
                 if ($assembly->serial_number) {
                     $message .= " (SN: {$assembly->serial_number})";
                 }
+                if ($assembly->sn_details && is_array($assembly->sn_details) && !empty($assembly->sn_details)) {
+                    $snDetails = implode(', ', array_filter($assembly->sn_details));
+                    if ($snDetails) {
+                        $message .= "\n  Detail SN: {$snDetails}";
+                    }
+                }
                 $message .= "\n";
             }
         }
+        
+        $message .= "\n⚠️ *Segera lakukan assembly untuk perangkat di atas!*";
         
         // Send to all employees
         $phoneNumbers = $employees->pluck('phone_number')->filter()->toArray();
