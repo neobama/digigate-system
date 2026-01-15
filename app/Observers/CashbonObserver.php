@@ -65,17 +65,7 @@ class CashbonObserver
                 return; // Skip if employee not found
             }
             
-            $oldStatus = $cashbon->getOriginal('status');
             $newStatus = $cashbon->status;
-            
-            // Notify admin about status change
-            $adminMessage = "💰 *Update Cashbon*\n\n";
-            $adminMessage .= "Karyawan: {$employee->name}\n";
-            $adminMessage .= "Alasan: {$cashbon->reason}\n";
-            $adminMessage .= "Jumlah: Rp " . number_format($cashbon->amount, 0, ',', '.') . "\n";
-            $adminMessage .= "Status: " . ucfirst($oldStatus) . " → " . ucfirst($newStatus);
-            
-            $this->whatsapp->sendToAdmin($adminMessage);
             
             // Notify employee if status is approved or paid
             if (in_array($newStatus, ['approved', 'paid']) && !empty($employee->phone_number)) {

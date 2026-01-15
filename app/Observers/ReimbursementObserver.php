@@ -64,17 +64,7 @@ class ReimbursementObserver
                 return; // Skip if employee not found
             }
             
-            $oldStatus = $reimbursement->getOriginal('status');
             $newStatus = $reimbursement->status;
-            
-            // Notify admin about status change
-            $adminMessage = "📋 *Update Reimbursement*\n\n";
-            $adminMessage .= "Karyawan: {$employee->name}\n";
-            $adminMessage .= "Keperluan: {$reimbursement->purpose}\n";
-            $adminMessage .= "Jumlah: Rp " . number_format($reimbursement->amount, 0, ',', '.') . "\n";
-            $adminMessage .= "Status: " . ucfirst($oldStatus) . " → " . ucfirst($newStatus);
-            
-            $this->whatsapp->sendToAdmin($adminMessage);
             
             // Notify employee if status is approved or paid
             if (in_array($newStatus, ['approved', 'paid']) && !empty($employee->phone_number)) {
