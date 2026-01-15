@@ -12,6 +12,7 @@ class Cashbon extends Model
     
     protected $casts = [
         'installment_months' => 'integer',
+        'request_date' => 'date',
     ];
 
     public function employee()

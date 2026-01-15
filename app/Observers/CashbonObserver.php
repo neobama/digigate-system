@@ -22,10 +22,24 @@ class CashbonObserver
         $cashbon->load('employee');
         $employee = $cashbon->employee;
         
+        if (!$employee) {
+            return; // Skip if employee not found
+        }
+        
         $message = "💰 *Cashbon Baru*\n\n";
         $message .= "Karyawan: {$employee->name}\n";
         $message .= "Alasan: {$cashbon->reason}\n";
-        $message .= "Tanggal Request: " . $cashbon->request_date->format('d/m/Y') . "\n";
+        
+        // Safely format date
+        $requestDate = $cashbon->request_date;
+        if ($requestDate instanceof \Carbon\Carbon) {
+            $message .= "Tanggal Request: " . $requestDate->format('d/m/Y') . "\n";
+        } elseif (is_string($requestDate)) {
+            $message .= "Tanggal Request: " . \Carbon\Carbon::parse($requestDate)->format('d/m/Y') . "\n";
+        } else {
+            $message .= "Tanggal Request: " . ($requestDate ?? 'N/A') . "\n";
+        }
+        
         $message .= "Jumlah: Rp " . number_format($cashbon->amount, 0, ',', '.') . "\n";
         
         if ($cashbon->installment_months) {

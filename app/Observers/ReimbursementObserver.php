@@ -22,10 +22,24 @@ class ReimbursementObserver
         $reimbursement->load('employee');
         $employee = $reimbursement->employee;
         
+        if (!$employee) {
+            return; // Skip if employee not found
+        }
+        
         $message = "📋 *Reimbursement Baru*\n\n";
         $message .= "Karyawan: {$employee->name}\n";
         $message .= "Keperluan: {$reimbursement->purpose}\n";
-        $message .= "Tanggal: " . $reimbursement->expense_date->format('d/m/Y') . "\n";
+        
+        // Safely format date
+        $expenseDate = $reimbursement->expense_date;
+        if ($expenseDate instanceof \Carbon\Carbon) {
+            $message .= "Tanggal: " . $expenseDate->format('d/m/Y') . "\n";
+        } elseif (is_string($expenseDate)) {
+            $message .= "Tanggal: " . \Carbon\Carbon::parse($expenseDate)->format('d/m/Y') . "\n";
+        } else {
+            $message .= "Tanggal: " . ($expenseDate ?? 'N/A') . "\n";
+        }
+        
         $message .= "Jumlah: Rp " . number_format($reimbursement->amount, 0, ',', '.') . "\n";
         $message .= "Status: " . ucfirst($reimbursement->status);
         
