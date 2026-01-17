@@ -27,6 +27,8 @@ class MyTasks extends Page implements HasForms
     public $showCreateModal = false;
     public $notes = '';
     public $proof_images = []; // Required for Filament FileUpload component - must match field name
+    public $selectedEmployees = []; // For managing employee assignment
+    public $showAddEmployeeSection = false; // Toggle for add employee section
     
     // Form untuk create task
     public $newTaskTitle = '';
@@ -110,6 +112,8 @@ class MyTasks extends Page implements HasForms
         $this->showUploadModal = true;
         $this->notes = $this->selectedTask->notes ?? '';
         $this->proof_images = [];
+        $this->selectedEmployees = $this->selectedTask->employees->pluck('id')->toArray();
+        $this->showAddEmployeeSection = false;
         
         // Fill form
         $this->form->fill([
@@ -124,6 +128,8 @@ class MyTasks extends Page implements HasForms
         $this->selectedTask = null;
         $this->notes = '';
         $this->proof_images = [];
+        $this->selectedEmployees = [];
+        $this->showAddEmployeeSection = false;
         $this->form->fill();
     }
     
@@ -308,6 +314,107 @@ class MyTasks extends Page implements HasForms
     {
         $this->showCreateModal = false;
         $this->reset(['newTaskTitle', 'newTaskDescription', 'newTaskStartDate', 'newTaskEndDate']);
+    }
+
+    public function canManageEmployees(): bool
+    {
+        if (!$this->selectedTask) {
+            return false;
+        }
+        
+        $currentEmployee = Auth::user()->employee;
+        if (!$currentEmployee) {
+            return false;
+        }
+        
+        // Check if task is self assigned and created by current user
+        return $this->selectedTask->is_self_assigned 
+            && $this->selectedTask->created_by === Auth::id()
+            && $this->selectedTask->employees->contains($currentEmployee->id);
+    }
+
+    public function addEmployees(): void
+    {
+        if (!$this->selectedTask || !$this->canManageEmployees()) {
+            \Filament\Notifications\Notification::make()
+                ->title('Tidak memiliki izin untuk menambahkan karyawan')
+                ->danger()
+                ->send();
+            return;
+        }
+
+        if (empty($this->selectedEmployees)) {
+            \Filament\Notifications\Notification::make()
+                ->title('Pilih setidaknya satu karyawan')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        $currentEmployeeIds = $this->selectedTask->employees->pluck('id')->toArray();
+        $newEmployeeIds = array_diff($this->selectedEmployees, $currentEmployeeIds);
+
+        if (empty($newEmployeeIds)) {
+            \Filament\Notifications\Notification::make()
+                ->title('Karyawan yang dipilih sudah ditambahkan sebelumnya')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        // Add new employees to task
+        $this->selectedTask->employees()->syncWithoutDetaching($newEmployeeIds);
+        
+        // Reload task with employees
+        $this->selectedTask->load('employees');
+        
+        // Send WhatsApp notifications to newly added employees
+        $whatsapp = app(\App\Services\WhatsAppService::class);
+        $newEmployees = \App\Models\Employee::whereIn('id', $newEmployeeIds)->get();
+        
+        foreach ($newEmployees as $employee) {
+            if (!empty($employee->phone_number)) {
+                $message = "📋 *Task Baru Ditetapkan*\n\n";
+                $message .= "Judul: {$this->selectedTask->title}\n";
+                
+                if ($this->selectedTask->description) {
+                    $message .= "Deskripsi: {$this->selectedTask->description}\n";
+                }
+                
+                $message .= "Tanggal: " . $this->selectedTask->start_date->format('d/m/Y');
+                
+                if ($this->selectedTask->start_date->format('Y-m-d') !== $this->selectedTask->end_date->format('Y-m-d')) {
+                    $message .= " - " . $this->selectedTask->end_date->format('d/m/Y');
+                }
+                
+                $message .= "\nStatus: " . ucfirst($this->selectedTask->status);
+                
+                $whatsapp->sendMessage($employee->phone_number, $message);
+            }
+        }
+
+        $this->loadTasks();
+        $this->selectedEmployees = [];
+        $this->showAddEmployeeSection = false;
+        
+        \Filament\Notifications\Notification::make()
+            ->title('Karyawan berhasil ditambahkan ke task')
+            ->success()
+            ->send();
+    }
+
+    public function getAvailableEmployees()
+    {
+        if (!$this->selectedTask) {
+            return collect([]);
+        }
+
+        $currentEmployeeIds = $this->selectedTask->employees->pluck('id')->toArray();
+        
+        return \App\Models\Employee::where('is_active', true)
+            ->whereNotIn('id', $currentEmployeeIds)
+            ->orderBy('name')
+            ->get();
     }
 
     public function getCalendarDays(): array

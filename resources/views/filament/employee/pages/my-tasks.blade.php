@@ -211,7 +211,73 @@
                                     {{ ucfirst(str_replace('_', ' ', $selectedTask->status)) }}
                                 </span>
                             </div>
+                            <div>
+                                <strong>Karyawan yang Ditugaskan:</strong> 
+                                <div class="flex flex-wrap gap-2 mt-1">
+                                    @foreach($selectedTask->employees as $employee)
+                                        <span class="px-2 py-1 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                                            {{ $employee->name }}
+                                        </span>
+                                    @endforeach
+                                </div>
+                            </div>
                         </div>
+                        
+                        <!-- Add Employee Section (only for self-assigned tasks) -->
+                        @if($this->canManageEmployees())
+                            <div class="mb-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                        Tambah Karyawan Lain
+                                    </h4>
+                                    <button 
+                                        type="button"
+                                        wire:click="$set('showAddEmployeeSection', !$showAddEmployeeSection)"
+                                        class="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
+                                    >
+                                        {{ $showAddEmployeeSection ? 'Sembunyikan' : 'Tampilkan' }}
+                                    </button>
+                                </div>
+                                
+                                @if($showAddEmployeeSection)
+                                    <div class="space-y-2">
+                                        @php
+                                            $availableEmployees = $this->getAvailableEmployees();
+                                        @endphp
+                                        
+                                        @if($availableEmployees->count() > 0)
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Pilih Karyawan
+                                            </label>
+                                            <select 
+                                                wire:model="selectedEmployees"
+                                                multiple
+                                                class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                                                size="5"
+                                            >
+                                                @foreach($availableEmployees as $employee)
+                                                    <option value="{{ $employee->id }}">{{ $employee->name }} ({{ $employee->position }})</option>
+                                                @endforeach
+                                            </select>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                Tekan Ctrl/Cmd untuk memilih beberapa karyawan
+                                            </p>
+                                            <button 
+                                                type="button"
+                                                wire:click="addEmployees"
+                                                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 dark:bg-primary-500 text-sm font-medium text-white hover:bg-primary-700 dark:hover:bg-primary-600"
+                                            >
+                                                Tambahkan Karyawan
+                                            </button>
+                                        @else
+                                            <p class="text-sm text-gray-500 dark:text-gray-400">
+                                                Semua karyawan aktif sudah ditambahkan ke task ini.
+                                            </p>
+                                        @endif
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
                         
                         <!-- Status Update Buttons -->
                         @if($selectedTask->status === 'pending')
