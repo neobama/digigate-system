@@ -12,6 +12,7 @@ use App\Observers\ReimbursementObserver;
 use App\Observers\TaskObserver;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Console\Scheduling\Schedule;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -38,5 +39,11 @@ class AppServiceProvider extends ServiceProvider
         Cashbon::observe(CashbonObserver::class);
         Task::observe(TaskObserver::class);
         Invoice::observe(InvoiceObserver::class);
+        
+        // Schedule task to check failed tasks daily at midnight
+        $this->app->booted(function () {
+            $schedule = $this->app->make(Schedule::class);
+            $schedule->command('tasks:check-failed')->daily();
+        });
     }
 }

@@ -35,7 +35,7 @@ class Task extends Model
     public function employees(): BelongsToMany
     {
         return $this->belongsToMany(Employee::class, 'task_employee')
-            ->withPivot('proof_images', 'notes')
+            ->withPivot('proof_images', 'notes', 'proof_uploaded_at')
             ->withTimestamps();
     }
 

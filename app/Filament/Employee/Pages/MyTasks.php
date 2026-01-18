@@ -237,6 +237,19 @@ class MyTasks extends Page implements HasForms
             return;
         }
 
+        // Validate: Proof must be uploaded on the same day as the task
+        $today = Carbon::today();
+        $taskDate = Carbon::parse($this->selectedTask->end_date);
+        
+        if (!$today->isSameDay($taskDate)) {
+            \Filament\Notifications\Notification::make()
+                ->title('Realization harus diupload di hari yang sama dengan task')
+                ->body('Task ini harus diupload pada tanggal ' . $taskDate->format('d/m/Y'))
+                ->danger()
+                ->send();
+            return;
+        }
+
         // Get existing proof images for this employee from pivot table
         $pivotData = $this->selectedTask->employees()
             ->where('employees.id', $currentEmployee->id)
@@ -274,10 +287,11 @@ class MyTasks extends Page implements HasForms
             return;
         }
 
-        // Update pivot table with proof images and notes for this employee
+        // Update pivot table with proof images, notes, and upload timestamp for this employee
         $this->selectedTask->employees()->updateExistingPivot($currentEmployee->id, [
             'proof_images' => $allProofImages,
             'notes' => $notes,
+            'proof_uploaded_at' => now(),
         ]);
 
         // Reload task to get updated pivot data
