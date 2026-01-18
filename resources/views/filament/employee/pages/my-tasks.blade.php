@@ -415,8 +415,7 @@
                                         </label>
                                         <input 
                                             type="date" 
-                                            wire:model="newTaskStartDate" 
-                                            wire:change="updatedNewTaskStartDate"
+                                            wire:model.live="newTaskStartDate"
                                             class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                                         >
                                         @error('newTaskStartDate') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
@@ -428,15 +427,14 @@
                                         </label>
                                         <input 
                                             type="date" 
-                                            wire:model="newTaskEndDate" 
-                                            wire:change="updatedNewTaskEndDate"
+                                            wire:model.live="newTaskEndDate"
                                             class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                                         >
                                         @error('newTaskEndDate') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                     </div>
                                 </div>
 
-                                @if($newTaskStartDate === $newTaskEndDate && $newTaskStartDate)
+                                @if(!empty($newTaskStartDate) && !empty($newTaskEndDate) && $newTaskStartDate === $newTaskEndDate)
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
