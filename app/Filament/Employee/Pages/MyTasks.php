@@ -35,6 +35,7 @@ class MyTasks extends Page implements HasForms
     public $newTaskDescription = '';
     public $newTaskStartDate = '';
     public $newTaskEndDate = '';
+    public $newTaskEmployees = []; // Selected employees for new task
 
     public function mount(): void
     {
@@ -362,9 +363,43 @@ class MyTasks extends Page implements HasForms
             'is_self_assigned' => true,
         ]);
 
-        $task->employees()->attach($employee->id);
+        // Attach current employee (creator) and selected employees
+        $employeeIds = [$employee->id];
+        if (!empty($this->newTaskEmployees)) {
+            // Merge with selected employees, remove duplicates
+            $employeeIds = array_unique(array_merge($employeeIds, $this->newTaskEmployees));
+        }
+        
+        $task->employees()->attach($employeeIds);
+        
+        // Send WhatsApp notifications to assigned employees (excluding creator)
+        $whatsapp = app(\App\Services\WhatsAppService::class);
+        $assignedEmployees = \App\Models\Employee::whereIn('id', $employeeIds)
+            ->where('id', '!=', $employee->id) // Exclude creator
+            ->get();
+        
+        foreach ($assignedEmployees as $assignedEmployee) {
+            if (!empty($assignedEmployee->phone_number)) {
+                $message = "📋 *Task Baru Ditetapkan*\n\n";
+                $message .= "Judul: {$task->title}\n";
+                
+                if ($task->description) {
+                    $message .= "Deskripsi: {$task->description}\n";
+                }
+                
+                $message .= "Tanggal: " . $task->start_date->format('d/m/Y');
+                
+                if ($task->start_date->format('Y-m-d') !== $task->end_date->format('Y-m-d')) {
+                    $message .= " - " . $task->end_date->format('d/m/Y');
+                }
+                
+                $message .= "\nStatus: " . ucfirst($task->status);
+                
+                $whatsapp->sendMessage($assignedEmployee->phone_number, $message);
+            }
+        }
 
-        $this->reset(['newTaskTitle', 'newTaskDescription', 'newTaskStartDate', 'newTaskEndDate', 'showCreateModal']);
+        $this->reset(['newTaskTitle', 'newTaskDescription', 'newTaskStartDate', 'newTaskEndDate', 'newTaskEmployees', 'showCreateModal']);
         $this->loadTasks();
 
         \Filament\Notifications\Notification::make()
@@ -376,7 +411,20 @@ class MyTasks extends Page implements HasForms
     public function closeCreateModal(): void
     {
         $this->showCreateModal = false;
-        $this->reset(['newTaskTitle', 'newTaskDescription', 'newTaskStartDate', 'newTaskEndDate']);
+        $this->reset(['newTaskTitle', 'newTaskDescription', 'newTaskStartDate', 'newTaskEndDate', 'newTaskEmployees']);
+    }
+
+    public function getAvailableEmployeesForNewTask()
+    {
+        $currentEmployee = Auth::user()->employee;
+        if (!$currentEmployee) {
+            return collect([]);
+        }
+        
+        return \App\Models\Employee::where('is_active', true)
+            ->where('id', '!=', $currentEmployee->id) // Exclude current employee (will be added automatically)
+            ->orderBy('name')
+            ->get();
     }
 
     public function canManageEmployees(): bool

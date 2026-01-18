@@ -433,6 +433,35 @@
                                         @error('newTaskEndDate') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                     </div>
                                 </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Assign ke Karyawan Lain (Opsional)
+                                    </label>
+                                    @php
+                                        $availableEmployees = $this->getAvailableEmployeesForNewTask();
+                                    @endphp
+                                    
+                                    @if($availableEmployees->count() > 0)
+                                        <select 
+                                            wire:model="newTaskEmployees"
+                                            multiple
+                                            class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                                            size="5"
+                                        >
+                                            @foreach($availableEmployees as $emp)
+                                                <option value="{{ $emp->id }}">{{ $emp->name }} ({{ $emp->position }})</option>
+                                            @endforeach
+                                        </select>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                            Tekan Ctrl/Cmd untuk memilih beberapa karyawan. Anda akan otomatis ditambahkan sebagai assignee.
+                                        </p>
+                                    @else
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                                            Tidak ada karyawan lain yang tersedia.
+                                        </p>
+                                    @endif
+                                </div>
                             </div>
                             <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
                                 <button 
