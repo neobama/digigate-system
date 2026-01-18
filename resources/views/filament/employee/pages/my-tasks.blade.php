@@ -435,7 +435,7 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                                         Assign ke Karyawan Lain (Opsional)
                                     </label>
                                     @php
@@ -443,18 +443,26 @@
                                     @endphp
                                     
                                     @if($availableEmployees->count() > 0)
-                                        <select 
-                                            wire:model="newTaskEmployees"
-                                            multiple
-                                            class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                                            size="5"
-                                        >
-                                            @foreach($availableEmployees as $emp)
-                                                <option value="{{ $emp->id }}">{{ $emp->name }} ({{ $emp->position }})</option>
-                                            @endforeach
-                                        </select>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                            Tekan Ctrl/Cmd untuk memilih beberapa karyawan. Anda akan otomatis ditambahkan sebagai assignee.
+                                        <div class="border border-gray-300 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50 max-h-60 overflow-y-auto">
+                                            <div class="space-y-3">
+                                                @foreach($availableEmployees as $emp)
+                                                    <label class="flex items-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md p-2 transition-colors">
+                                                        <input 
+                                                            type="checkbox"
+                                                            wire:model="newTaskEmployees"
+                                                            value="{{ $emp->id }}"
+                                                            class="rounded border-gray-300 dark:border-gray-700 text-primary-600 focus:ring-primary-500 dark:bg-gray-800 dark:checked:bg-primary-500 dark:checked:border-primary-500 cursor-pointer"
+                                                        >
+                                                        <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">
+                                                            <span class="font-medium">{{ $emp->name }}</span>
+                                                            <span class="text-gray-500 dark:text-gray-400">({{ $emp->position }})</span>
+                                                        </span>
+                                                    </label>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                            Anda akan otomatis ditambahkan sebagai assignee.
                                         </p>
                                     @else
                                         <p class="text-sm text-gray-500 dark:text-gray-400">
