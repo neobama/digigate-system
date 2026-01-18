@@ -443,22 +443,24 @@
                                     @endphp
                                     
                                     @if($availableEmployees->count() > 0)
-                                        <div class="border border-gray-300 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50 max-h-60 overflow-y-auto">
-                                            <div class="space-y-3">
-                                                @foreach($availableEmployees as $emp)
-                                                    <label class="flex items-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md p-2 transition-colors">
-                                                        <input 
-                                                            type="checkbox"
-                                                            wire:model="newTaskEmployees"
-                                                            value="{{ $emp->id }}"
-                                                            class="rounded border-gray-300 dark:border-gray-700 text-primary-600 focus:ring-primary-500 dark:bg-gray-800 dark:checked:bg-primary-500 dark:checked:border-primary-500 cursor-pointer"
-                                                        >
-                                                        <span class="ml-3 text-sm text-gray-700 dark:text-gray-300">
-                                                            <span class="font-medium">{{ $emp->name }}</span>
-                                                            <span class="text-gray-500 dark:text-gray-400">({{ $emp->position }})</span>
-                                                        </span>
-                                                    </label>
-                                                @endforeach
+                                        <div class="fi-fo-field-wrp-label">
+                                            <div class="rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+                                                <div class="divide-y divide-gray-200 dark:divide-gray-700 max-h-60 overflow-y-auto">
+                                                    @foreach($availableEmployees as $emp)
+                                                        <label class="fi-fo-checkbox-list-option flex cursor-pointer items-center gap-x-3 px-4 py-3 outline-none transition duration-75 hover:bg-gray-50 dark:hover:bg-gray-700/50 has-[:focus]:bg-gray-50 dark:has-[:focus]:bg-gray-700/50">
+                                                            <input 
+                                                                type="checkbox"
+                                                                wire:model="newTaskEmployees"
+                                                                value="{{ $emp->id }}"
+                                                                class="fi-checkbox-input h-4 w-4 rounded border-gray-300 text-primary-600 shadow-sm transition duration-75 checked:border-primary-500 checked:bg-primary-500 focus:ring-2 focus:ring-primary-500 focus:ring-offset-0 disabled:bg-gray-50 disabled:text-gray-50 disabled:checked:bg-current disabled:checked:text-gray-400 dark:border-gray-600 dark:bg-gray-700 dark:disabled:bg-transparent dark:disabled:checked:bg-gray-600"
+                                                            >
+                                                            <span class="text-sm leading-6 text-gray-700 dark:text-gray-300">
+                                                                <span class="font-medium">{{ $emp->name }}</span>
+                                                                <span class="text-gray-500 dark:text-gray-400"> • {{ $emp->position }}</span>
+                                                            </span>
+                                                        </label>
+                                                    @endforeach
+                                                </div>
                                             </div>
                                         </div>
                                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
