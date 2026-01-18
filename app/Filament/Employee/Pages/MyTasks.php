@@ -110,8 +110,20 @@ class MyTasks extends Page implements HasForms
     {
         $this->selectedTask = Task::with('employees')->find($taskId);
         $this->showUploadModal = true;
-        $this->notes = $this->selectedTask->notes ?? '';
-        $this->proof_images = [];
+        
+        // Get current employee's proof and notes from pivot table
+        $currentEmployee = Auth::user()->employee;
+        if ($currentEmployee) {
+            $pivotData = $this->selectedTask->employees()
+                ->where('employees.id', $currentEmployee->id)
+                ->first();
+            $this->proof_images = $pivotData->pivot->proof_images ?? [];
+            $this->notes = $pivotData->pivot->notes ?? '';
+        } else {
+            $this->proof_images = [];
+            $this->notes = '';
+        }
+        
         $this->selectedEmployees = $this->selectedTask->employees->pluck('id')->toArray();
         $this->showAddEmployeeSection = false;
         
@@ -212,7 +224,22 @@ class MyTasks extends Page implements HasForms
             return;
         }
 
-        $existingProofImages = $this->selectedTask->proof_images ?? [];
+        // Get current employee
+        $currentEmployee = Auth::user()->employee;
+        if (!$currentEmployee) {
+            \Filament\Notifications\Notification::make()
+                ->title('Error: Employee tidak ditemukan')
+                ->danger()
+                ->send();
+            return;
+        }
+
+        // Get existing proof images for this employee from pivot table
+        $pivotData = $this->selectedTask->employees()
+            ->where('employees.id', $currentEmployee->id)
+            ->first();
+        $existingProofImages = $pivotData->pivot->proof_images ?? [];
+        
         $isS3 = config('filesystems.default') === 's3';
         $allProofImages = [];
 
@@ -244,30 +271,66 @@ class MyTasks extends Page implements HasForms
             return;
         }
 
-        // Determine new status based on current status
+        // Update pivot table with proof images and notes for this employee
+        $this->selectedTask->employees()->updateExistingPivot($currentEmployee->id, [
+            'proof_images' => $allProofImages,
+            'notes' => $notes,
+        ]);
+
+        // Reload task to get updated pivot data
+        $this->selectedTask->load('employees');
+
+        // Check if all assigned employees have submitted proof
+        $allEmployees = $this->selectedTask->employees;
+        $employeesWithProof = $allEmployees->filter(function ($employee) {
+            $pivotProof = $employee->pivot->proof_images ?? [];
+            return !empty($pivotProof) && is_array($pivotProof) && count($pivotProof) > 0;
+        });
+
+        // Determine new status based on current status and proof submission
         $newStatus = $this->selectedTask->status;
         if ($this->selectedTask->status === 'pending') {
             // If pending and uploading proof, change to in_progress
             $newStatus = 'in_progress';
         } elseif ($this->selectedTask->status === 'in_progress') {
-            // If already in_progress and uploading proof, change to completed
-            $newStatus = 'completed';
+            // Only mark as completed if ALL employees have submitted proof
+            if ($employeesWithProof->count() === $allEmployees->count() && $allEmployees->count() > 0) {
+                $newStatus = 'completed';
+            }
+            // Otherwise, stay in_progress
         }
         // If already completed or cancelled, keep the status
 
-        // Update task
+        // Update task status
         $this->selectedTask->update([
-            'proof_images' => $allProofImages,
-            'notes' => $notes,
             'status' => $newStatus,
         ]);
 
         $this->loadTasks();
         $this->closeModal();
         
-        $statusMessage = $newStatus === 'completed' ? 'Status berubah ke Completed' : 'Status berubah ke In Progress';
+        // Create appropriate notification message
+        $allEmployees = $this->selectedTask->employees;
+        $employeesWithProof = $allEmployees->filter(function ($employee) {
+            $pivotProof = $employee->pivot->proof_images ?? [];
+            return !empty($pivotProof) && is_array($pivotProof) && count($pivotProof) > 0;
+        });
+        
+        if ($newStatus === 'completed') {
+            $message = 'Bukti pekerjaan berhasil diupload. Status berubah ke Completed (semua karyawan sudah submit).';
+        } elseif ($newStatus === 'in_progress') {
+            if ($allEmployees->count() > 1) {
+                $remaining = $allEmployees->count() - $employeesWithProof->count();
+                $message = "Bukti pekerjaan berhasil diupload. Status: In Progress. Masih menunggu {$remaining} karyawan untuk submit bukti.";
+            } else {
+                $message = 'Bukti pekerjaan berhasil diupload. Status berubah ke In Progress.';
+            }
+        } else {
+            $message = 'Bukti pekerjaan berhasil diupload.';
+        }
+        
         \Filament\Notifications\Notification::make()
-            ->title('Bukti pekerjaan berhasil diupload. ' . $statusMessage)
+            ->title($message)
             ->success()
             ->send();
     }

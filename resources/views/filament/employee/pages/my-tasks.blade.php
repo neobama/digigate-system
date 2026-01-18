@@ -295,16 +295,56 @@
                         <form wire:submit.prevent="uploadProof">
                             {{ $this->form }}
                             
-                            @if(!empty($selectedTask->proof_images))
+                            @php
+                                $currentEmployee = auth()->user()->employee;
+                                $employeeProofImages = [];
+                                if ($currentEmployee) {
+                                    $pivotData = $selectedTask->employees->firstWhere('id', $currentEmployee->id);
+                                    $employeeProofImages = $pivotData->pivot->proof_images ?? [];
+                                }
+                            @endphp
+                            
+                            @if(!empty($employeeProofImages))
                                 <div class="mt-4">
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Foto Bukti yang Sudah Terupload
+                                        Foto Bukti yang Sudah Terupload (Anda)
                                     </label>
                                     <div class="grid grid-cols-3 gap-2">
-                                        @foreach($selectedTask->proof_images as $image)
+                                        @foreach($employeeProofImages as $image)
                                             <img src="{{ \Illuminate\Support\Facades\Storage::disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')->url($image) }}" alt="Proof" class="w-full h-24 object-cover rounded">
                                         @endforeach
                                     </div>
+                                </div>
+                            @endif
+                            
+                            <!-- Show proof submission status for all employees -->
+                            @if($selectedTask->employees->count() > 1)
+                                <div class="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Status Submit Bukti (Semua Karyawan)
+                                    </label>
+                                    <div class="space-y-2">
+                                        @foreach($selectedTask->employees as $employee)
+                                            @php
+                                                $hasProof = !empty($employee->pivot->proof_images) && is_array($employee->pivot->proof_images) && count($employee->pivot->proof_images) > 0;
+                                            @endphp
+                                            <div class="flex items-center justify-between text-sm">
+                                                <span class="text-gray-700 dark:text-gray-300">{{ $employee->name }}</span>
+                                                @if($hasProof)
+                                                    <span class="px-2 py-1 text-xs rounded bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+                                                        ✓ Sudah Submit
+                                                    </span>
+                                                @else
+                                                    <span class="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100">
+                                                        ⏳ Belum Submit
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                        Task akan otomatis menjadi Completed setelah semua karyawan submit bukti.
+                                    </p>
                                 </div>
                             @endif
                             

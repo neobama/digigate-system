@@ -48,7 +48,17 @@ class CashbonObserver
         
         $message .= "Status: " . ucfirst($cashbon->status);
         
-        $this->whatsapp->sendToAdmin($message);
+        // Send notification to admin (don't fail if WhatsApp fails)
+        try {
+            $this->whatsapp->sendToAdmin($message);
+        } catch (\Exception $e) {
+            // Log error but don't stop the cashbon creation process
+            \Log::error('Failed to send WhatsApp notification to admin for new cashbon', [
+                'cashbon_id' => $cashbon->id,
+                'employee_id' => $employee->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

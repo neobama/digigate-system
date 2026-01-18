@@ -47,7 +47,17 @@ class ReimbursementObserver
             $message .= "\nKeterangan: {$reimbursement->description}";
         }
         
-        $this->whatsapp->sendToAdmin($message);
+        // Send notification to admin (don't fail if WhatsApp fails)
+        try {
+            $this->whatsapp->sendToAdmin($message);
+        } catch (\Exception $e) {
+            // Log error but don't stop the reimbursement creation process
+            \Log::error('Failed to send WhatsApp notification to admin for new reimbursement', [
+                'reimbursement_id' => $reimbursement->id,
+                'employee_id' => $employee->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

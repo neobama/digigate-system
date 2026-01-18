@@ -32,7 +32,9 @@ class Task extends Model
 
     public function employees(): BelongsToMany
     {
-        return $this->belongsToMany(Employee::class, 'task_employee');
+        return $this->belongsToMany(Employee::class, 'task_employee')
+            ->withPivot('proof_images', 'notes')
+            ->withTimestamps();
     }
 
     public function creator(): BelongsTo
