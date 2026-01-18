@@ -16,6 +16,8 @@ class Task extends Model
         'description',
         'start_date',
         'end_date',
+        'start_time',
+        'end_time',
         'status',
         'created_by',
         'is_self_assigned',

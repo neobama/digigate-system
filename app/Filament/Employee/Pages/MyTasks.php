@@ -35,6 +35,8 @@ class MyTasks extends Page implements HasForms
     public $newTaskDescription = '';
     public $newTaskStartDate = '';
     public $newTaskEndDate = '';
+    public $newTaskStartTime = '';
+    public $newTaskEndTime = '';
     public $newTaskEmployees = []; // Selected employees for new task
 
     public function mount(): void
@@ -338,11 +340,32 @@ class MyTasks extends Page implements HasForms
 
     public function createTask(): void
     {
-        $this->validate([
+        $rules = [
             'newTaskTitle' => 'required|string|max:255',
             'newTaskStartDate' => 'required|date',
             'newTaskEndDate' => 'required|date|after_or_equal:newTaskStartDate',
-        ]);
+        ];
+
+        // If same day, require time fields
+        if ($this->newTaskStartDate === $this->newTaskEndDate) {
+            $rules['newTaskStartTime'] = 'required|date_format:H:i';
+            $rules['newTaskEndTime'] = 'required|date_format:H:i';
+        }
+
+        $this->validate($rules);
+
+        // Custom validation: end time must be after start time for same day tasks
+        if ($this->newTaskStartDate === $this->newTaskEndDate) {
+            if (!empty($this->newTaskStartTime) && !empty($this->newTaskEndTime)) {
+                if (strtotime($this->newTaskEndTime) <= strtotime($this->newTaskStartTime)) {
+                    \Filament\Notifications\Notification::make()
+                        ->title('Jam selesai harus setelah jam mulai')
+                        ->danger()
+                        ->send();
+                    return;
+                }
+            }
+        }
 
         $employee = Auth::user()->employee;
         if (!$employee) {
@@ -353,7 +376,7 @@ class MyTasks extends Page implements HasForms
             return;
         }
 
-        $task = Task::create([
+        $taskData = [
             'title' => $this->newTaskTitle,
             'description' => $this->newTaskDescription,
             'start_date' => $this->newTaskStartDate,
@@ -361,7 +384,15 @@ class MyTasks extends Page implements HasForms
             'status' => 'pending',
             'created_by' => Auth::id(),
             'is_self_assigned' => true,
-        ]);
+        ];
+
+        // Add time if same day
+        if ($this->newTaskStartDate === $this->newTaskEndDate) {
+            $taskData['start_time'] = $this->newTaskStartTime;
+            $taskData['end_time'] = $this->newTaskEndTime;
+        }
+
+        $task = Task::create($taskData);
 
         // Attach current employee (creator) and selected employees
         $employeeIds = [$employee->id];
@@ -399,7 +430,7 @@ class MyTasks extends Page implements HasForms
             }
         }
 
-        $this->reset(['newTaskTitle', 'newTaskDescription', 'newTaskStartDate', 'newTaskEndDate', 'newTaskEmployees', 'showCreateModal']);
+        $this->reset(['newTaskTitle', 'newTaskDescription', 'newTaskStartDate', 'newTaskEndDate', 'newTaskStartTime', 'newTaskEndTime', 'newTaskEmployees', 'showCreateModal']);
         $this->loadTasks();
 
         \Filament\Notifications\Notification::make()
@@ -411,7 +442,25 @@ class MyTasks extends Page implements HasForms
     public function closeCreateModal(): void
     {
         $this->showCreateModal = false;
-        $this->reset(['newTaskTitle', 'newTaskDescription', 'newTaskStartDate', 'newTaskEndDate', 'newTaskEmployees']);
+        $this->reset(['newTaskTitle', 'newTaskDescription', 'newTaskStartDate', 'newTaskEndDate', 'newTaskStartTime', 'newTaskEndTime', 'newTaskEmployees']);
+    }
+
+    public function updatedNewTaskStartDate(): void
+    {
+        // Reset time if dates change
+        if ($this->newTaskStartDate !== $this->newTaskEndDate) {
+            $this->newTaskStartTime = '';
+            $this->newTaskEndTime = '';
+        }
+    }
+
+    public function updatedNewTaskEndDate(): void
+    {
+        // Reset time if dates change
+        if ($this->newTaskStartDate !== $this->newTaskEndDate) {
+            $this->newTaskStartTime = '';
+            $this->newTaskEndTime = '';
+        }
     }
 
     public function getAvailableEmployeesForNewTask()
