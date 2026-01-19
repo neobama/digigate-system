@@ -254,7 +254,7 @@ class MyTasks extends Page implements HasForms
         $pivotData = $this->selectedTask->employees()
             ->where('employees.id', $currentEmployee->id)
             ->first();
-        $existingProofImages = $pivotData->pivot->proof_images ?? [];
+        $existingProofImages = $pivotData && $pivotData->pivot ? ($pivotData->pivot->proof_images ?? []) : [];
         
         $isS3 = config('filesystems.default') === 's3';
         $allProofImages = [];
@@ -323,16 +323,8 @@ class MyTasks extends Page implements HasForms
             'status' => $newStatus,
         ]);
 
-        $this->loadTasks();
-        $this->closeModal();
-        
-        // Create appropriate notification message
-        $allEmployees = $this->selectedTask->employees;
-        $employeesWithProof = $allEmployees->filter(function ($employee) {
-            $pivotProof = $employee->pivot->proof_images ?? [];
-            return !empty($pivotProof) && is_array($pivotProof) && count($pivotProof) > 0;
-        });
-        
+        // Create appropriate notification message BEFORE closing modal
+        // (because closeModal() sets selectedTask to null)
         if ($newStatus === 'completed') {
             $message = 'Bukti pekerjaan berhasil diupload. Status berubah ke Completed (semua karyawan sudah submit).';
         } elseif ($newStatus === 'in_progress') {
@@ -345,6 +337,9 @@ class MyTasks extends Page implements HasForms
         } else {
             $message = 'Bukti pekerjaan berhasil diupload.';
         }
+        
+        $this->loadTasks();
+        $this->closeModal();
         
         \Filament\Notifications\Notification::make()
             ->title($message)
