@@ -45,9 +45,9 @@ class WhatsAppService
     }
 
     /**
-     * Send WhatsApp message with retry logic
+     * Send WhatsApp message
      */
-    public function sendMessage(string $phoneNumber, string $message, int $maxRetries = 1): bool
+    public function sendMessage(string $phoneNumber, string $message): bool
     {
         try {
             // Validate phone number
@@ -58,89 +58,31 @@ class WhatsAppService
             
             $chatId = $this->formatPhoneNumber($phoneNumber);
             
-            $attempt = 0;
-            $lastError = null;
-            
-            while ($attempt <= $maxRetries) {
-                try {
-                    $response = Http::timeout(10)
-                        ->withHeaders([
-                            'Content-Type' => 'application/json',
-                            'X-Api-Key' => $this->apiKey,
-                        ])->post($this->apiUrl, [
-                            'session' => $this->session,
-                            'chatId' => $chatId,
-                            'text' => $message,
-                        ]);
+            $response = Http::timeout(10)
+                ->withHeaders([
+                    'Content-Type' => 'application/json',
+                    'X-Api-Key' => $this->apiKey,
+                ])->post($this->apiUrl, [
+                    'session' => $this->session,
+                    'chatId' => $chatId,
+                    'text' => $message,
+                ]);
 
-                    if ($response->successful()) {
-                        Log::info('WhatsApp message sent successfully', [
-                            'phone' => $phoneNumber,
-                            'chatId' => $chatId,
-                            'attempt' => $attempt + 1,
-                        ]);
-                        return true;
-                    } else {
-                        $responseBody = $response->body();
-                        $statusCode = $response->status();
-                        
-                        // Check if it's a retryable error (5xx server errors)
-                        $isRetryable = $statusCode >= 500 && $statusCode < 600;
-                        
-                        // Also check for specific WhatsApp API errors that might be temporary
-                        $isWhatsAppError = false;
-                        if ($responseBody) {
-                            $responseData = json_decode($responseBody, true);
-                            if (isset($responseData['statusCode']) && $responseData['statusCode'] >= 500) {
-                                $isRetryable = true;
-                                $isWhatsAppError = true;
-                            }
-                        }
-                        
-                        if ($isRetryable && $attempt < $maxRetries) {
-                            $attempt++;
-                            $waitTime = $attempt * 2; // Exponential backoff: 2s, 4s, etc.
-                            Log::warning('WhatsApp API error, retrying...', [
-                                'phone' => $phoneNumber,
-                                'chatId' => $chatId,
-                                'status' => $statusCode,
-                                'attempt' => $attempt,
-                                'wait_time' => $waitTime,
-                                'error' => $isWhatsAppError ? ($responseData['exception']['message'] ?? 'Unknown error') : 'HTTP ' . $statusCode,
-                            ]);
-                            sleep($waitTime);
-                            continue;
-                        }
-                        
-                        Log::error('Failed to send WhatsApp message', [
-                            'phone' => $phoneNumber,
-                            'chatId' => $chatId,
-                            'status' => $statusCode,
-                            'response' => $responseBody,
-                            'attempts' => $attempt + 1,
-                        ]);
-                        return false;
-                    }
-                } catch (\Illuminate\Http\Client\ConnectionException $e) {
-                    // Network/connection errors are retryable
-                    if ($attempt < $maxRetries) {
-                        $attempt++;
-                        $waitTime = $attempt * 2;
-                        Log::warning('WhatsApp connection error, retrying...', [
-                            'phone' => $phoneNumber,
-                            'chatId' => $chatId,
-                            'attempt' => $attempt,
-                            'wait_time' => $waitTime,
-                            'error' => $e->getMessage(),
-                        ]);
-                        sleep($waitTime);
-                        continue;
-                    }
-                    throw $e;
-                }
+            if ($response->successful()) {
+                Log::info('WhatsApp message sent successfully', [
+                    'phone' => $phoneNumber,
+                    'chatId' => $chatId,
+                ]);
+                return true;
+            } else {
+                Log::error('Failed to send WhatsApp message', [
+                    'phone' => $phoneNumber,
+                    'chatId' => $chatId,
+                    'status' => $response->status(),
+                    'response' => $response->body(),
+                ]);
+                return false;
             }
-            
-            return false;
         } catch (\InvalidArgumentException $e) {
             Log::error('Invalid phone number format for WhatsApp message', [
                 'phone' => $phoneNumber,
