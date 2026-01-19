@@ -120,7 +120,15 @@ class MyTasks extends Page implements HasForms
             $pivotData = $this->selectedTask->employees()
                 ->where('employees.id', $currentEmployee->id)
                 ->first();
-            $this->proof_images = $pivotData->pivot->proof_images ?? [];
+            $proofImagesRaw = $pivotData->pivot->proof_images ?? [];
+            // Ensure it's an array (handle JSON string case)
+            if (is_string($proofImagesRaw)) {
+                $this->proof_images = json_decode($proofImagesRaw, true) ?? [];
+            } elseif (is_array($proofImagesRaw)) {
+                $this->proof_images = $proofImagesRaw;
+            } else {
+                $this->proof_images = [];
+            }
             $this->notes = $pivotData->pivot->notes ?? '';
         } else {
             $this->proof_images = [];
@@ -254,7 +262,15 @@ class MyTasks extends Page implements HasForms
         $pivotData = $this->selectedTask->employees()
             ->where('employees.id', $currentEmployee->id)
             ->first();
-        $existingProofImages = $pivotData && $pivotData->pivot ? ($pivotData->pivot->proof_images ?? []) : [];
+        $proofImagesRaw = $pivotData && $pivotData->pivot ? ($pivotData->pivot->proof_images ?? []) : [];
+        // Ensure it's an array (handle JSON string case)
+        if (is_string($proofImagesRaw)) {
+            $existingProofImages = json_decode($proofImagesRaw, true) ?? [];
+        } elseif (is_array($proofImagesRaw)) {
+            $existingProofImages = $proofImagesRaw;
+        } else {
+            $existingProofImages = [];
+        }
         
         $isS3 = config('filesystems.default') === 's3';
         $allProofImages = [];
@@ -300,7 +316,15 @@ class MyTasks extends Page implements HasForms
         // Check if all assigned employees have submitted proof
         $allEmployees = $this->selectedTask->employees;
         $employeesWithProof = $allEmployees->filter(function ($employee) {
-            $pivotProof = $employee->pivot->proof_images ?? [];
+            $proofImagesRaw = $employee->pivot->proof_images ?? [];
+            // Ensure it's an array (handle JSON string case)
+            if (is_string($proofImagesRaw)) {
+                $pivotProof = json_decode($proofImagesRaw, true) ?? [];
+            } elseif (is_array($proofImagesRaw)) {
+                $pivotProof = $proofImagesRaw;
+            } else {
+                $pivotProof = [];
+            }
             return !empty($pivotProof) && is_array($pivotProof) && count($pivotProof) > 0;
         });
 

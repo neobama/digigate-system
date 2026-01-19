@@ -300,11 +300,19 @@
                                 $employeeProofImages = [];
                                 if ($currentEmployee) {
                                     $pivotData = $selectedTask->employees->firstWhere('id', $currentEmployee->id);
-                                    $employeeProofImages = $pivotData->pivot->proof_images ?? [];
+                                    $proofImagesRaw = $pivotData->pivot->proof_images ?? [];
+                                    // Ensure it's an array (handle JSON string case)
+                                    if (is_string($proofImagesRaw)) {
+                                        $employeeProofImages = json_decode($proofImagesRaw, true) ?? [];
+                                    } elseif (is_array($proofImagesRaw)) {
+                                        $employeeProofImages = $proofImagesRaw;
+                                    } else {
+                                        $employeeProofImages = [];
+                                    }
                                 }
                             @endphp
                             
-                            @if(!empty($employeeProofImages))
+                            @if(!empty($employeeProofImages) && is_array($employeeProofImages))
                                 <div class="mt-4">
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Foto Bukti yang Sudah Terupload (Anda)
@@ -326,7 +334,16 @@
                                     <div class="space-y-2">
                                         @foreach($selectedTask->employees as $employee)
                                             @php
-                                                $hasProof = !empty($employee->pivot->proof_images) && is_array($employee->pivot->proof_images) && count($employee->pivot->proof_images) > 0;
+                                                $proofImagesRaw = $employee->pivot->proof_images ?? [];
+                                                // Ensure it's an array (handle JSON string case)
+                                                if (is_string($proofImagesRaw)) {
+                                                    $proofImagesArray = json_decode($proofImagesRaw, true) ?? [];
+                                                } elseif (is_array($proofImagesRaw)) {
+                                                    $proofImagesArray = $proofImagesRaw;
+                                                } else {
+                                                    $proofImagesArray = [];
+                                                }
+                                                $hasProof = !empty($proofImagesArray) && is_array($proofImagesArray) && count($proofImagesArray) > 0;
                                             @endphp
                                             <div class="flex items-center justify-between text-sm">
                                                 <span class="text-gray-700 dark:text-gray-300">{{ $employee->name }}</span>
