@@ -157,6 +157,7 @@
                     @if($invoice->po_number)
                     <p><strong>Nomor PO:</strong> {{ $invoice->po_number }}</p>
                     @endif
+                    <p><strong>Status:</strong> Paid</p>
                 </td>
             </tr>
         </table>
