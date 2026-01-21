@@ -118,6 +118,22 @@
                                         'dark_text' => '#fee2e2',
                                         'dark_border' => '#dc2626',
                                     ],
+                                    'late' => [
+                                        'bg' => '#f97316',
+                                        'text' => '#7c2d12',
+                                        'border' => '#ea580c',
+                                        'dark_bg' => '#9a3412',
+                                        'dark_text' => '#fed7aa',
+                                        'dark_border' => '#f97316',
+                                    ],
+                                    'failed' => [
+                                        'bg' => '#6b7280',
+                                        'text' => '#1f2937',
+                                        'border' => '#4b5563',
+                                        'dark_bg' => '#374151',
+                                        'dark_text' => '#d1d5db',
+                                        'dark_border' => '#6b7280',
+                                    ],
                                 ];
                                 
                                 $colors = $statusColors[$task['status']] ?? $statusColors['pending'];
@@ -176,6 +192,14 @@
             <div class="flex items-center gap-2.5">
                 <div class="w-5 h-5 rounded border-2" style="background-color: #86efac; border-color: #4ade80;"></div>
                 <span class="text-gray-700 dark:text-gray-300 font-medium">Completed</span>
+            </div>
+            <div class="flex items-center gap-2.5">
+                <div class="w-5 h-5 rounded border-2" style="background-color: #f97316; border-color: #ea580c;"></div>
+                <span class="text-gray-700 dark:text-gray-300 font-medium">Late</span>
+            </div>
+            <div class="flex items-center gap-2.5">
+                <div class="w-5 h-5 rounded border-2" style="background-color: #6b7280; border-color: #4b5563;"></div>
+                <span class="text-gray-700 dark:text-gray-300 font-medium">Failed</span>
             </div>
             <div class="flex items-center gap-2.5">
                 <div class="w-5 h-5 rounded border-2" style="background-color: #fca5a5; border-color: #f87171;"></div>
