@@ -40,10 +40,10 @@ class AppServiceProvider extends ServiceProvider
         Task::observe(TaskObserver::class);
         Invoice::observe(InvoiceObserver::class);
         
-        // Schedule task to check failed tasks daily at midnight
+        // Schedule task to check late and failed tasks every hour
         $this->app->booted(function () {
             $schedule = $this->app->make(Schedule::class);
-            $schedule->command('tasks:check-failed')->daily();
+            $schedule->command('tasks:check-failed')->hourly();
         });
     }
 }

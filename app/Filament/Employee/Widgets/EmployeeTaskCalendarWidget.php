@@ -35,7 +35,9 @@ class EmployeeTaskCalendarWidget extends Widget
         $startOfMonth = Carbon::create($this->currentYear, $this->currentMonth, 1)->startOfMonth();
         $endOfMonth = Carbon::create($this->currentYear, $this->currentMonth, 1)->endOfMonth();
 
-        $this->tasks = Task::with('employees')
+        $tasks = Task::with(['employees' => function($query) {
+            $query->withPivot('proof_images', 'notes', 'proof_uploaded_at');
+        }])
             ->whereHas('employees', function ($query) use ($employeeId) {
                 $query->where('employees.id', $employeeId);
             })
@@ -47,20 +49,25 @@ class EmployeeTaskCalendarWidget extends Widget
                           ->where('end_date', '>=', $endOfMonth);
                     });
             })
-            ->get()
-            ->map(function ($task) {
-                return [
-                    'id' => $task->id,
-                    'title' => $task->title,
-                    'start' => $task->start_date->format('Y-m-d'),
-                    'end' => $task->end_date->format('Y-m-d'),
-                    'status' => $task->status,
-                    'employees' => $task->employees->pluck('name')->toArray(),
-                    'description' => $task->description,
-                    'proof_images' => $task->proof_images ?? [],
-                ];
-            })
-            ->toArray();
+            ->get();
+
+        // Check and update late status for tasks that are past end_date
+        foreach ($tasks as $task) {
+            $task->checkAndUpdateLateStatus();
+        }
+
+        $this->tasks = $tasks->map(function ($task) {
+            return [
+                'id' => $task->id,
+                'title' => $task->title,
+                'start' => $task->start_date->format('Y-m-d'),
+                'end' => $task->end_date->format('Y-m-d'),
+                'status' => $task->fresh()->status, // Get fresh status after potential update
+                'employees' => $task->employees->pluck('name')->toArray(),
+                'description' => $task->description,
+                'proof_images' => $task->proof_images ?? [],
+            ];
+        })->toArray();
     }
 
     public function previousMonth(): void
