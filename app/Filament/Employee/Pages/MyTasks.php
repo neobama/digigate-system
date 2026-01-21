@@ -322,7 +322,10 @@ class MyTasks extends Page implements HasForms
 
         // Determine new status based on current status and proof submission
         $newStatus = $this->selectedTask->status;
-        if ($this->selectedTask->status === 'pending') {
+        if ($this->selectedTask->status === 'failed') {
+            // If failed and uploading proof, change to late (since it's after end_date)
+            $newStatus = 'late';
+        } elseif ($this->selectedTask->status === 'pending') {
             // If pending and uploading proof, change to in_progress (or late if after end_date)
             $newStatus = $isLate ? 'late' : 'in_progress';
         } elseif ($this->selectedTask->status === 'in_progress') {
@@ -349,7 +352,7 @@ class MyTasks extends Page implements HasForms
             }
             // Otherwise, stay late
         }
-        // If cancelled or failed, keep the status
+        // If cancelled, keep the status
 
         // Update task status
         $this->selectedTask->update([
@@ -361,15 +364,22 @@ class MyTasks extends Page implements HasForms
         if ($newStatus === 'completed') {
             $message = 'Bukti pekerjaan berhasil diupload. Status berubah ke Completed (semua karyawan sudah submit).';
         } elseif ($newStatus === 'late') {
+            $wasFailed = $this->selectedTask->status === 'failed';
             if ($allEmployees->count() > 1) {
                 $remaining = $allEmployees->count() - $employeesWithProof->count();
                 if ($remaining > 0) {
-                    $message = "Bukti pekerjaan berhasil diupload (TERLAMBAT). Status: Late. Masih menunggu {$remaining} karyawan untuk submit bukti.";
+                    $message = $wasFailed 
+                        ? "Bukti pekerjaan berhasil diupload. Status berubah dari Failed ke Late. Masih menunggu {$remaining} karyawan untuk submit bukti."
+                        : "Bukti pekerjaan berhasil diupload (TERLAMBAT). Status: Late. Masih menunggu {$remaining} karyawan untuk submit bukti.";
                 } else {
-                    $message = 'Bukti pekerjaan berhasil diupload (TERLAMBAT). Status: Late (semua karyawan sudah submit).';
+                    $message = $wasFailed
+                        ? 'Bukti pekerjaan berhasil diupload. Status berubah dari Failed ke Late (semua karyawan sudah submit).'
+                        : 'Bukti pekerjaan berhasil diupload (TERLAMBAT). Status: Late (semua karyawan sudah submit).';
                 }
             } else {
-                $message = 'Bukti pekerjaan berhasil diupload (TERLAMBAT). Status berubah ke Late.';
+                $message = $wasFailed
+                    ? 'Bukti pekerjaan berhasil diupload. Status berubah dari Failed ke Late.'
+                    : 'Bukti pekerjaan berhasil diupload (TERLAMBAT). Status berubah ke Late.';
             }
         } elseif ($newStatus === 'in_progress') {
             if ($allEmployees->count() > 1) {

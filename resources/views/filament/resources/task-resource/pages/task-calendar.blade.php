@@ -204,6 +204,10 @@
                 <span class="text-gray-700 dark:text-gray-300 font-medium">Late</span>
             </div>
             <div class="flex items-center gap-2.5">
+                <div class="w-5 h-5 rounded border-2" style="background-color: #6b7280; border-color: #4b5563;"></div>
+                <span class="text-gray-700 dark:text-gray-300 font-medium">Failed</span>
+            </div>
+            <div class="flex items-center gap-2.5">
                 <div class="w-5 h-5 rounded border-2" style="background-color: #fca5a5; border-color: #f87171;"></div>
                 <span class="text-gray-700 dark:text-gray-300 font-medium">Cancelled</span>
             </div>
