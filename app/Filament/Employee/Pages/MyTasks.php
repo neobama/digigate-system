@@ -245,18 +245,10 @@ class MyTasks extends Page implements HasForms
             return;
         }
 
-        // Validate: Proof must be uploaded on the same day as the task
+        // Check if upload is late (after end_date)
         $today = Carbon::today();
-        $taskDate = Carbon::parse($this->selectedTask->end_date);
-        
-        if (!$today->isSameDay($taskDate)) {
-            \Filament\Notifications\Notification::make()
-                ->title('Realization harus diupload di hari yang sama dengan task')
-                ->body('Task ini harus diupload pada tanggal ' . $taskDate->format('d/m/Y'))
-                ->danger()
-                ->send();
-            return;
-        }
+        $taskEndDate = Carbon::parse($this->selectedTask->end_date)->startOfDay();
+        $isLate = $today->greaterThan($taskEndDate);
 
         // Get existing proof images for this employee from pivot table
         $pivotData = $this->selectedTask->employees()
@@ -331,16 +323,33 @@ class MyTasks extends Page implements HasForms
         // Determine new status based on current status and proof submission
         $newStatus = $this->selectedTask->status;
         if ($this->selectedTask->status === 'pending') {
-            // If pending and uploading proof, change to in_progress
-            $newStatus = 'in_progress';
+            // If pending and uploading proof, change to in_progress (or late if after end_date)
+            $newStatus = $isLate ? 'late' : 'in_progress';
         } elseif ($this->selectedTask->status === 'in_progress') {
             // Only mark as completed if ALL employees have submitted proof
             if ($employeesWithProof->count() === $allEmployees->count() && $allEmployees->count() > 0) {
-                $newStatus = 'completed';
+                $newStatus = $isLate ? 'late' : 'completed';
+            }
+            // Otherwise, check if should be marked as late
+            elseif ($isLate) {
+                $newStatus = 'late';
             }
             // Otherwise, stay in_progress
+        } elseif ($this->selectedTask->status === 'completed') {
+            // If already completed but someone submits late, change to late
+            if ($isLate) {
+                $newStatus = 'late';
+            }
+            // Otherwise, stay completed
+        } elseif ($this->selectedTask->status === 'late') {
+            // If already late, check if should stay late or change to completed
+            if ($employeesWithProof->count() === $allEmployees->count() && $allEmployees->count() > 0 && !$isLate) {
+                // All submitted and not late anymore (shouldn't happen, but just in case)
+                $newStatus = 'completed';
+            }
+            // Otherwise, stay late
         }
-        // If already completed or cancelled, keep the status
+        // If cancelled or failed, keep the status
 
         // Update task status
         $this->selectedTask->update([
@@ -351,6 +360,17 @@ class MyTasks extends Page implements HasForms
         // (because closeModal() sets selectedTask to null)
         if ($newStatus === 'completed') {
             $message = 'Bukti pekerjaan berhasil diupload. Status berubah ke Completed (semua karyawan sudah submit).';
+        } elseif ($newStatus === 'late') {
+            if ($allEmployees->count() > 1) {
+                $remaining = $allEmployees->count() - $employeesWithProof->count();
+                if ($remaining > 0) {
+                    $message = "Bukti pekerjaan berhasil diupload (TERLAMBAT). Status: Late. Masih menunggu {$remaining} karyawan untuk submit bukti.";
+                } else {
+                    $message = 'Bukti pekerjaan berhasil diupload (TERLAMBAT). Status: Late (semua karyawan sudah submit).';
+                }
+            } else {
+                $message = 'Bukti pekerjaan berhasil diupload (TERLAMBAT). Status berubah ke Late.';
+            }
         } elseif ($newStatus === 'in_progress') {
             if ($allEmployees->count() > 1) {
                 $remaining = $allEmployees->count() - $employeesWithProof->count();

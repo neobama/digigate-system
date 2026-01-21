@@ -59,6 +59,7 @@ class TaskResource extends Resource
                             'completed' => 'Completed',
                             'cancelled' => 'Cancelled',
                             'failed' => 'Failed',
+                            'late' => 'Late',
                         ])
                         ->default('pending')
                         ->required(),
@@ -92,7 +93,7 @@ class TaskResource extends Resource
                         'warning' => 'pending',
                         'info' => 'in_progress',
                         'success' => 'completed',
-                        'danger' => 'cancelled',
+                        'danger' => ['cancelled', 'late'],
                         'gray' => 'failed',
                     ]),
                 Tables\Columns\IconColumn::make('is_self_assigned')
