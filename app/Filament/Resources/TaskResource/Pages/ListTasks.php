@@ -13,6 +13,10 @@ class ListTasks extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('calendar')
+                ->label('Kalender')
+                ->icon('heroicon-o-calendar-days')
+                ->url(fn () => TaskResource::getUrl('calendar')),
             Actions\CreateAction::make(),
         ];
     }
