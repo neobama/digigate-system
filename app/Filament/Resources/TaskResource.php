@@ -123,6 +123,23 @@ class TaskResource extends Resource
                     ->preload(),
             ])
             ->actions([
+                Tables\Actions\Action::make('viewProof')
+                    ->label('Lihat Bukti')
+                    ->icon('heroicon-o-photo')
+                    ->color('info')
+                    ->modalHeading(fn (Task $record) => 'Bukti Pekerjaan: ' . $record->title)
+                    ->modalContent(function (Task $record) {
+                        $record->load(['employees' => function($query) {
+                            $query->withPivot('proof_images', 'notes', 'proof_uploaded_at');
+                        }]);
+                        return view('filament.infolists.components.task-employee-proof-modal', [
+                            'employees' => $record->employees,
+                        ]);
+                    })
+                    ->modalWidth('4xl')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Tutup')
+                    ->visible(fn (Task $record) => $record->employees()->count() > 0),
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
@@ -173,19 +190,22 @@ class TaskResource extends Resource
                             ->columnSpanFull()
                             ->visible(fn ($record) => !empty($record->notes)),
                     ])->columns(2),
-                Infolists\Components\Section::make('Bukti Pekerjaan')
+                Infolists\Components\Section::make('Bukti Pekerjaan per Karyawan')
                     ->schema([
-                        Infolists\Components\ViewEntry::make('proof_images')
+                        Infolists\Components\ViewEntry::make('employee_proof')
                             ->label('')
-                            ->view('filament.infolists.components.task-proof-images')
+                            ->view('filament.infolists.components.task-employee-proof')
                             ->viewData(function (Task $record) {
+                                $record->load(['employees' => function($query) {
+                                    $query->withPivot('proof_images', 'notes', 'proof_uploaded_at');
+                                }]);
                                 return [
-                                    'images' => is_array($record->proof_images) ? $record->proof_images : [],
+                                    'employees' => $record->employees,
                                 ];
                             })
                             ->columnSpanFull(),
                     ])
-                    ->visible(fn (Task $record) => !empty($record->proof_images)),
+                    ->visible(fn (Task $record) => $record->employees()->count() > 0),
             ]);
     }
 
