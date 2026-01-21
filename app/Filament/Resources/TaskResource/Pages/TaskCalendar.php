@@ -22,6 +22,8 @@ class TaskCalendar extends Page
     public $currentMonth;
     public $currentYear;
     public $tasks = [];
+    public $selectedTask = null;
+    public $showProofModal = false;
 
     public function mount(): void
     {
@@ -29,13 +31,29 @@ class TaskCalendar extends Page
         $this->currentYear = now()->year;
         $this->loadTasks();
     }
+    
+    public function openTask($taskId): void
+    {
+        $this->selectedTask = Task::with(['employees' => function($query) {
+            $query->withPivot('proof_images', 'notes', 'proof_uploaded_at');
+        }])->find($taskId);
+        $this->showProofModal = true;
+    }
+    
+    public function closeModal(): void
+    {
+        $this->showProofModal = false;
+        $this->selectedTask = null;
+    }
 
     public function loadTasks(): void
     {
         $startOfMonth = Carbon::create($this->currentYear, $this->currentMonth, 1)->startOfMonth();
         $endOfMonth = Carbon::create($this->currentYear, $this->currentMonth, 1)->endOfMonth();
 
-        $this->tasks = Task::with('employees')
+        $this->tasks = Task::with(['employees' => function($query) {
+            $query->withPivot('proof_images', 'notes', 'proof_uploaded_at');
+        }])
             ->where(function ($query) use ($startOfMonth, $endOfMonth) {
                 $query->whereBetween('start_date', [$startOfMonth, $endOfMonth])
                     ->orWhereBetween('end_date', [$startOfMonth, $endOfMonth])
