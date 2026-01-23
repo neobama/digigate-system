@@ -35,4 +35,47 @@ class Employee extends Model
     {
         return $this->belongsToMany(Task::class, 'task_employee');
     }
+
+    /**
+     * Get maximum cashbon allowance per month (35% of base salary)
+     */
+    public function getMaxCashbonPerMonth(): float
+    {
+        return $this->base_salary * 0.35;
+    }
+
+    /**
+     * Get total cashbon amount for current month (pending + approved + paid)
+     */
+    public function getCurrentMonthCashbonTotal(): float
+    {
+        $currentMonth = now()->startOfMonth();
+        $currentMonthEnd = now()->endOfMonth();
+
+        return $this->cashbons()
+            ->whereBetween('request_date', [$currentMonth, $currentMonthEnd])
+            ->whereIn('status', ['pending', 'approved', 'paid'])
+            ->sum('amount');
+    }
+
+    /**
+     * Get remaining cashbon allowance for current month
+     */
+    public function getRemainingCashbonAllowance(): float
+    {
+        $maxAllowance = $this->getMaxCashbonPerMonth();
+        $used = $this->getCurrentMonthCashbonTotal();
+        $remaining = $maxAllowance - $used;
+        
+        return max(0, $remaining); // Don't return negative
+    }
+
+    /**
+     * Check if cashbon amount exceeds monthly allowance
+     */
+    public function canRequestCashbon(float $amount): bool
+    {
+        $remaining = $this->getRemainingCashbonAllowance();
+        return $amount <= $remaining;
+    }
 }
