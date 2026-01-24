@@ -233,9 +233,9 @@ class MyReimbursement extends Page implements Tables\Contracts\HasTable
                             ->directory('reimbursements')
                             ->disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')
                             ->visibility('public')
-                            ->imageEditor()
+                            // ->imageEditor() // Disabled temporarily to test if it causes timeout
                             ->maxSize(5120) // 5MB
-                            ->acceptedFileTypes(['image/*'])
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg', 'image/webp'])
                             ->required()
                             ->helperText('Upload bukti pembayaran (maks 5MB, format: JPG, PNG)'),
                     ])
@@ -243,6 +243,31 @@ class MyReimbursement extends Page implements Tables\Contracts\HasTable
                         $data['employee_id'] = auth()->user()->employee?->id;
                         $data['status'] = 'pending';
                         return $data;
+                    })
+                    ->action(function (array $data) {
+                        \Log::info('Reimbursement create started', ['data_keys' => array_keys($data)]);
+                        $startTime = microtime(true);
+                        
+                        // Create record directly to avoid additional processing
+                        $reimbursement = Reimbursement::create($data);
+                        
+                        $createTime = microtime(true) - $startTime;
+                        \Log::info('Reimbursement created', [
+                            'id' => $reimbursement->id,
+                            'create_time' => round($createTime, 2) . 's'
+                        ]);
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->title('Reimbursement berhasil dibuat')
+                            ->success()
+                            ->send();
+                        
+                        $totalTime = microtime(true) - $startTime;
+                        \Log::info('Reimbursement action completed', [
+                            'total_time' => round($totalTime, 2) . 's'
+                        ]);
+                        
+                        return $reimbursement;
                     })
                     ->beforeFormFilled(function () {
                         if (!auth()->user()->employee) {
