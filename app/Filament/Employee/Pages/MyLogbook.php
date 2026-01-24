@@ -68,31 +68,6 @@ class MyLogbook extends Page implements Tables\Contracts\HasTable
                         $data['employee_id'] = auth()->user()->employee?->id;
                         return $data;
                     })
-                    ->after(function (Logbook $record) {
-                        // Move files to S3 if configured
-                        if (config('filesystems.default') === 's3' && !empty($record->photo)) {
-                            $photos = is_array($record->photo) ? $record->photo : [$record->photo];
-                            $s3Photos = [];
-                            
-                            foreach ($photos as $photo) {
-                                if (Storage::disk('public')->exists($photo)) {
-                                    $content = Storage::disk('public')->get($photo);
-                                    $s3Path = Storage::disk('s3_public')->put($photo, $content, 'public');
-                                    if ($s3Path) {
-                                        $s3Photos[] = $s3Path;
-                                        Storage::disk('public')->delete($photo); // Delete from local
-                                    }
-                                } else {
-                                    // Already in S3, keep it
-                                    $s3Photos[] = $photo;
-                                }
-                            }
-                            
-                            if (!empty($s3Photos)) {
-                                $record->update(['photo' => $s3Photos]);
-                            }
-                        }
-                    })
                     ->beforeFormFilled(function () {
                         if (!auth()->user()->employee) {
                             throw new \Exception('User tidak memiliki data employee. Silakan hubungi admin.');
