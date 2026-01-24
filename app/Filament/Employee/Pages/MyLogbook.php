@@ -102,11 +102,7 @@ class MyLogbook extends Page implements Tables\Contracts\HasTable
                             ->imageEditor()
                             ->multiple()
                             ->maxFiles(10)
-                            ->acceptedFileTypes(['image/*'])
-                            ->storeFileNamesUsing(function ($file) {
-                                // Return the path directly without additional processing
-                                return $file;
-                            }),
+                            ->acceptedFileTypes(['image/*']),
                     ])
                     ->mutateFormDataUsing(function (array $data, Logbook $record): array {
                         // Ensure photo is an array
