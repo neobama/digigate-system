@@ -244,19 +244,6 @@ class MyReimbursement extends Page implements Tables\Contracts\HasTable
                         $data['status'] = 'pending';
                         return $data;
                     })
-                    ->after(function (Reimbursement $record) {
-                        // Move file to S3 if configured
-                        if (config('filesystems.default') === 's3' && !empty($record->proof_of_payment)) {
-                            if (Storage::disk('public')->exists($record->proof_of_payment)) {
-                                $content = Storage::disk('public')->get($record->proof_of_payment);
-                                $s3Path = Storage::disk('s3_public')->put($record->proof_of_payment, $content, 'public');
-                                if ($s3Path) {
-                                    $record->update(['proof_of_payment' => $s3Path]);
-                                    Storage::disk('public')->delete($record->proof_of_payment); // Delete from local
-                                }
-                            }
-                        }
-                    })
                     ->beforeFormFilled(function () {
                         if (!auth()->user()->employee) {
                             throw new \Exception('User tidak memiliki data employee. Silakan hubungi admin.');
