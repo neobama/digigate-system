@@ -66,7 +66,16 @@ class MyLogbook extends Page implements Tables\Contracts\HasTable
                     ])
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['employee_id'] = auth()->user()->employee?->id;
+                        // Ensure photo is an array
+                        if (isset($data['photo']) && !is_array($data['photo'])) {
+                            $data['photo'] = [$data['photo']];
+                        }
                         return $data;
+                    })
+                    ->action(function (array $data) {
+                        // Create record directly to avoid additional processing
+                        $logbook = Logbook::create($data);
+                        return $logbook;
                     })
                     ->beforeFormFilled(function () {
                         if (!auth()->user()->employee) {
@@ -93,8 +102,19 @@ class MyLogbook extends Page implements Tables\Contracts\HasTable
                             ->imageEditor()
                             ->multiple()
                             ->maxFiles(10)
-                            ->acceptedFileTypes(['image/*']),
-                    ]),
+                            ->acceptedFileTypes(['image/*'])
+                            ->storeFileNamesUsing(function ($file) {
+                                // Return the path directly without additional processing
+                                return $file;
+                            }),
+                    ])
+                    ->mutateFormDataUsing(function (array $data, Logbook $record): array {
+                        // Ensure photo is an array
+                        if (isset($data['photo']) && !is_array($data['photo'])) {
+                            $data['photo'] = [$data['photo']];
+                        }
+                        return $data;
+                    }),
                 Tables\Actions\DeleteAction::make(),
             ]);
     }
