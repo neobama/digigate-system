@@ -100,12 +100,18 @@ class ReimbursementResource extends Resource
                     ->label('Jumlah')
                     ->money('IDR')
                     ->sortable(),
-                Tables\Columns\ImageColumn::make('proof_of_payment')
+                Tables\Columns\TextColumn::make('proof_of_payment')
                     ->label('Bukti')
-                    ->circular()
-                    ->defaultImageUrl(url('/images/placeholder.png'))
-                    ->disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')
-                    ->openUrlInNewTab(),
+                    ->formatStateUsing(function ($state) {
+                        if (!$state) {
+                            return '-';
+                        }
+                        return 'Lihat Bukti';
+                    })
+                    ->url(fn ($record) => $record->proof_of_payment ? Storage::disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')->url($record->proof_of_payment) : null)
+                    ->openUrlInNewTab()
+                    ->icon('heroicon-o-photo')
+                    ->color('primary'),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn ($state): string => match ($state) {
