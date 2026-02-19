@@ -21,10 +21,13 @@ Route::get('/invoices/{invoice}/surat-jalan-pdf', [InvoicePdfController::class, 
 Route::get('/employees/{employee}/salary-slip', [SalarySlipController::class, 'show'])
     ->name('employee.salary-slip');
 
-// Device Return Portal Routes
-Route::prefix('device-returns')->name('device-returns.portal.')->group(function () {
-    Route::get('/', [\App\Http\Controllers\DeviceReturnPortalController::class, 'index'])->name('index');
-    Route::get('/create', [\App\Http\Controllers\DeviceReturnPortalController::class, 'create'])->name('create');
-    Route::post('/create', [\App\Http\Controllers\DeviceReturnPortalController::class, 'store'])->name('store');
-    Route::get('/tracking', [\App\Http\Controllers\DeviceReturnPortalController::class, 'tracking'])->name('tracking');
-});
+// Device Return Portal Routes - only for retur.digigate.id (public, no auth)
+Route::domain('retur.digigate.id')
+    ->prefix('device-returns')
+    ->name('device-returns.portal.')
+    ->group(function () {
+        Route::get('/', [\App\Http\Controllers\DeviceReturnPortalController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\DeviceReturnPortalController::class, 'create'])->name('create');
+        Route::post('/create', [\App\Http\Controllers\DeviceReturnPortalController::class, 'store'])->name('store');
+        Route::get('/tracking', [\App\Http\Controllers\DeviceReturnPortalController::class, 'tracking'])->name('tracking');
+    });
