@@ -30,10 +30,13 @@ class ComponentResource extends Resource
                     ->options([
                         'Processor i7 11700K' => 'Processor i7 11700K',
                         'Processor i7 8700K' => 'Processor i7 8700K',
+                        'Processor i7 14700K' => 'Processor i7 14700K',
                         'RAM DDR4' => 'RAM DDR4',
+                        'RAM DDR5' => 'RAM DDR5',
                         'SSD' => 'SSD',
                         'Chassis Macan' => 'Chassis Macan',
                         'Chassis Maleo' => 'Chassis Maleo',
+                        'Chassis Komodo' => 'Chassis Komodo',
                     ])
                     ->required(),
                 Forms\Components\TextInput::make('sn')

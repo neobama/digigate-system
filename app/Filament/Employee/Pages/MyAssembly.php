@@ -44,6 +44,7 @@ class MyAssembly extends Page implements Tables\Contracts\HasTable
                     ->options([
                         'Macan' => 'DigiGate Macan',
                         'Maleo' => 'DigiGate Maleo',
+                        'Komodo' => 'DigiGate Komodo',
                     ]),
             ])
             ->headerActions([
@@ -65,6 +66,7 @@ class MyAssembly extends Page implements Tables\Contracts\HasTable
                             ->options([
                                 'Macan' => 'DigiGate Macan (i7 11700K)',
                                 'Maleo' => 'DigiGate Maleo (i7 8700K)',
+                                'Komodo' => 'DigiGate Komodo (i7 14700K)',
                             ])
                             ->live()
                             ->required(),
@@ -81,8 +83,19 @@ class MyAssembly extends Page implements Tables\Contracts\HasTable
                                 if (!$type) return [];
 
                                 // Tentukan spek berdasarkan tipe
-                                $procModel = ($type === 'Macan') ? 'Processor i7 11700K' : 'Processor i7 8700K';
-                                $chassisModel = ($type === 'Macan') ? 'Chassis Macan' : 'Chassis Maleo';
+                                $procModel = match($type) {
+                                    'Macan' => 'Processor i7 11700K',
+                                    'Maleo' => 'Processor i7 8700K',
+                                    'Komodo' => 'Processor i7 14700K',
+                                    default => 'Processor i7 8700K',
+                                };
+                                $chassisModel = match($type) {
+                                    'Macan' => 'Chassis Macan',
+                                    'Maleo' => 'Chassis Maleo',
+                                    'Komodo' => 'Chassis Komodo',
+                                    default => 'Chassis Maleo',
+                                };
+                                $ramModel = ($type === 'Komodo') ? 'RAM DDR5' : 'RAM DDR4';
 
                                 return [
                                     // Dropdown Chassis
@@ -99,14 +112,14 @@ class MyAssembly extends Page implements Tables\Contracts\HasTable
                                     
                                     // Dropdown RAM 1
                                     Forms\Components\Select::make('sn_details.ram_1')
-                                        ->label('SN RAM DDR4 (Slot 1)')
-                                        ->options(fn() => Component::where('name', 'RAM DDR4')->where('status', 'available')->pluck('sn', 'sn'))
+                                        ->label("SN $ramModel (Slot 1)")
+                                        ->options(fn() => Component::where('name', $ramModel)->where('status', 'available')->pluck('sn', 'sn'))
                                         ->required(),
 
                                     // Dropdown RAM 2
                                     Forms\Components\Select::make('sn_details.ram_2')
-                                        ->label('SN RAM DDR4 (Slot 2)')
-                                        ->options(fn() => Component::where('name', 'RAM DDR4')->where('status', 'available')->pluck('sn', 'sn'))
+                                        ->label("SN $ramModel (Slot 2)")
+                                        ->options(fn() => Component::where('name', $ramModel)->where('status', 'available')->pluck('sn', 'sn'))
                                         ->required(),
 
                                     // Dropdown SSD

@@ -43,6 +43,7 @@ class AssemblyResource extends Resource
                     ->options([
                         'Macan' => 'DigiGate Macan (i7 11700K)',
                         'Maleo' => 'DigiGate Maleo (i7 8700K)',
+                        'Komodo' => 'DigiGate Komodo (i7 14700K)',
                     ])
                     ->live() // Memicu perubahan form secara real-time
                     ->required(),
@@ -65,8 +66,19 @@ class AssemblyResource extends Resource
                         if (!$type) return [];
 
                         // Tentukan spek berdasarkan tipe
-                        $procModel = ($type === 'Macan') ? 'Processor i7 11700K' : 'Processor i7 8700K';
-                        $chassisModel = ($type === 'Macan') ? 'Chassis Macan' : 'Chassis Maleo';
+                        $procModel = match($type) {
+                            'Macan' => 'Processor i7 11700K',
+                            'Maleo' => 'Processor i7 8700K',
+                            'Komodo' => 'Processor i7 14700K',
+                            default => 'Processor i7 8700K',
+                        };
+                        $chassisModel = match($type) {
+                            'Macan' => 'Chassis Macan',
+                            'Maleo' => 'Chassis Maleo',
+                            'Komodo' => 'Chassis Komodo',
+                            default => 'Chassis Maleo',
+                        };
+                        $ramModel = ($type === 'Komodo') ? 'RAM DDR5' : 'RAM DDR4';
 
                         return [
                             // Dropdown Chassis
@@ -83,14 +95,14 @@ class AssemblyResource extends Resource
                             
                             // Dropdown RAM 1
                             Forms\Components\Select::make('sn_details.ram_1')
-                                ->label('SN RAM DDR4 (Slot 1)')
-                                ->options(fn() => \App\Models\Component::where('name', 'RAM DDR4')->where('status', 'available')->pluck('sn', 'sn'))
+                                ->label("SN $ramModel (Slot 1)")
+                                ->options(fn() => \App\Models\Component::where('name', $ramModel)->where('status', 'available')->pluck('sn', 'sn'))
                                 ->required(),
 
                             // Dropdown RAM 2
                             Forms\Components\Select::make('sn_details.ram_2')
-                                ->label('SN RAM DDR4 (Slot 2)')
-                                ->options(fn() => \App\Models\Component::where('name', 'RAM DDR4')->where('status', 'available')->pluck('sn', 'sn'))
+                                ->label("SN $ramModel (Slot 2)")
+                                ->options(fn() => \App\Models\Component::where('name', $ramModel)->where('status', 'available')->pluck('sn', 'sn'))
                                 ->required(),
 
                             // Dropdown SSD
@@ -125,6 +137,7 @@ class AssemblyResource extends Resource
                             ->formatStateUsing(fn ($state) => match($state) {
                                 'Macan' => 'DigiGate Macan (i7 11700K)',
                                 'Maleo' => 'DigiGate Maleo (i7 8700K)',
+                                'Komodo' => 'DigiGate Komodo (i7 14700K)',
                                 default => $state,
                             })
                             ->badge()
@@ -140,25 +153,35 @@ class AssemblyResource extends Resource
                     ->description('Detail Serial Number komponen yang digunakan dalam assembly ini')
                     ->schema([
                         Infolists\Components\TextEntry::make('sn_details.chassis')
-                            ->label(fn (Assembly $record) => 'SN ' . ($record->product_type === 'Macan' ? 'Chassis Macan' : 'Chassis Maleo'))
+                            ->label(fn (Assembly $record) => 'SN ' . match($record->product_type) {
+                                'Macan' => 'Chassis Macan',
+                                'Maleo' => 'Chassis Maleo',
+                                'Komodo' => 'Chassis Komodo',
+                                default => 'Chassis',
+                            })
                             ->badge()
                             ->color('info')
                             ->copyable()
                             ->copyMessage('SN Chassis disalin!'),
                         Infolists\Components\TextEntry::make('sn_details.processor')
-                            ->label(fn (Assembly $record) => 'SN ' . ($record->product_type === 'Macan' ? 'Processor i7 11700K' : 'Processor i7 8700K'))
+                            ->label(fn (Assembly $record) => 'SN ' . match($record->product_type) {
+                                'Macan' => 'Processor i7 11700K',
+                                'Maleo' => 'Processor i7 8700K',
+                                'Komodo' => 'Processor i7 14700K',
+                                default => 'Processor',
+                            })
                             ->badge()
                             ->color('primary')
                             ->copyable()
                             ->copyMessage('SN Processor disalin!'),
                         Infolists\Components\TextEntry::make('sn_details.ram_1')
-                            ->label('SN RAM DDR4 (Slot 1)')
+                            ->label(fn (Assembly $record) => 'SN ' . ($record->product_type === 'Komodo' ? 'RAM DDR5' : 'RAM DDR4') . ' (Slot 1)')
                             ->badge()
                             ->color('warning')
                             ->copyable()
                             ->copyMessage('SN RAM 1 disalin!'),
                         Infolists\Components\TextEntry::make('sn_details.ram_2')
-                            ->label('SN RAM DDR4 (Slot 2)')
+                            ->label(fn (Assembly $record) => 'SN ' . ($record->product_type === 'Komodo' ? 'RAM DDR5' : 'RAM DDR4') . ' (Slot 2)')
                             ->badge()
                             ->color('warning')
                             ->copyable()
@@ -232,6 +255,7 @@ class AssemblyResource extends Resource
                     ->options([
                         'Macan' => 'DigiGate Macan',
                         'Maleo' => 'DigiGate Maleo',
+                        'Komodo' => 'DigiGate Komodo',
                     ]),
             ])
             ->actions([

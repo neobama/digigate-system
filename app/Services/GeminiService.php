@@ -128,7 +128,7 @@ Only return valid JSON, no other text. If any field cannot be determined, use nu
         $prompt = "Analyze this invoice/receipt image and extract ALL items/products listed. Return as JSON array:
 [
   {
-    \"name\": \"Product/Item name - MUST match one of these exact options: 'Processor i7 11700K', 'Processor i7 8700K', 'RAM DDR4', 'SSD', 'Chassis Macan', or 'Chassis Maleo'. Mapping rules: If you see RAM/DDR4/DDR memory -> use 'RAM DDR4'. If you see Processor i7 11700/11700K/11700F -> use 'Processor i7 11700K'. If you see Processor i7 8700/8700K/8700F -> use 'Processor i7 8700K'. If you see any SSD (Samsung, Kingston, etc.) -> use 'SSD'. If you see Chassis Macan/Case Macan -> use 'Chassis Macan'. If you see Chassis Maleo/Case Maleo -> use 'Chassis Maleo'.\",
+    \"name\": \"Product/Item name - MUST match one of these exact options: 'Processor i7 11700K', 'Processor i7 8700K', 'Processor i7 14700K', 'RAM DDR4', 'RAM DDR5', 'SSD', 'Chassis Macan', 'Chassis Maleo', or 'Chassis Komodo'. Mapping rules: If you see RAM/DDR4/DDR4 memory -> use 'RAM DDR4'. If you see RAM/DDR5/DDR5 memory -> use 'RAM DDR5'. If you see Processor i7 11700/11700K/11700F -> use 'Processor i7 11700K'. If you see Processor i7 8700/8700K/8700F -> use 'Processor i7 8700K'. If you see Processor i7 14700/14700K/14700F -> use 'Processor i7 14700K'. If you see any SSD (Samsung, Kingston, etc.) -> use 'SSD'. If you see Chassis Macan/Case Macan -> use 'Chassis Macan'. If you see Chassis Maleo/Case Maleo -> use 'Chassis Maleo'. If you see Chassis Komodo/Case Komodo -> use 'Chassis Komodo'.\",
     \"supplier\": \"Supplier/vendor name from invoice\",
     \"purchase_date\": \"Date in YYYY-MM-DD format (extract from invoice date)\",
     \"quantity\": \"Quantity as number (if available)\"
@@ -136,7 +136,7 @@ Only return valid JSON, no other text. If any field cannot be determined, use nu
   ...
 ]
 
-IMPORTANT: The 'name' field MUST be exactly one of: 'Processor i7 11700K', 'Processor i7 8700K', 'RAM DDR4', 'SSD', 'Chassis Macan', or 'Chassis Maleo'. Map similar items to the closest match.
+IMPORTANT: The 'name' field MUST be exactly one of: 'Processor i7 11700K', 'Processor i7 8700K', 'Processor i7 14700K', 'RAM DDR4', 'RAM DDR5', 'SSD', 'Chassis Macan', 'Chassis Maleo', or 'Chassis Komodo'. Map similar items to the closest match.
 
 Only return valid JSON array, no other text. If invoice date is not found, use today's date. Extract all items from the invoice.";
 
@@ -218,13 +218,21 @@ Only return valid JSON array, no other text. If invoice date is not found, use t
         $options = [
             'Processor i7 11700K',
             'Processor i7 8700K',
+            'Processor i7 14700K',
             'RAM DDR4',
+            'RAM DDR5',
             'SSD',
             'Chassis Macan',
             'Chassis Maleo',
+            'Chassis Komodo',
         ];
         
-        // Mapping rules
+        // Mapping rules (order matters - check more specific first)
+        // Chassis Komodo -> Chassis Komodo
+        if (preg_match('/\b(chassis\s*komodo|komodo\s*chassis|case\s*komodo)\b/i', $name)) {
+            return 'Chassis Komodo';
+        }
+        
         // Chassis Macan -> Chassis Macan
         if (preg_match('/\b(chassis\s*macan|macan\s*chassis|case\s*macan)\b/i', $name)) {
             return 'Chassis Macan';
@@ -235,9 +243,19 @@ Only return valid JSON array, no other text. If invoice date is not found, use t
             return 'Chassis Maleo';
         }
         
+        // RAM/DDR5 -> RAM DDR5 (check DDR5 before DDR4)
+        if (preg_match('/\b(ddr5|ddr\s*5)\b/i', $name)) {
+            return 'RAM DDR5';
+        }
+        
         // RAM/DDR4 -> RAM DDR4
         if (preg_match('/\b(ram|ddr4|ddr\s*4|memory)\b/i', $name)) {
             return 'RAM DDR4';
+        }
+        
+        // Processor i7 14700 variants -> Processor i7 14700K
+        if (preg_match('/\b(i7\s*14700|14700k|14700f|14700)\b/i', $name)) {
+            return 'Processor i7 14700K';
         }
         
         // Processor i7 11700 variants -> Processor i7 11700K
