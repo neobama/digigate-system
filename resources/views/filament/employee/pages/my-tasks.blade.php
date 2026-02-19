@@ -77,7 +77,7 @@
                             });
                         @endphp
                         @foreach($taskSegments as $taskInfo)
-                            @php
+                                @php
                                 $task = $taskInfo['task'];
                                 $span = $taskInfo['span'];
                                 $row = $taskInfo['row'] ?? 0;
@@ -150,9 +150,9 @@
                                 // Each cell has minHeight in px, convert to rem (16px = 1rem)
                                 $cellHeightRem = $minHeight / 16; // Convert px to rem
                                 $topOffset = ($weekRow * $cellHeightRem) + ($row * 3); // Week row + task row
-                            @endphp
+                                @endphp
                             
-                            <div 
+                                    <div 
                                 class="absolute text-xs p-2 rounded-lg cursor-pointer hover:opacity-90 transition-all border-2 font-medium shadow-sm task-bar-item pointer-events-auto"
                                 style="
                                     left: calc({{ $leftPercent }}% + 0.75rem); 
@@ -166,16 +166,16 @@
                                 data-dark-style="{{ $darkStyle }}"
                                 data-task-status="{{ $task['status'] }}"
                                 title="{{ $task['title'] }} ({{ $task['start'] }} - {{ $task['end'] }})"
-                                wire:click="openTask('{{ $task['id'] }}')"
-                            >
+                                        wire:click="openTask('{{ $task['id'] }}')"
+                                    >
                                 <div class="font-semibold truncate mb-0.5">{{ $task['title'] }}</div>
-                                @if(!empty($task['proof_images']))
+                                        @if(!empty($task['proof_images']))
                                     <div class="text-[10px] opacity-90 mt-0.5">✓ Bukti terupload</div>
                                 @endif
                             </div>
                         @endforeach
-                    @endforeach
-                </div>
+                            @endforeach
+                        </div>
             </div>
         </div>
 

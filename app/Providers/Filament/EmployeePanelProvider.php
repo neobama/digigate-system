@@ -38,6 +38,9 @@ class EmployeePanelProvider extends PanelProvider
             ])
             ->discoverPages(in: app_path('Filament/Employee/Pages'), for: 'App\\Filament\\Employee\\Pages')
             ->discoverWidgets(in: app_path('Filament/Employee/Widgets'), for: 'App\\Filament\\Employee\\Widgets')
+            ->resources([
+                \App\Filament\Resources\DeviceReturnResource::class,
+            ])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
