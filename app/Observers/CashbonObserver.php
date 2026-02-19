@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Cashbon;
+use App\Models\Expense;
 use App\Services\WhatsAppService;
 
 class CashbonObserver
@@ -76,6 +77,36 @@ class CashbonObserver
             }
             
             $newStatus = $cashbon->status;
+            
+            // Auto-create Expense record when status changes to "paid"
+            if ($newStatus === 'paid') {
+                // Check if expense already exists for this cashbon
+                $existingExpense = Expense::where('cashbon_id', $cashbon->id)->first();
+                
+                if (!$existingExpense) {
+                    try {
+                        $description = $cashbon->reason . ' - ' . $employee->name;
+                        if ($cashbon->installment_months) {
+                            $description .= ' (Cicilan: ' . $cashbon->installment_months . ' bulan)';
+                        }
+                        
+                        Expense::create([
+                            'cashbon_id' => $cashbon->id,
+                            'description' => $description,
+                            'expense_date' => $cashbon->request_date,
+                            'amount' => $cashbon->amount,
+                            'fund_source' => 'bank_perusahaan', // Default untuk cashbon
+                            'vendor_invoice_number' => null,
+                        ]);
+                    } catch (\Exception $e) {
+                        // Log error but don't stop the process
+                        \Log::error('Failed to create expense for cashbon', [
+                            'cashbon_id' => $cashbon->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
             
             // Notify employee if status is approved or paid
             if (in_array($newStatus, ['approved', 'paid']) && !empty($employee->phone_number)) {

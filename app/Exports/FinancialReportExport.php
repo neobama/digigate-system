@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Models\BudgetRequest;
 use App\Models\Cashbon;
 use App\Models\Expense;
 use App\Models\Income;
@@ -94,39 +95,25 @@ class FinancialReportExport implements FromCollection, WithHeadings, WithMapping
             }
         }
 
-        // Expenses from Cashbons
-        // Only get cashbons that still exist and have valid employee relationship
-        $cashbons = Cashbon::with('employee')
-            ->where('status', 'paid')
-            ->whereMonth('request_date', $this->month)
-            ->whereYear('request_date', $this->year)
-            ->whereHas('employee') // Only include cashbons with valid employee
-            ->get();
-
-        foreach ($cashbons as $cashbon) {
-            // Double check: only add if employee still exists
-            if ($cashbon->employee) {
-                $data->push([
-                    'type' => 'Pengeluaran',
-                    'category' => 'Cashbon',
-                    'date' => \Carbon\Carbon::parse($cashbon->request_date),
-                    'description' => $cashbon->reason . ' - ' . $cashbon->employee->name,
-                    'amount' => $cashbon->amount,
-                    'debit' => 0,
-                    'credit' => $cashbon->amount,
-                ]);
-            }
-        }
-
-        // Manual Expenses
-        $expenses = Expense::whereMonth('expense_date', $this->month)
+        // Manual Expenses (termasuk Budget Request dan Cashbon yang sudah jadi Expense)
+        $expenses = Expense::with('budgetRequest.employee', 'cashbon.employee')
+            ->whereMonth('expense_date', $this->month)
             ->whereYear('expense_date', $this->year)
             ->get();
 
         foreach ($expenses as $expense) {
+            // Determine category based on source
+            if ($expense->budget_request_id) {
+                $category = 'Request Anggaran';
+            } elseif ($expense->cashbon_id) {
+                $category = 'Cashbon';
+            } else {
+                $category = 'Manual';
+            }
+            
             $data->push([
                 'type' => 'Pengeluaran',
-                'category' => 'Manual',
+                'category' => $category,
                 'date' => \Carbon\Carbon::parse($expense->expense_date),
                 'description' => $expense->description . ($expense->account_code ? ' (Kode: ' . $expense->account_code . ')' : ''),
                 'amount' => $expense->amount,

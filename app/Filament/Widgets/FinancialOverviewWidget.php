@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Models\BudgetRequest;
 use App\Models\Cashbon;
 use App\Models\Expense;
 use App\Models\Income;
@@ -43,21 +44,13 @@ class FinancialOverviewWidget extends BaseWidget
             ->whereHas('employee') // Only include reimbursements with valid employee
             ->sum('amount');
 
-        // Pengeluaran dari Cashbon Paid
-        // Only count cashbons with valid employee relationship
-        $cashbonExpense = Cashbon::where('status', 'paid')
-            ->whereMonth('request_date', $month)
-            ->whereYear('request_date', $year)
-            ->whereHas('employee') // Only include cashbons with valid employee
-            ->sum('amount');
-
-        // Pengeluaran Manual
+        // Pengeluaran Manual (termasuk Budget Request dan Cashbon yang sudah jadi Expense)
         $manualExpense = Expense::whereMonth('expense_date', $month)
             ->whereYear('expense_date', $year)
             ->sum('amount');
 
         // Total Pengeluaran
-        $totalExpense = $reimbursementExpense + $cashbonExpense + $manualExpense;
+        $totalExpense = $reimbursementExpense + $manualExpense;
 
         // Laba/Rugi
         $profit = $totalIncome - $totalExpense;

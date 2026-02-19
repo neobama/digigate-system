@@ -10,6 +10,8 @@ class Expense extends Model
     use HasUuids;
     
     protected $fillable = [
+        'budget_request_id',
+        'cashbon_id',
         'vendor_invoice_number',
         'description',
         'account_code',
@@ -23,5 +25,15 @@ class Expense extends Model
         'expense_date' => 'date',
         'amount' => 'decimal:2',
     ];
+
+    public function budgetRequest()
+    {
+        return $this->belongsTo(BudgetRequest::class);
+    }
+
+    public function cashbon()
+    {
+        return $this->belongsTo(Cashbon::class);
+    }
 }
 

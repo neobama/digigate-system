@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\BudgetRequest;
+use App\Models\Expense;
 use App\Services\WhatsAppService;
 
 class BudgetRequestObserver
@@ -73,6 +74,32 @@ class BudgetRequestObserver
             }
             
             $newStatus = $budgetRequest->status;
+            
+            // Auto-create Expense record when status changes to "paid"
+            if ($newStatus === 'paid') {
+                // Check if expense already exists for this budget request
+                $existingExpense = Expense::where('budget_request_id', $budgetRequest->id)->first();
+                
+                if (!$existingExpense) {
+                    try {
+                        Expense::create([
+                            'budget_request_id' => $budgetRequest->id,
+                            'description' => $budgetRequest->budget_name . ' - ' . $employee->name . ' | ' . $budgetRequest->budget_detail,
+                            'expense_date' => $budgetRequest->request_date,
+                            'amount' => $budgetRequest->amount,
+                            'proof_of_payment' => $budgetRequest->proof_of_payment,
+                            'fund_source' => 'bank_perusahaan', // Default untuk budget request
+                            'vendor_invoice_number' => null, // Bisa diisi manual nanti jika perlu
+                        ]);
+                    } catch (\Exception $e) {
+                        // Log error but don't stop the process
+                        \Log::error('Failed to create expense for budget request', [
+                            'budget_request_id' => $budgetRequest->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
             
             // Notify employee if status is approved, rejected, or paid
             if (in_array($newStatus, ['approved', 'rejected', 'paid']) && !empty($employee->phone_number)) {
