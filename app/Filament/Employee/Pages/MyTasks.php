@@ -437,6 +437,15 @@ class MyTasks extends Page implements HasForms
             }
         }
 
+        // Validate that at least one employee is selected
+        if (empty($this->newTaskEmployees) || !is_array($this->newTaskEmployees) || count($this->newTaskEmployees) === 0) {
+            \Filament\Notifications\Notification::make()
+                ->title('Pilih setidaknya satu karyawan yang bertanggung jawab')
+                ->warning()
+                ->send();
+            return;
+        }
+
         $employee = Auth::user()->employee;
         if (!$employee) {
             \Filament\Notifications\Notification::make()
@@ -464,20 +473,13 @@ class MyTasks extends Page implements HasForms
 
         $task = Task::create($taskData);
 
-        // Attach current employee (creator) and selected employees
-        $employeeIds = [$employee->id];
-        if (!empty($this->newTaskEmployees)) {
-            // Merge with selected employees, remove duplicates
-            $employeeIds = array_unique(array_merge($employeeIds, $this->newTaskEmployees));
-        }
-        
+        // Attach only selected employees (creator can be included or not)
+        $employeeIds = array_unique($this->newTaskEmployees);
         $task->employees()->attach($employeeIds);
         
-        // Send WhatsApp notifications to assigned employees (excluding creator)
+        // Send WhatsApp notifications to all assigned employees
         $whatsapp = app(\App\Services\WhatsAppService::class);
-        $assignedEmployees = \App\Models\Employee::whereIn('id', $employeeIds)
-            ->where('id', '!=', $employee->id) // Exclude creator
-            ->get();
+        $assignedEmployees = \App\Models\Employee::whereIn('id', $employeeIds)->get();
         
         foreach ($assignedEmployees as $assignedEmployee) {
             if (!empty($assignedEmployee->phone_number)) {
@@ -535,13 +537,8 @@ class MyTasks extends Page implements HasForms
 
     public function getAvailableEmployeesForNewTask()
     {
-        $currentEmployee = Auth::user()->employee;
-        if (!$currentEmployee) {
-            return collect([]);
-        }
-        
+        // Include all active employees (including current employee - can be selected or not)
         return \App\Models\Employee::where('is_active', true)
-            ->where('id', '!=', $currentEmployee->id) // Exclude current employee (will be added automatically)
             ->orderBy('name')
             ->get();
     }
@@ -558,9 +555,9 @@ class MyTasks extends Page implements HasForms
         }
         
         // Check if task is self assigned and created by current user
+        // Creator can manage even if not assigned to the task
         return $this->selectedTask->is_self_assigned 
-            && $this->selectedTask->created_by === Auth::id()
-            && $this->selectedTask->employees->contains($currentEmployee->id);
+            && $this->selectedTask->created_by === Auth::id();
     }
 
     public function addEmployees(): void
@@ -645,6 +642,38 @@ class MyTasks extends Page implements HasForms
             ->whereNotIn('id', $currentEmployeeIds)
             ->orderBy('name')
             ->get();
+    }
+
+    public function removeEmployee($employeeId): void
+    {
+        if (!$this->selectedTask || !$this->canManageEmployees()) {
+            \Filament\Notifications\Notification::make()
+                ->title('Tidak memiliki izin untuk menghapus karyawan')
+                ->danger()
+                ->send();
+            return;
+        }
+
+        // Prevent removing if it's the last employee
+        if ($this->selectedTask->employees->count() <= 1) {
+            \Filament\Notifications\Notification::make()
+                ->title('Tidak dapat menghapus karyawan terakhir. Task harus memiliki setidaknya satu karyawan yang bertanggung jawab.')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        // Remove employee from task
+        $this->selectedTask->employees()->detach($employeeId);
+        
+        // Reload task with employees
+        $this->selectedTask->load('employees');
+        $this->loadTasks();
+        
+        \Filament\Notifications\Notification::make()
+            ->title('Karyawan berhasil dihapus dari task')
+            ->success()
+            ->send();
     }
 
     public function getCalendarDays(): array

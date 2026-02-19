@@ -239,8 +239,21 @@
                                 <strong>Karyawan yang Ditugaskan:</strong> 
                                 <div class="flex flex-wrap gap-2 mt-1">
                                     @foreach($selectedTask->employees as $employee)
-                                        <span class="px-2 py-1 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                                        <span class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
                                             {{ $employee->name }}
+                                            @if($this->canManageEmployees())
+                                                <button 
+                                                    type="button"
+                                                    wire:click="removeEmployee('{{ $employee->id }}')"
+                                                    wire:confirm="Yakin ingin menghapus {{ $employee->name }} dari task ini?"
+                                                    class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                                                    title="Hapus dari task"
+                                                >
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                    </svg>
+                                                </button>
+                                            @endif
                                         </span>
                                     @endforeach
                                 </div>
@@ -505,7 +518,7 @@
 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                        Assign ke Karyawan Lain (Opsional)
+                                        Pilih Karyawan yang Bertanggung Jawab <span class="text-red-500">*</span>
                                     </label>
                                     @php
                                         $availableEmployees = $this->getAvailableEmployeesForNewTask();
@@ -533,13 +546,14 @@
                                             </div>
                                         </div>
                                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                                            Anda akan otomatis ditambahkan sebagai assignee.
+                                            Pilih minimal satu karyawan yang akan bertanggung jawab atas task ini. Anda bisa memilih diri sendiri atau karyawan lain.
                                         </p>
                                     @else
                                         <p class="text-sm text-gray-500 dark:text-gray-400">
-                                            Tidak ada karyawan lain yang tersedia.
+                                            Tidak ada karyawan yang tersedia.
                                         </p>
                                     @endif
+                                    @error('newTaskEmployees') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                                 </div>
                             </div>
                             <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
