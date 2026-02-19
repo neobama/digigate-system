@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\BudgetRequest;
 use App\Models\Cashbon;
 use App\Models\Invoice;
 use App\Models\Reimbursement;
 use App\Models\Task;
+use App\Observers\BudgetRequestObserver;
 use App\Observers\CashbonObserver;
 use App\Observers\InvoiceObserver;
 use App\Observers\ReimbursementObserver;
@@ -39,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
         Cashbon::observe(CashbonObserver::class);
         Task::observe(TaskObserver::class);
         Invoice::observe(InvoiceObserver::class);
+        BudgetRequest::observe(BudgetRequestObserver::class);
         
         // Schedule task to check late and failed tasks every hour
         $this->app->booted(function () {
