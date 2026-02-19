@@ -36,11 +36,6 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
-            // Explicitly register resources that must be available in admin panel
-            ->resources([
-                \App\Filament\Resources\DeviceReturnResource::class,
-            ])
-            // Plus auto-discover any other resources
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
