@@ -18,4 +18,10 @@ class Logbook extends Model
     {
         return $this->belongsTo(Employee::class);
     }
+
+    public function employees()
+    {
+        return $this->belongsToMany(Employee::class, 'logbook_employees', 'logbook_id', 'employee_id')
+            ->withTimestamps();
+    }
 }

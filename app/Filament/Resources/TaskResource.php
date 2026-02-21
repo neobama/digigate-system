@@ -122,6 +122,7 @@ class TaskResource extends Resource
                     ->searchable()
                     ->preload(),
             ])
+            ->defaultSort('created_at', 'desc')
             ->actions([
                 Tables\Actions\Action::make('viewProof')
                     ->label('Lihat Bukti')

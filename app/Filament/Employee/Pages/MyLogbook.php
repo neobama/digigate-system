@@ -23,7 +23,7 @@ class MyLogbook extends Page implements Tables\Contracts\HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->query(Logbook::query()->where('employee_id', auth()->user()->employee?->id))
+            ->query(Logbook::query()->where('employee_id', auth()->user()->employee?->id)->with('employees'))
             ->columns([
                 Tables\Columns\TextColumn::make('log_date')
                     ->label('Tanggal')
@@ -32,6 +32,14 @@ class MyLogbook extends Page implements Tables\Contracts\HasTable
                 Tables\Columns\TextColumn::make('activity')
                     ->label('Aktivitas')
                     ->limit(50),
+                Tables\Columns\TextColumn::make('employees.name')
+                    ->label('Karyawan Lain')
+                    ->badge()
+                    ->separator(',')
+                    ->getStateUsing(function (Logbook $record) {
+                        return $record->employees->pluck('name')->toArray();
+                    })
+                    ->visible(fn (Logbook $record) => $record->employees->count() > 0),
                 Tables\Columns\TextColumn::make('photo')
                     ->label('Jumlah Foto')
                     ->getStateUsing(function (Logbook $record) {
@@ -63,6 +71,13 @@ class MyLogbook extends Page implements Tables\Contracts\HasTable
                             ->multiple()
                             ->maxFiles(10)
                             ->acceptedFileTypes(['image/*']),
+                        Forms\Components\Select::make('additional_employees')
+                            ->label('Tambahkan Karyawan Lain (Opsional)')
+                            ->multiple()
+                            ->relationship('employees', 'name', fn ($query) => $query->where('is_active', true))
+                            ->searchable()
+                            ->preload()
+                            ->helperText('Pilih karyawan lain yang juga bekerja pada log ini'),
                     ])
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['employee_id'] = auth()->user()->employee?->id;
@@ -73,8 +88,18 @@ class MyLogbook extends Page implements Tables\Contracts\HasTable
                         return $data;
                     })
                     ->action(function (array $data) {
+                        // Extract additional employees before creating logbook
+                        $additionalEmployees = $data['additional_employees'] ?? [];
+                        unset($data['additional_employees']);
+                        
                         // Create record directly to avoid additional processing
                         $logbook = Logbook::create($data);
+                        
+                        // Attach additional employees if any
+                        if (!empty($additionalEmployees)) {
+                            $logbook->employees()->attach($additionalEmployees);
+                        }
+                        
                         return $logbook;
                     })
                     ->beforeFormFilled(function () {
@@ -103,6 +128,14 @@ class MyLogbook extends Page implements Tables\Contracts\HasTable
                             ->multiple()
                             ->maxFiles(10)
                             ->acceptedFileTypes(['image/*']),
+                        Forms\Components\Select::make('additional_employees')
+                            ->label('Tambahkan Karyawan Lain (Opsional)')
+                            ->multiple()
+                            ->relationship('employees', 'name', fn ($query) => $query->where('is_active', true))
+                            ->searchable()
+                            ->preload()
+                            ->helperText('Pilih karyawan lain yang juga bekerja pada log ini')
+                            ->default(fn (Logbook $record) => $record->employees->pluck('id')->toArray()),
                     ])
                     ->mutateFormDataUsing(function (array $data, Logbook $record): array {
                         // Ensure photo is an array
@@ -110,6 +143,11 @@ class MyLogbook extends Page implements Tables\Contracts\HasTable
                             $data['photo'] = [$data['photo']];
                         }
                         return $data;
+                    })
+                    ->after(function (Logbook $record, array $data) {
+                        // Sync additional employees
+                        $additionalEmployees = $data['additional_employees'] ?? [];
+                        $record->employees()->sync($additionalEmployees);
                     }),
                 Tables\Actions\DeleteAction::make(),
             ]);

@@ -85,9 +85,6 @@ class ReimbursementResource extends Resource
                     ->label('Karyawan')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('employee.nik')
-                    ->label('NIK')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('purpose')
                     ->label('Keperluan')
                     ->searchable()
@@ -196,8 +193,6 @@ class ReimbursementResource extends Resource
                     ->schema([
                         Infolists\Components\TextEntry::make('employee.name')
                             ->label('Nama Karyawan'),
-                        Infolists\Components\TextEntry::make('employee.nik')
-                            ->label('NIK'),
                         Infolists\Components\TextEntry::make('purpose')
                             ->label('Keperluan'),
                         Infolists\Components\TextEntry::make('expense_date')
