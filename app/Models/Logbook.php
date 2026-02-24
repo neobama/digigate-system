@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class Logbook extends Model
 {
-    use HasUuids;
+    use HasUuids, LogsActivity;
     protected $fillable = ['employee_id', 'log_date', 'activity', 'photo'];
 
     protected $casts = [

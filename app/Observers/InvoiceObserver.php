@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Invoice;
 use App\Models\Employee;
+use App\Services\ActivityLogService;
 use App\Services\WhatsAppService;
 
 class InvoiceObserver
@@ -20,7 +21,8 @@ class InvoiceObserver
      */
     public function created(Invoice $invoice): void
     {
-        //
+        // Log activity
+        ActivityLogService::logCreate($invoice);
     }
 
     /**
@@ -28,6 +30,14 @@ class InvoiceObserver
      */
     public function updated(Invoice $invoice): void
     {
+        // Log activity
+        $oldValues = $invoice->getOriginal();
+        $newValues = $invoice->getChanges();
+        unset($oldValues['updated_at'], $newValues['updated_at']);
+        if (!empty($newValues)) {
+            ActivityLogService::logUpdate($invoice, $oldValues, $newValues);
+        }
+        
         // Only notify if status changed to 'paid'
         if ($invoice->wasChanged('status') && $invoice->status === 'paid') {
             $this->notifyEmployeesAboutPaidInvoice($invoice);
@@ -96,7 +106,8 @@ class InvoiceObserver
      */
     public function deleted(Invoice $invoice): void
     {
-        //
+        // Log activity
+        ActivityLogService::logDelete($invoice);
     }
 
     /**

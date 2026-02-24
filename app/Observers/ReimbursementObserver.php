@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Reimbursement;
+use App\Services\ActivityLogService;
 use App\Services\WhatsAppService;
 
 class ReimbursementObserver
@@ -19,6 +20,9 @@ class ReimbursementObserver
      */
     public function created(Reimbursement $reimbursement): void
     {
+        // Log activity
+        ActivityLogService::logCreate($reimbursement);
+        
         $reimbursement->load('employee');
         $employee = $reimbursement->employee;
         
@@ -65,6 +69,14 @@ class ReimbursementObserver
      */
     public function updated(Reimbursement $reimbursement): void
     {
+        // Log activity
+        $oldValues = $reimbursement->getOriginal();
+        $newValues = $reimbursement->getChanges();
+        unset($oldValues['updated_at'], $newValues['updated_at']);
+        if (!empty($newValues)) {
+            ActivityLogService::logUpdate($reimbursement, $oldValues, $newValues);
+        }
+        
         // Only notify if status changed
         if ($reimbursement->wasChanged('status')) {
             $reimbursement->load('employee');
@@ -119,7 +131,8 @@ class ReimbursementObserver
      */
     public function deleted(Reimbursement $reimbursement): void
     {
-        //
+        // Log activity
+        ActivityLogService::logDelete($reimbursement);
     }
 
     /**

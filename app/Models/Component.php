@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class Component extends Model
 {
-    use HasUuids;
+    use HasUuids, LogsActivity;
     protected $fillable = ['name', 'sn', 'supplier', 'invoice_number', 'purchase_date', 'status'];
 
     // Opsional: Untuk membantu pencarian SN di proses rakit

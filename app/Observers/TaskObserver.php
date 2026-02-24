@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Task;
+use App\Services\ActivityLogService;
 use App\Services\WhatsAppService;
 
 class TaskObserver
@@ -19,6 +20,8 @@ class TaskObserver
      */
     public function created(Task $task): void
     {
+        // Log activity
+        ActivityLogService::logCreate($task);
         // Employees are synced after creation, so we'll notify in saved event
     }
 
@@ -27,6 +30,13 @@ class TaskObserver
      */
     public function updated(Task $task): void
     {
+        // Log activity
+        $oldValues = $task->getOriginal();
+        $newValues = $task->getChanges();
+        unset($oldValues['updated_at'], $newValues['updated_at']);
+        if (!empty($newValues)) {
+            ActivityLogService::logUpdate($task, $oldValues, $newValues);
+        }
         // Check if employees were synced (assigned)
         // This will be handled in CreateTask/EditTask pages after sync
     }
@@ -78,7 +88,8 @@ class TaskObserver
      */
     public function deleted(Task $task): void
     {
-        //
+        // Log activity
+        ActivityLogService::logDelete($task);
     }
 
     /**

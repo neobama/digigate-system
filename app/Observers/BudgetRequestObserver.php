@@ -20,6 +20,9 @@ class BudgetRequestObserver
      */
     public function created(BudgetRequest $budgetRequest): void
     {
+        // Log activity
+        ActivityLogService::logCreate($budgetRequest);
+        
         $budgetRequest->load('employee');
         $employee = $budgetRequest->employee;
         
@@ -74,6 +77,14 @@ class BudgetRequestObserver
             }
             
             $newStatus = $budgetRequest->status;
+            
+            // Log activity
+            $oldValues = $budgetRequest->getOriginal();
+            $newValues = $budgetRequest->getChanges();
+            unset($oldValues['updated_at'], $newValues['updated_at']);
+            if (!empty($newValues)) {
+                ActivityLogService::logUpdate($budgetRequest, $oldValues, $newValues);
+            }
             
             // Auto-create Expense record when status changes to "paid"
             if ($newStatus === 'paid') {
@@ -138,7 +149,8 @@ class BudgetRequestObserver
      */
     public function deleted(BudgetRequest $budgetRequest): void
     {
-        //
+        // Log activity
+        ActivityLogService::logDelete($budgetRequest);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Employee extends Model
 {
-    use HasUuids;
+    use HasUuids, LogsActivity;
     protected $fillable = ['user_id', 'nik', 'name', 'birth_date', 'position', 'phone_number', 'base_salary', 'bpjs_allowance', 'is_active'];
 
     protected $casts = [

@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Cashbon;
 use App\Models\Expense;
+use App\Services\ActivityLogService;
 use App\Services\WhatsAppService;
 
 class CashbonObserver
@@ -20,6 +21,9 @@ class CashbonObserver
      */
     public function created(Cashbon $cashbon): void
     {
+        // Log activity
+        ActivityLogService::logCreate($cashbon);
+        
         $cashbon->load('employee');
         $employee = $cashbon->employee;
         
@@ -77,6 +81,14 @@ class CashbonObserver
             }
             
             $newStatus = $cashbon->status;
+            
+            // Log activity
+            $oldValues = $cashbon->getOriginal();
+            $newValues = $cashbon->getChanges();
+            unset($oldValues['updated_at'], $newValues['updated_at']);
+            if (!empty($newValues)) {
+                ActivityLogService::logUpdate($cashbon, $oldValues, $newValues);
+            }
             
             // Auto-create Expense record when status changes to "paid"
             if ($newStatus === 'paid') {
@@ -146,7 +158,8 @@ class CashbonObserver
      */
     public function deleted(Cashbon $cashbon): void
     {
-        //
+        // Log activity
+        ActivityLogService::logDelete($cashbon);
     }
 
     /**
