@@ -14,3 +14,4 @@ class LogUserLogin
     {
         ActivityLogService::logLogin($event->user);
     }
+}
