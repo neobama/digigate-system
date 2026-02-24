@@ -13,8 +13,13 @@ use App\Observers\InvoiceObserver;
 use App\Observers\ReimbursementObserver;
 use App\Observers\TaskObserver;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
+use App\Listeners\LogUserLogin;
+use App\Listeners\LogUserLogout;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -42,6 +47,10 @@ class AppServiceProvider extends ServiceProvider
         Task::observe(TaskObserver::class);
         Invoice::observe(InvoiceObserver::class);
         BudgetRequest::observe(BudgetRequestObserver::class);
+        
+        // Register event listeners for activity logging
+        Event::listen(Login::class, LogUserLogin::class);
+        Event::listen(Logout::class, LogUserLogout::class);
         
         // Schedule task to check late and failed tasks every hour
         $this->app->booted(function () {
