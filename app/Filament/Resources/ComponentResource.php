@@ -7,6 +7,8 @@ use App\Filament\Resources\ComponentResource\RelationManagers;
 use App\Models\Component;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -94,7 +96,54 @@ class ComponentResource extends Resource
         ->headerActions([
             // Tambahkan tombol export di sini (memerlukan pxlrbt/filament-excel)
             \pxlrbt\FilamentExcel\Actions\Tables\ExportAction::make()
+        ])
+        ->actions([
+            Tables\Actions\ViewAction::make(),
+            Tables\Actions\EditAction::make(),
         ]);
+    }
+
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                Infolists\Components\Section::make('Informasi Komponen')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('name')
+                            ->label('Tipe Komponen'),
+                        Infolists\Components\TextEntry::make('sn')
+                            ->label('Serial Number'),
+                        Infolists\Components\TextEntry::make('supplier')
+                            ->label('Supplier'),
+                        Infolists\Components\TextEntry::make('invoice_number')
+                            ->label('Nomor Invoice'),
+                        Infolists\Components\TextEntry::make('purchase_date')
+                            ->label('Tanggal Pembelian')
+                            ->date('d/m/Y'),
+                        Infolists\Components\BadgeEntry::make('status')
+                            ->label('Status')
+                            ->colors([
+                                'success' => 'available',
+                                'danger' => 'used',
+                                'warning' => 'warranty_claim',
+                            ]),
+                    ])->columns(2),
+                Infolists\Components\Section::make('Digunakan di Assembly')
+                    ->schema([
+                        Infolists\Components\ViewEntry::make('assembly_info')
+                            ->label('')
+                            ->view('filament.infolists.components.component-assembly-info')
+                            ->viewData(function (Component $record) {
+                                $assemblies = $record->getAssembliesUsingThisComponent();
+                                return [
+                                    'assemblies' => $assemblies,
+                                    'componentSn' => $record->sn,
+                                ];
+                            })
+                            ->columnSpanFull(),
+                    ])
+                    ->visible(fn (Component $record) => $record->status === 'used' && $record->getAssembliesUsingThisComponent()->isNotEmpty()),
+            ]);
     }
 
     public static function getRelations(): array
@@ -109,6 +158,7 @@ class ComponentResource extends Resource
         return [
             'index' => Pages\ListComponents::route('/'),
             'create' => Pages\CreateComponent::route('/create'),
+            'view' => Pages\ViewComponent::route('/{record}'),
             'edit' => Pages\EditComponent::route('/{record}/edit'),
         ];
     }
