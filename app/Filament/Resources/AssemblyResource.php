@@ -262,6 +262,7 @@ class AssemblyResource extends Resource
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
+            ->defaultSort('created_at', 'desc')
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
