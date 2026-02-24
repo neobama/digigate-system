@@ -20,11 +20,13 @@ class BudgetRequest extends Model
         'status',
         'proof_of_payment',
         'request_date',
+        'paid_at',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'request_date' => 'date',
+        'paid_at' => 'datetime',
     ];
 
     public function employee(): BelongsTo

@@ -117,6 +117,11 @@ class BudgetRequestResource extends Resource
                     ->label('Tanggal Request')
                     ->date('d/m/Y')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('paid_at')
+                    ->label('Tanggal Paid')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->visible(fn ($record) => $record->status === 'paid' && !empty($record->paid_at)),
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Status')
                     ->colors([
@@ -181,7 +186,10 @@ class BudgetRequestResource extends Resource
                     ->color('info')
                     ->visible(fn (BudgetRequest $record) => $record->status === 'approved')
                     ->action(function (BudgetRequest $record) {
-                        $record->update(['status' => 'paid']);
+                        $record->update([
+                            'status' => 'paid',
+                            'paid_at' => now(),
+                        ]);
                     })
                     ->successNotificationTitle('Request anggaran marked as paid'),
             ])
@@ -225,6 +233,10 @@ class BudgetRequestResource extends Resource
                                 'paid' => 'info',
                                 default => 'gray',
                             }),
+                        Infolists\Components\TextEntry::make('paid_at')
+                            ->label('Tanggal Paid')
+                            ->dateTime('d/m/Y H:i')
+                            ->visible(fn ($record) => $record->status === 'paid' && !empty($record->paid_at)),
                         Infolists\Components\TextEntry::make('created_at')
                             ->label('Dibuat')
                             ->dateTime('d/m/Y H:i'),

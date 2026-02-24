@@ -130,6 +130,11 @@ class CashbonResource extends Resource
                         default => $state,
                     })
                     ->sortable(),
+                Tables\Columns\TextColumn::make('paid_at')
+                    ->label('Tanggal Paid')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->visible(fn ($record) => $record->status === 'paid' && !empty($record->paid_at)),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
                     ->dateTime()
@@ -177,7 +182,10 @@ class CashbonResource extends Resource
                     ->color('info')
                     ->visible(fn (Cashbon $record) => $record->status === 'approved')
                     ->action(function (Cashbon $record) {
-                        $record->update(['status' => 'paid']);
+                        $record->update([
+                            'status' => 'paid',
+                            'paid_at' => now(),
+                        ]);
                     })
                     ->successNotificationTitle('Cashbon marked as paid'),
             ])

@@ -126,6 +126,11 @@ class ReimbursementResource extends Resource
                         default => $state,
                     })
                     ->sortable(),
+                Tables\Columns\TextColumn::make('paid_at')
+                    ->label('Tanggal Paid')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->visible(fn ($record) => $record->status === 'paid' && !empty($record->paid_at)),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
                     ->dateTime('d/m/Y H:i')
@@ -174,7 +179,10 @@ class ReimbursementResource extends Resource
                     ->color('info')
                     ->visible(fn (Reimbursement $record) => $record->status === 'approved')
                     ->action(function (Reimbursement $record) {
-                        $record->update(['status' => 'paid']);
+                        $record->update([
+                            'status' => 'paid',
+                            'paid_at' => now(),
+                        ]);
                     })
                     ->successNotificationTitle('Reimbursement marked as paid'),
             ])
@@ -214,6 +222,10 @@ class ReimbursementResource extends Resource
                                 'paid' => 'info',
                                 default => 'gray',
                             }),
+                        Infolists\Components\TextEntry::make('paid_at')
+                            ->label('Tanggal Paid')
+                            ->dateTime('d/m/Y H:i')
+                            ->visible(fn ($record) => $record->status === 'paid' && !empty($record->paid_at)),
                         Infolists\Components\TextEntry::make('created_at')
                             ->label('Dibuat')
                             ->dateTime('d/m/Y H:i'),
