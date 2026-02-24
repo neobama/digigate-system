@@ -120,13 +120,21 @@ class ComponentResource extends Resource
                         Infolists\Components\TextEntry::make('purchase_date')
                             ->label('Tanggal Pembelian')
                             ->date('d/m/Y'),
-                        Infolists\Components\BadgeEntry::make('status')
+                        Infolists\Components\TextEntry::make('status')
                             ->label('Status')
-                            ->colors([
-                                'success' => 'available',
-                                'danger' => 'used',
-                                'warning' => 'warranty_claim',
-                            ]),
+                            ->badge()
+                            ->color(fn (string $state): string => match ($state) {
+                                'available' => 'success',
+                                'used' => 'danger',
+                                'warranty_claim' => 'warning',
+                                default => 'gray',
+                            })
+                            ->formatStateUsing(fn (string $state): string => match ($state) {
+                                'available' => 'Tersedia',
+                                'used' => 'Terpakai',
+                                'warranty_claim' => 'Klaim Garansi',
+                                default => $state,
+                            }),
                     ])->columns(2),
                 Infolists\Components\Section::make('Digunakan di Assembly')
                     ->schema([
