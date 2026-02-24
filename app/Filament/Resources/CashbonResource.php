@@ -91,10 +91,12 @@ class CashbonResource extends Resource
                 Tables\Columns\TextColumn::make('employee.name')
                     ->label('Karyawan')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->formatStateUsing(fn ($state, $record) => $record->employee?->name ?? 'N/A'),
                 Tables\Columns\TextColumn::make('employee.nik')
                     ->label('NIK')
-                    ->searchable(),
+                    ->searchable()
+                    ->formatStateUsing(fn ($state, $record) => $record->employee?->nik ?? 'N/A'),
                 Tables\Columns\TextColumn::make('request_date')
                     ->label('Tanggal Request')
                     ->date()
@@ -134,7 +136,7 @@ class CashbonResource extends Resource
                     ->label('Tanggal Paid')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->visible(fn ($record) => $record->status === 'paid' && !empty($record->paid_at)),
+                    ->visible(fn ($record) => $record && $record->status === 'paid' && !empty($record->paid_at)),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
                     ->dateTime()
