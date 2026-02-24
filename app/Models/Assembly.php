@@ -13,6 +13,7 @@ class Assembly extends Model
 
     protected $casts = [
         'sn_details' => 'array', // Supaya data JSON otomatis jadi Array di PHP
+        'assembly_date' => 'date',
     ];
 
     public function invoice()

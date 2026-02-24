@@ -142,11 +142,22 @@ class ComponentResource extends Resource
                             ->label('')
                             ->view('filament.infolists.components.component-assembly-info')
                             ->viewData(function (Component $record) {
-                                $assemblies = $record->getAssembliesUsingThisComponent();
-                                return [
-                                    'assemblies' => $assemblies,
-                                    'componentSn' => $record->sn,
-                                ];
+                                try {
+                                    $assemblies = $record->getAssembliesUsingThisComponent();
+                                    return [
+                                        'assemblies' => $assemblies,
+                                        'componentSn' => $record->sn ?? '',
+                                    ];
+                                } catch (\Exception $e) {
+                                    \Log::error('Error in component assembly info viewData', [
+                                        'component_id' => $record->id ?? null,
+                                        'error' => $e->getMessage(),
+                                    ]);
+                                    return [
+                                        'assemblies' => collect([]),
+                                        'componentSn' => $record->sn ?? '',
+                                    ];
+                                }
                             })
                             ->columnSpanFull(),
                     ])
