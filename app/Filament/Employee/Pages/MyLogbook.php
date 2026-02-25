@@ -37,12 +37,15 @@ class MyLogbook extends Page implements Tables\Contracts\HasTable
                     ->badge()
                     ->separator(',')
                     ->getStateUsing(function (Logbook $record) {
-                        return $record->employees->pluck('name')->toArray();
+                        return $record?->employees?->pluck('name')->toArray() ?? [];
                     })
-                    ->visible(fn (Logbook $record) => $record->employees->count() > 0),
+                    ->visible(fn (?Logbook $record) => $record && $record->employees && $record->employees->count() > 0),
                 Tables\Columns\TextColumn::make('photo')
                     ->label('Jumlah Foto')
-                    ->getStateUsing(function (Logbook $record) {
+                    ->getStateUsing(function (?Logbook $record) {
+                        if (!$record) {
+                            return '-';
+                        }
                         $photos = is_array($record->photo) ? $record->photo : [];
                         return count($photos) > 0 ? count($photos) . ' foto' : '-';
                     }),
@@ -135,7 +138,7 @@ class MyLogbook extends Page implements Tables\Contracts\HasTable
                             ->searchable()
                             ->preload()
                             ->helperText('Pilih karyawan lain yang juga bekerja pada log ini')
-                            ->default(fn (Logbook $record) => $record->employees->pluck('id')->toArray()),
+                            ->default(fn (?Logbook $record) => $record?->employees?->pluck('id')->toArray() ?? []),
                     ])
                     ->mutateFormDataUsing(function (array $data, Logbook $record): array {
                         // Ensure photo is an array
