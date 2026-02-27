@@ -232,10 +232,13 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                                     ->options([
                                         'Processor i7 11700K' => 'Processor i7 11700K',
                                         'Processor i7 8700K' => 'Processor i7 8700K',
+                                        'Processor i7 14700K' => 'Processor i7 14700K',
                                         'RAM DDR4' => 'RAM DDR4',
+                                        'RAM DDR5' => 'RAM DDR5',
                                         'SSD' => 'SSD',
                                         'Chassis Macan' => 'Chassis Macan',
                                         'Chassis Maleo' => 'Chassis Maleo',
+                                        'Chassis Komodo' => 'Chassis Komodo',
                                     ])
                                     ->required()
                                     ->searchable(),
@@ -332,10 +335,13 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                             ->options([
                                 'Processor i7 11700K' => 'Processor i7 11700K',
                                 'Processor i7 8700K' => 'Processor i7 8700K',
+                                'Processor i7 14700K' => 'Processor i7 14700K',
                                 'RAM DDR4' => 'RAM DDR4',
+                                'RAM DDR5' => 'RAM DDR5',
                                 'SSD' => 'SSD',
                                 'Chassis Macan' => 'Chassis Macan',
                                 'Chassis Maleo' => 'Chassis Maleo',
+                                'Chassis Komodo' => 'Chassis Komodo',
                             ])
                             ->required()
                             ->searchable(),
@@ -392,10 +398,13 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                             ->options([
                                 'Processor i7 11700K' => 'Processor i7 11700K',
                                 'Processor i7 8700K' => 'Processor i7 8700K',
+                                'Processor i7 14700K' => 'Processor i7 14700K',
                                 'RAM DDR4' => 'RAM DDR4',
+                                'RAM DDR5' => 'RAM DDR5',
                                 'SSD' => 'SSD',
                                 'Chassis Macan' => 'Chassis Macan',
                                 'Chassis Maleo' => 'Chassis Maleo',
+                                'Chassis Komodo' => 'Chassis Komodo',
                             ])
                             ->required()
                             ->searchable(),
