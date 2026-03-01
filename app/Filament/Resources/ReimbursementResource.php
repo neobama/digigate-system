@@ -84,7 +84,8 @@ class ReimbursementResource extends Resource
                 Tables\Columns\TextColumn::make('employee.name')
                     ->label('Karyawan')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->formatStateUsing(fn ($state, $record) => $record->employee?->name ?? 'N/A'),
                 Tables\Columns\TextColumn::make('purpose')
                     ->label('Keperluan')
                     ->searchable()
@@ -130,7 +131,7 @@ class ReimbursementResource extends Resource
                     ->label('Tanggal Paid')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->visible(fn ($record) => $record->status === 'paid' && !empty($record->paid_at)),
+                    ->visible(fn ($record) => $record && $record->status === 'paid' && !empty($record->paid_at)),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
                     ->dateTime('d/m/Y H:i')
