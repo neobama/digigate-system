@@ -81,21 +81,38 @@ class MyWarrantyClaim extends Page implements HasTable
                             ->label('Serial Number Perangkat')
                             ->required()
                             ->maxLength(255)
-                            ->helperText('Masukkan SN perangkat yang akan digaransi')
-                            ->live()
-                            ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                if ($state) {
-                                    $assembly = Assembly::where('serial_number', $state)->first();
-                                    if (!$assembly) {
-                                        $set('assembly_serial_number', null);
-                                        Notification::make()
-                                            ->warning()
-                                            ->title('Perangkat tidak ditemukan')
-                                            ->body('Serial number perangkat tidak ditemukan di database.')
-                                            ->send();
-                                    }
-                                }
-                            }),
+                            ->helperText('Masukkan SN perangkat yang akan digaransi, lalu klik tombol Verifikasi SN')
+                            ->suffixAction(
+                                Forms\Components\Actions\Action::make('verify')
+                                    ->icon('heroicon-o-check-circle')
+                                    ->label('Verifikasi SN')
+                                    ->action(function (Forms\Get $get) {
+                                        $sn = $get('assembly_serial_number');
+                                        if (!$sn) {
+                                            Notification::make()
+                                                ->warning()
+                                                ->title('SN Kosong')
+                                                ->body('Silakan masukkan Serial Number terlebih dahulu.')
+                                                ->send();
+                                            return;
+                                        }
+                                        
+                                        $assembly = Assembly::where('serial_number', $sn)->first();
+                                        if ($assembly) {
+                                            Notification::make()
+                                                ->success()
+                                                ->title('SN Terdeteksi')
+                                                ->body('Serial Number ditemukan di database. Perangkat: ' . ($assembly->product_type ?? 'N/A'))
+                                                ->send();
+                                        } else {
+                                            Notification::make()
+                                                ->warning()
+                                                ->title('SN Tidak Ditemukan')
+                                                ->body('Serial number perangkat tidak ditemukan di database. Pastikan SN sudah benar.')
+                                                ->send();
+                                        }
+                                    })
+                            ),
                         Forms\Components\Textarea::make('notes')
                             ->label('Catatan')
                             ->rows(3),
@@ -103,12 +120,13 @@ class MyWarrantyClaim extends Page implements HasTable
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['created_by'] = Auth::id();
                         $data['entry_date'] = now();
+                        $data['status'] = $data['status'] ?? 'pending';
                         return $data;
                     })
                     ->after(function (WarrantyClaim $record) {
                         WarrantyLog::create([
                             'warranty_claim_id' => $record->id,
-                            'status' => $record->status,
+                            'status' => $record->status ?? 'pending',
                             'notes' => 'Garansi dibuat',
                             'changed_by' => Auth::id(),
                         ]);

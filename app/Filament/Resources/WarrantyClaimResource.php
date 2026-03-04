@@ -34,22 +34,38 @@ class WarrantyClaimResource extends Resource
                             ->label('Serial Number Perangkat')
                             ->required()
                             ->maxLength(255)
-                            ->helperText('Masukkan SN perangkat yang akan digaransi')
-                            ->live()
-                            ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                                // Validasi apakah assembly dengan SN ini ada
-                                if ($state) {
-                                    $assembly = Assembly::where('serial_number', $state)->first();
-                                    if (!$assembly) {
-                                        $set('assembly_serial_number', null);
-                                        \Filament\Notifications\Notification::make()
-                                            ->warning()
-                                            ->title('Perangkat tidak ditemukan')
-                                            ->body('Serial number perangkat tidak ditemukan di database.')
-                                            ->send();
-                                    }
-                                }
-                            }),
+                            ->helperText('Masukkan SN perangkat yang akan digaransi, lalu klik tombol Verifikasi SN')
+                            ->suffixAction(
+                                Forms\Components\Actions\Action::make('verify')
+                                    ->icon('heroicon-o-check-circle')
+                                    ->label('Verifikasi SN')
+                                    ->action(function (Forms\Get $get, Forms\Set $set) {
+                                        $sn = $get('assembly_serial_number');
+                                        if (!$sn) {
+                                            \Filament\Notifications\Notification::make()
+                                                ->warning()
+                                                ->title('SN Kosong')
+                                                ->body('Silakan masukkan Serial Number terlebih dahulu.')
+                                                ->send();
+                                            return;
+                                        }
+                                        
+                                        $assembly = Assembly::where('serial_number', $sn)->first();
+                                        if ($assembly) {
+                                            \Filament\Notifications\Notification::make()
+                                                ->success()
+                                                ->title('SN Terdeteksi')
+                                                ->body('Serial Number ditemukan di database. Perangkat: ' . ($assembly->product_type ?? 'N/A'))
+                                                ->send();
+                                        } else {
+                                            \Filament\Notifications\Notification::make()
+                                                ->warning()
+                                                ->title('SN Tidak Ditemukan')
+                                                ->body('Serial number perangkat tidak ditemukan di database. Pastikan SN sudah benar.')
+                                                ->send();
+                                        }
+                                    })
+                            ),
                         Forms\Components\Select::make('status')
                             ->label('Status')
                             ->options([
@@ -60,7 +76,8 @@ class WarrantyClaimResource extends Resource
                             ])
                             ->default('pending')
                             ->required()
-                            ->visibleOn('edit'),
+                            ->visibleOn('edit')
+                            ->dehydrated(fn ($context) => $context === 'edit'),
                         Forms\Components\Textarea::make('notes')
                             ->label('Catatan')
                             ->rows(3)

@@ -16,6 +16,7 @@ class CreateWarrantyClaim extends CreateRecord
     {
         $data['created_by'] = Auth::id();
         $data['entry_date'] = now();
+        $data['status'] = $data['status'] ?? 'pending';
         
         return $data;
     }
@@ -25,7 +26,7 @@ class CreateWarrantyClaim extends CreateRecord
         // Create initial log entry
         WarrantyLog::create([
             'warranty_claim_id' => $this->record->id,
-            'status' => $this->record->status,
+            'status' => $this->record->status ?? 'pending',
             'notes' => 'Garansi dibuat',
             'changed_by' => Auth::id(),
         ]);
