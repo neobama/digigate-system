@@ -100,7 +100,8 @@ class BudgetRequestResource extends Resource
                 Tables\Columns\TextColumn::make('employee.name')
                     ->label('Karyawan')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->formatStateUsing(fn ($state, $record) => $record->employee?->name ?? 'N/A'),
                 Tables\Columns\TextColumn::make('budget_name')
                     ->label('Nama Anggaran')
                     ->searchable()
@@ -121,7 +122,7 @@ class BudgetRequestResource extends Resource
                     ->label('Tanggal Paid')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->visible(fn ($record) => $record->status === 'paid' && !empty($record->paid_at)),
+                    ->visible(fn ($record) => $record && $record->status === 'paid' && !empty($record->paid_at)),
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Status')
                     ->colors([
@@ -166,7 +167,7 @@ class BudgetRequestResource extends Resource
                     ->label('Approve')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn (BudgetRequest $record) => $record->status === 'pending')
+                    ->visible(fn (?BudgetRequest $record) => $record && $record->status === 'pending')
                     ->action(function (BudgetRequest $record) {
                         $record->update(['status' => 'approved']);
                     })
@@ -175,7 +176,7 @@ class BudgetRequestResource extends Resource
                     ->label('Reject')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn (BudgetRequest $record) => $record->status === 'pending')
+                    ->visible(fn (?BudgetRequest $record) => $record && $record->status === 'pending')
                     ->action(function (BudgetRequest $record) {
                         $record->update(['status' => 'rejected']);
                     })
@@ -184,7 +185,7 @@ class BudgetRequestResource extends Resource
                     ->label('Set Paid')
                     ->icon('heroicon-o-banknotes')
                     ->color('info')
-                    ->visible(fn (BudgetRequest $record) => $record->status === 'approved')
+                    ->visible(fn (?BudgetRequest $record) => $record && $record->status === 'approved')
                     ->action(function (BudgetRequest $record) {
                         $record->update([
                             'status' => 'paid',
@@ -236,7 +237,7 @@ class BudgetRequestResource extends Resource
                         Infolists\Components\TextEntry::make('paid_at')
                             ->label('Tanggal Paid')
                             ->dateTime('d/m/Y H:i')
-                            ->visible(fn ($record) => $record->status === 'paid' && !empty($record->paid_at)),
+                            ->visible(fn ($record) => $record && $record->status === 'paid' && !empty($record->paid_at)),
                         Infolists\Components\TextEntry::make('created_at')
                             ->label('Dibuat')
                             ->dateTime('d/m/Y H:i'),
