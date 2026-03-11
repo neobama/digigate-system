@@ -22,6 +22,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use App\Listeners\LogUserLogin;
 use App\Listeners\LogUserLogout;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -42,6 +43,12 @@ class AppServiceProvider extends ServiceProvider
         if (config('app.env') === 'production' && str_starts_with(config('app.url'), 'https://')) {
             URL::forceScheme('https');
         }
+
+        // Konfigurasi Livewire untuk menggunakan disk lokal untuk temporary files
+        // Ini mencegah error 404 saat validasi file upload dengan S3
+        // Temporary files akan disimpan di local disk, kemudian dipindahkan ke S3 saat form disubmit
+        // Set default disk untuk temporary file uploads ke 'local' jika belum dikonfigurasi
+        config(['livewire.temporary_file_upload.disk' => env('LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK', 'local')]);
 
         // Register observers
         Assembly::observe(AssemblyObserver::class);
