@@ -101,9 +101,14 @@ class MyBudgetRequest extends Page implements Tables\Contracts\HasTable
                                     ->directory('budget-requests/invoices')
                                     ->disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')
                                     ->visibility('public')
+                                    ->image()
                                     ->acceptedFileTypes(['image/*', 'application/pdf'])
                                     ->maxSize(5120) // 5MB
-                                    ->helperText('Upload invoice jika ada (maks 5MB)'),
+                                    ->extraAttributes([
+                                        'accept' => 'image/*,application/pdf',
+                                        'capture' => 'environment', // Aktifkan camera capture
+                                    ])
+                                    ->helperText('Upload invoice jika ada (maks 5MB). Bisa ambil foto langsung dari kamera atau upload file (JPG, PNG, PDF).'),
                                 Forms\Components\TextInput::make('recipient_account')
                                     ->label('Rekening Penerima')
                                     ->required()
