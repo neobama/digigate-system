@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\BudgetRequest;
 use App\Models\Expense;
+use App\Services\ActivityLogService;
 use App\Services\WhatsAppService;
 
 class BudgetRequestObserver
@@ -20,8 +21,15 @@ class BudgetRequestObserver
      */
     public function created(BudgetRequest $budgetRequest): void
     {
-        // Log activity
-        ActivityLogService::logCreate($budgetRequest);
+        // Log activity (don't fail if logging fails)
+        try {
+            ActivityLogService::logCreate($budgetRequest);
+        } catch (\Exception $e) {
+            \Log::error('Failed to log activity for budget request creation', [
+                'budget_request_id' => $budgetRequest->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
         
         $budgetRequest->load('employee');
         $employee = $budgetRequest->employee;
@@ -78,12 +86,19 @@ class BudgetRequestObserver
             
             $newStatus = $budgetRequest->status;
             
-            // Log activity
-            $oldValues = $budgetRequest->getOriginal();
-            $newValues = $budgetRequest->getChanges();
-            unset($oldValues['updated_at'], $newValues['updated_at']);
-            if (!empty($newValues)) {
-                ActivityLogService::logUpdate($budgetRequest, $oldValues, $newValues);
+            // Log activity (don't fail if logging fails)
+            try {
+                $oldValues = $budgetRequest->getOriginal();
+                $newValues = $budgetRequest->getChanges();
+                unset($oldValues['updated_at'], $newValues['updated_at']);
+                if (!empty($newValues)) {
+                    ActivityLogService::logUpdate($budgetRequest, $oldValues, $newValues);
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to log activity for budget request update', [
+                    'budget_request_id' => $budgetRequest->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
             
             // Auto-create Expense record when status changes to "paid"
@@ -149,8 +164,15 @@ class BudgetRequestObserver
      */
     public function deleted(BudgetRequest $budgetRequest): void
     {
-        // Log activity
-        ActivityLogService::logDelete($budgetRequest);
+        // Log activity (don't fail if logging fails)
+        try {
+            ActivityLogService::logDelete($budgetRequest);
+        } catch (\Exception $e) {
+            \Log::error('Failed to log activity for budget request deletion', [
+                'budget_request_id' => $budgetRequest->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
