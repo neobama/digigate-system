@@ -13,6 +13,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 
 class SalaryPaymentResource extends Resource
 {
@@ -35,6 +36,7 @@ class SalaryPaymentResource extends Resource
                             ->relationship('employee', 'name')
                             ->searchable()
                             ->preload()
+                            ->live()
                             ->required(),
                         Forms\Components\Select::make('month')
                             ->label('Bulan')
@@ -53,11 +55,13 @@ class SalaryPaymentResource extends Resource
                                 12 => 'Desember',
                             ])
                             ->default(now()->month)
+                            ->live()
                             ->required(),
                         Forms\Components\TextInput::make('year')
                             ->label('Tahun')
                             ->numeric()
                             ->default(now()->year)
+                            ->live()
                             ->required(),
                         Forms\Components\Repeater::make('adjustments')
                             ->label('Item Tambahan / Pengurangan')
@@ -84,44 +88,57 @@ class SalaryPaymentResource extends Resource
                             ->columnSpanFull(),
                         Forms\Components\Placeholder::make('cashbon_preview')
                             ->label('Rincian Potongan Cashbon (Periode Dipilih)')
-                            ->content(function (Forms\Get $get): string {
+                            ->content(function (Forms\Get $get): HtmlString {
                                 $employeeId = $get('employee_id');
                                 $month = (int) ($get('month') ?? now()->month);
                                 $year = (int) ($get('year') ?? now()->year);
 
                                 if (!$employeeId) {
-                                    return 'Pilih karyawan terlebih dahulu untuk melihat rincian cashbon.';
+                                    return new HtmlString('<span style="color:#6b7280;">Pilih karyawan terlebih dahulu untuk melihat rincian cashbon.</span>');
                                 }
 
                                 $employee = Employee::find($employeeId);
 
                                 if (!$employee) {
-                                    return 'Data karyawan tidak ditemukan.';
+                                    return new HtmlString('<span style="color:#dc2626;">Data karyawan tidak ditemukan.</span>');
                                 }
 
                                 $details = self::getCashbonDetailsForPeriod($employee, $month, $year);
 
                                 if (count($details) === 0) {
-                                    return 'Tidak ada potongan cashbon untuk periode ini.';
+                                    return new HtmlString('<span style="color:#16a34a;">Tidak ada potongan cashbon untuk periode ini.</span>');
                                 }
 
-                                $lines = [];
+                                $rows = '';
                                 foreach ($details as $detail) {
-                                    $line = sprintf(
-                                        '- %s | %s | Rp %s',
-                                        $detail['date'],
-                                        $detail['reason'],
-                                        number_format((float) $detail['amount'], 0, ',', '.')
-                                    );
-
+                                    $info = '';
                                     if (($detail['type'] ?? null) === 'cicilan') {
-                                        $line .= sprintf(' (Cicilan %d/%d)', $detail['installment_number'], $detail['total_installments']);
+                                        $info = sprintf(' (Cicilan %d/%d)', $detail['installment_number'], $detail['total_installments']);
                                     }
 
-                                    $lines[] = $line;
+                                    $rows .= sprintf(
+                                        '<tr><td style="border:1px solid #e5e7eb;padding:6px;">%s</td><td style="border:1px solid #e5e7eb;padding:6px;">%s%s</td><td style="border:1px solid #e5e7eb;padding:6px;text-align:right;">Rp %s</td></tr>',
+                                        e($detail['date']),
+                                        e($detail['reason']),
+                                        e($info),
+                                        number_format((float) $detail['amount'], 0, ',', '.')
+                                    );
                                 }
 
-                                return implode("\n", $lines);
+                                $html = '
+                                    <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                                        <thead>
+                                            <tr>
+                                                <th style="border:1px solid #e5e7eb; padding:6px; text-align:left; background:#f9fafb;">Tanggal</th>
+                                                <th style="border:1px solid #e5e7eb; padding:6px; text-align:left; background:#f9fafb;">Keterangan</th>
+                                                <th style="border:1px solid #e5e7eb; padding:6px; text-align:right; background:#f9fafb;">Nominal</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>' . $rows . '</tbody>
+                                    </table>
+                                ';
+
+                                return new HtmlString($html);
                             })
                             ->columnSpanFull(),
                         Forms\Components\TextInput::make('base_salary')
