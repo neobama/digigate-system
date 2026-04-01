@@ -8,12 +8,14 @@ use Illuminate\Support\Facades\Log;
 class WhatsAppService
 {
     private string $apiUrl;
+    private string $fileApiUrl;
     private string $apiKey;
     private string $session;
 
     public function __construct()
     {
         $this->apiUrl = config('services.whatsapp.api_url', 'http://10.11.10.55:3000/api/sendText');
+        $this->fileApiUrl = config('services.whatsapp.file_api_url', str_replace('sendText', 'sendFile', $this->apiUrl));
         $this->apiKey = config('services.whatsapp.api_key', '1d7a97d985a245f699b0eb42567670aa');
         $this->session = config('services.whatsapp.session', 'default');
     }
@@ -120,5 +122,56 @@ class WhatsAppService
             }
         }
         return $results;
+    }
+
+    /**
+     * Send PDF document as WhatsApp attachment.
+     */
+    public function sendDocument(string $phoneNumber, string $fileContent, string $filename, ?string $caption = null): bool
+    {
+        try {
+            if (empty($phoneNumber) || trim($phoneNumber) === '') {
+                Log::warning('Empty phone number provided for WhatsApp document');
+                return false;
+            }
+
+            $chatId = $this->formatPhoneNumber($phoneNumber);
+
+            $response = Http::timeout(20)
+                ->withHeaders([
+                    'X-Api-Key' => $this->apiKey,
+                ])
+                ->attach('file', $fileContent, $filename)
+                ->post($this->fileApiUrl, [
+                    'session' => $this->session,
+                    'chatId' => $chatId,
+                    'caption' => $caption ?? '',
+                ]);
+
+            if ($response->successful()) {
+                Log::info('WhatsApp document sent successfully', [
+                    'phone' => $phoneNumber,
+                    'chatId' => $chatId,
+                    'filename' => $filename,
+                ]);
+                return true;
+            }
+
+            Log::error('Failed to send WhatsApp document', [
+                'phone' => $phoneNumber,
+                'chatId' => $chatId,
+                'status' => $response->status(),
+                'response' => $response->body(),
+                'endpoint' => $this->fileApiUrl,
+            ]);
+            return false;
+        } catch (\Throwable $e) {
+            Log::error('Exception while sending WhatsApp document', [
+                'phone' => $phoneNumber,
+                'filename' => $filename,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
     }
 }
