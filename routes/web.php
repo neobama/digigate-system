@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\DonoAssistantController;
 use App\Http\Controllers\InvoicePdfController;
 use App\Http\Controllers\SalarySlipController;
 
@@ -23,5 +24,9 @@ Route::get('/employees/{employee}/salary-slip', [SalarySlipController::class, 's
 
 Route::get('/salary-slips/{salaryPayment}', [SalarySlipController::class, 'showBySalaryPayment'])
     ->name('salary-payments.slip');
+
+Route::post('/dono/chat', [DonoAssistantController::class, 'chat'])
+    ->middleware('auth')
+    ->name('dono.chat');
 
 // (Device Return portal sementara dinonaktifkan)
