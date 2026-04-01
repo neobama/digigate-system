@@ -22,6 +22,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use App\Listeners\LogUserLogin;
 use App\Listeners\LogUserLogout;
+use Filament\Facades\Filament;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
 use Livewire\Livewire;
@@ -47,12 +48,12 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // Global fallback render hook for Dono widget on Filament panels.
-        if (class_exists(FilamentView::class)) {
+        Filament::serving(function (): void {
             FilamentView::registerRenderHook(
                 PanelsRenderHook::BODY_END,
                 fn (): string => view('filament.components.dono-chat-widget')->render()
             );
-        }
+        });
 
         // Konfigurasi Livewire untuk menggunakan disk lokal untuk temporary files
         // Ini mencegah error 404 saat validasi file upload dengan S3
