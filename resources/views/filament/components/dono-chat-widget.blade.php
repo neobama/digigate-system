@@ -30,7 +30,7 @@
             }
         }
     }"
-    class="fixed bottom-5 right-5 z-50"
+    class="fixed bottom-5 right-5 z-[9999]"
 >
     <button
         x-show="!open"
