@@ -7,6 +7,8 @@ use App\Models\Cashbon;
 use App\Models\SalaryPayment;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class SalarySlipController extends Controller
 {
@@ -105,6 +107,7 @@ class SalarySlipController extends Controller
             'employee' => $employee,
             'month' => $month,
             'year' => $year,
+            'logo_src' => $this->resolveLogoSrc(),
             'base_salary' => $employee->base_salary,
             'total_cashbon' => $totalCashbon,
             'bpjs_allowance' => $employee->bpjs_allowance,
@@ -121,6 +124,27 @@ class SalarySlipController extends Controller
         }
 
         return view('salary-slips.show', $data);
+    }
+
+    private function resolveLogoSrc(): string
+    {
+        $logoUrl = 'https://is3.cloudhost.id/s3-digigate/assets/digigate-logo.png';
+
+        // DomPDF is more reliable with data-uri for external images.
+        try {
+            $response = Http::timeout(10)->get($logoUrl);
+            if ($response->successful()) {
+                $mimeType = $response->header('Content-Type', 'image/png');
+                return 'data:' . $mimeType . ';base64,' . base64_encode($response->body());
+            }
+        } catch (\Throwable $exception) {
+            Log::warning('Failed to fetch salary slip logo from S3 URL', [
+                'url' => $logoUrl,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
+        return $logoUrl;
     }
 }
 

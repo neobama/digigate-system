@@ -6,8 +6,6 @@ use App\Filament\Resources\SalaryPaymentResource;
 use App\Models\Employee;
 use App\Models\SalaryPayment;
 use App\Models\SalaryPaymentAdjustment;
-use App\Services\WhatsAppService;
-use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -79,34 +77,6 @@ class CreateSalaryPayment extends CreateRecord
 
     protected function afterCreate(): void
     {
-        /** @var SalaryPayment $salaryPayment */
-        $salaryPayment = $this->getRecord()->load('employee');
-
-        $employee = $salaryPayment->employee;
-        if ($employee?->phone_number) {
-            $period = Carbon::create($salaryPayment->year, $salaryPayment->month, 1)->translatedFormat('F Y');
-            $slipUrl = route('employee.salary-slip', [
-                'employee' => $employee->id,
-                'month' => $salaryPayment->month,
-                'year' => $salaryPayment->year,
-            ]);
-
-            $message = "Halo {$employee->name},\n";
-            $message .= "Slip gaji periode {$period} sudah dibuat.\n";
-            $message .= "Gaji bersih: Rp " . number_format((float) $salaryPayment->net_salary, 0, ',', '.') . "\n";
-            $message .= "Lihat slip: {$slipUrl}";
-
-            try {
-                app(WhatsAppService::class)->sendMessage($employee->phone_number, $message);
-            } catch (\Throwable $exception) {
-                \Log::error('Gagal mengirim notifikasi slip gaji ke WhatsApp karyawan', [
-                    'salary_payment_id' => $salaryPayment->id,
-                    'employee_id' => $employee->id,
-                    'error' => $exception->getMessage(),
-                ]);
-            }
-        }
-
         Notification::make()
             ->title('Slip gaji berhasil digenerate')
             ->success()

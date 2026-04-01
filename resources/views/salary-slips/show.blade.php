@@ -105,7 +105,7 @@
 </head>
 <body>
     <div class="header">
-        <img src="{{ public_path('images/digigate-logo.png') }}" alt="DigiGate Logo">
+        <img src="{{ $logo_src }}" alt="DigiGate Logo">
         <h2>SLIP GAJI</h2>
     </div>
 
