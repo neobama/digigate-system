@@ -280,6 +280,8 @@ class SalaryPaymentResource extends Resource
                     }),
                 Tables\Actions\EditAction::make()
                     ->visible(fn (SalaryPayment $record) => $record->status !== 'paid'),
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn (SalaryPayment $record) => $record->status === 'draft'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
