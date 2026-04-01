@@ -208,10 +208,8 @@ class SalaryPaymentResource extends Resource
                 Tables\Actions\Action::make('lihatSlip')
                     ->label('Lihat Slip')
                     ->icon('heroicon-o-document-text')
-                    ->url(fn (SalaryPayment $record) => route('employee.salary-slip', [
-                        'employee' => $record->employee_id,
-                        'month' => $record->month,
-                        'year' => $record->year,
+                    ->url(fn (SalaryPayment $record) => route('salary-payments.slip', [
+                        'salaryPayment' => $record->id,
                     ]))
                     ->openUrlInNewTab(),
                 Tables\Actions\Action::make('markAsPaid')
@@ -251,18 +249,14 @@ class SalaryPaymentResource extends Resource
                         $employee = $record->employee;
                         if ($employee?->phone_number) {
                             $period = \Carbon\Carbon::create($record->year, $record->month, 1)->translatedFormat('F Y');
-                            $message = "Slip gaji {$period}";
+                            $message = "Halo {$employee->name},\n";
+                            $message .= "Gaji periode {$period} sudah dibayarkan.\n";
+                            $message .= "Slip gaji: " . route('salary-payments.slip', [
+                                'salaryPayment' => $record->id,
+                            ]);
 
                             try {
-                                $filename = sprintf('slip-gaji-%s-%s-%02d.pdf', str_replace(' ', '-', strtolower($employee->name)), $record->year, $record->month);
-                                $pdfUrl = route('employee.salary-slip', [
-                                    'employee' => $employee->id,
-                                    'month' => $record->month,
-                                    'year' => $record->year,
-                                    'pdf' => 1,
-                                ]);
-
-                                app(WhatsAppService::class)->sendDocument($employee->phone_number, $pdfUrl, $filename, 'application/pdf', $message);
+                                app(WhatsAppService::class)->sendMessage($employee->phone_number, $message);
                             } catch (\Throwable $exception) {
                                 \Log::error('Gagal mengirim notifikasi pembayaran gaji ke WhatsApp karyawan', [
                                     'salary_payment_id' => $record->id,

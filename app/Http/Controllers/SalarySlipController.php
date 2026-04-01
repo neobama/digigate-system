@@ -12,10 +12,48 @@ use Illuminate\Support\Facades\Log;
 
 class SalarySlipController extends Controller
 {
+    public function showBySalaryPayment(SalaryPayment $salaryPayment, Request $request)
+    {
+        $salaryPayment->loadMissing('employee', 'adjustments');
+
+        $employee = $salaryPayment->employee;
+        abort_unless($employee, 404);
+
+        $month = (int) $salaryPayment->month;
+        $year = (int) $salaryPayment->year;
+
+        $data = $this->buildSlipData($employee, $month, $year, $salaryPayment);
+
+        if ($request->get('pdf')) {
+            $pdf = Pdf::loadView('salary-slips.show', $data);
+            return $pdf->download("slip-gaji-{$employee->name}-{$year}-{$month}.pdf");
+        }
+
+        return view('salary-slips.show', $data);
+    }
+
     public function show(Employee $employee, Request $request)
     {
         $month = $request->get('month', now()->month);
         $year = $request->get('year', now()->year);
+        $salaryPayment = SalaryPayment::with('adjustments')
+            ->where('employee_id', $employee->id)
+            ->where('month', $month)
+            ->where('year', $year)
+            ->first();
+
+        $data = $this->buildSlipData($employee, (int) $month, (int) $year, $salaryPayment);
+
+        if ($request->get('pdf')) {
+            $pdf = Pdf::loadView('salary-slips.show', $data);
+            return $pdf->download("slip-gaji-{$employee->name}-{$year}-{$month}.pdf");
+        }
+
+        return view('salary-slips.show', $data);
+    }
+
+    private function buildSlipData(Employee $employee, int $month, int $year, ?SalaryPayment $salaryPayment = null): array
+    {
         $currentDate = \Carbon\Carbon::create($year, $month, 1);
 
         // Hitung total cashbon yang harus dipotong di bulan tersebut
@@ -90,12 +128,6 @@ class SalarySlipController extends Controller
         $adjustmentAddition = 0;
         $adjustmentDeduction = 0;
 
-        $salaryPayment = SalaryPayment::with('adjustments')
-            ->where('employee_id', $employee->id)
-            ->where('month', $month)
-            ->where('year', $year)
-            ->first();
-
         if ($salaryPayment) {
             $adjustmentItems = $salaryPayment->adjustments->toArray();
             $adjustmentAddition = (float) $salaryPayment->adjustment_addition;
@@ -103,7 +135,7 @@ class SalarySlipController extends Controller
             $gajiBersih = (float) $salaryPayment->net_salary;
         }
 
-        $data = [
+        return [
             'employee' => $employee,
             'month' => $month,
             'year' => $year,
@@ -117,13 +149,6 @@ class SalarySlipController extends Controller
             'adjustment_addition' => $adjustmentAddition,
             'adjustment_deduction' => $adjustmentDeduction,
         ];
-
-        if ($request->get('pdf')) {
-            $pdf = Pdf::loadView('salary-slips.show', $data);
-            return $pdf->download("slip-gaji-{$employee->name}-{$year}-{$month}.pdf");
-        }
-
-        return view('salary-slips.show', $data);
     }
 
     private function resolveLogoSrc(): string

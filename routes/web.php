@@ -21,4 +21,7 @@ Route::get('/invoices/{invoice}/surat-jalan-pdf', [InvoicePdfController::class, 
 Route::get('/employees/{employee}/salary-slip', [SalarySlipController::class, 'show'])
     ->name('employee.salary-slip');
 
+Route::get('/salary-slips/{salaryPayment}', [SalarySlipController::class, 'showBySalaryPayment'])
+    ->name('salary-payments.slip');
+
 // (Device Return portal sementara dinonaktifkan)
