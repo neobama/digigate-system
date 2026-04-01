@@ -141,12 +141,6 @@ class EmployeeResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('generateSalarySlip')
-                    ->label('Slip Gaji')
-                    ->icon('heroicon-o-document-text')
-                    ->color('success')
-                    ->url(fn (Employee $record) => route('employee.salary-slip', $record))
-                    ->openUrlInNewTab(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
