@@ -125,9 +125,9 @@ class WhatsAppService
     }
 
     /**
-     * Send PDF document as WhatsApp attachment.
+     * Send document as WhatsApp attachment using WAHA sendFile payload.
      */
-    public function sendDocument(string $phoneNumber, string $fileContent, string $filename, ?string $caption = null): bool
+    public function sendDocument(string $phoneNumber, string $fileUrl, string $filename, string $mimetype = 'application/pdf', ?string $caption = null): bool
     {
         try {
             if (empty($phoneNumber) || trim($phoneNumber) === '') {
@@ -139,13 +139,18 @@ class WhatsAppService
 
             $response = Http::timeout(20)
                 ->withHeaders([
+                    'Content-Type' => 'application/json',
                     'X-Api-Key' => $this->apiKey,
-                ])
-                ->attach('file', $fileContent, $filename)
-                ->post($this->fileApiUrl, [
-                    'session' => $this->session,
+                ])->post($this->fileApiUrl, [
                     'chatId' => $chatId,
+                    'file' => [
+                        'mimetype' => $mimetype,
+                        'filename' => $filename,
+                        'url' => $fileUrl,
+                    ],
+                    'reply_to' => null,
                     'caption' => $caption ?? '',
+                    'session' => $this->session,
                 ]);
 
             if ($response->successful()) {
@@ -153,6 +158,7 @@ class WhatsAppService
                     'phone' => $phoneNumber,
                     'chatId' => $chatId,
                     'filename' => $filename,
+                    'file_url' => $fileUrl,
                 ]);
                 return true;
             }
@@ -163,12 +169,14 @@ class WhatsAppService
                 'status' => $response->status(),
                 'response' => $response->body(),
                 'endpoint' => $this->fileApiUrl,
+                'file_url' => $fileUrl,
             ]);
             return false;
         } catch (\Throwable $e) {
             Log::error('Exception while sending WhatsApp document', [
                 'phone' => $phoneNumber,
                 'filename' => $filename,
+                'file_url' => $fileUrl,
                 'error' => $e->getMessage(),
             ]);
             return false;

@@ -8,7 +8,6 @@ use App\Models\Employee;
 use App\Models\Expense;
 use App\Models\SalaryPayment;
 use App\Services\WhatsAppService;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -255,27 +254,15 @@ class SalaryPaymentResource extends Resource
                             $message = "Slip gaji {$period}";
 
                             try {
-                                $record->loadMissing('adjustments');
-
-                                $pdfData = [
-                                    'employee' => $employee,
+                                $filename = sprintf('slip-gaji-%s-%s-%02d.pdf', str_replace(' ', '-', strtolower($employee->name)), $record->year, $record->month);
+                                $pdfUrl = route('employee.salary-slip', [
+                                    'employee' => $employee->id,
                                     'month' => $record->month,
                                     'year' => $record->year,
-                                    'logo_src' => 'https://is3.cloudhost.id/s3-digigate/assets/digigate-logo.png',
-                                    'base_salary' => (float) $record->base_salary,
-                                    'total_cashbon' => (float) $record->total_cashbon,
-                                    'bpjs_allowance' => (float) $record->bpjs_allowance,
-                                    'gaji_bersih' => (float) $record->net_salary,
-                                    'cashbon_details' => self::getCashbonDetailsForPeriod($employee, (int) $record->month, (int) $record->year),
-                                    'adjustment_items' => $record->adjustments->toArray(),
-                                    'adjustment_addition' => (float) $record->adjustment_addition,
-                                    'adjustment_deduction' => (float) $record->adjustment_deduction,
-                                ];
+                                    'pdf' => 1,
+                                ]);
 
-                                $pdfContent = Pdf::loadView('salary-slips.show', $pdfData)->output();
-                                $filename = sprintf('slip-gaji-%s-%s-%02d.pdf', str_replace(' ', '-', strtolower($employee->name)), $record->year, $record->month);
-
-                                app(WhatsAppService::class)->sendDocument($employee->phone_number, $pdfContent, $filename, $message);
+                                app(WhatsAppService::class)->sendDocument($employee->phone_number, $pdfUrl, $filename, 'application/pdf', $message);
                             } catch (\Throwable $exception) {
                                 \Log::error('Gagal mengirim notifikasi pembayaran gaji ke WhatsApp karyawan', [
                                     'salary_payment_id' => $record->id,
