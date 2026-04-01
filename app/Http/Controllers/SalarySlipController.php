@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Models\Cashbon;
+use App\Models\SalaryPayment;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -83,6 +84,22 @@ class SalarySlipController extends Controller
 
         // Hitung gaji bersih
         $gajiBersih = $employee->base_salary - $totalCashbon - $employee->bpjs_allowance;
+        $adjustmentItems = [];
+        $adjustmentAddition = 0;
+        $adjustmentDeduction = 0;
+
+        $salaryPayment = SalaryPayment::with('adjustments')
+            ->where('employee_id', $employee->id)
+            ->where('month', $month)
+            ->where('year', $year)
+            ->first();
+
+        if ($salaryPayment) {
+            $adjustmentItems = $salaryPayment->adjustments->toArray();
+            $adjustmentAddition = (float) $salaryPayment->adjustment_addition;
+            $adjustmentDeduction = (float) $salaryPayment->adjustment_deduction;
+            $gajiBersih = (float) $salaryPayment->net_salary;
+        }
 
         $data = [
             'employee' => $employee,
@@ -93,6 +110,9 @@ class SalarySlipController extends Controller
             'bpjs_allowance' => $employee->bpjs_allowance,
             'gaji_bersih' => $gajiBersih,
             'cashbon_details' => $cashbonDetails,
+            'adjustment_items' => $adjustmentItems,
+            'adjustment_addition' => $adjustmentAddition,
+            'adjustment_deduction' => $adjustmentDeduction,
         ];
 
         if ($request->get('pdf')) {

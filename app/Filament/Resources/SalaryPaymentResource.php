@@ -3,6 +3,8 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\SalaryPaymentResource\Pages;
+use App\Models\Cashbon;
+use App\Models\Employee;
 use App\Models\Expense;
 use App\Models\SalaryPayment;
 use Filament\Forms;
@@ -57,22 +59,70 @@ class SalaryPaymentResource extends Resource
                             ->numeric()
                             ->default(now()->year)
                             ->required(),
-                        Forms\Components\TextInput::make('adjustment_addition')
-                            ->label('Tambahan Gaji')
-                            ->numeric()
-                            ->prefix('Rp')
-                            ->default(0)
-                            ->required(),
-                        Forms\Components\TextInput::make('adjustment_deduction')
-                            ->label('Pengurangan Tambahan')
-                            ->numeric()
-                            ->prefix('Rp')
-                            ->default(0)
-                            ->required(),
-                        Forms\Components\Textarea::make('adjustment_note')
-                            ->label('Catatan Penyesuaian')
-                            ->rows(3)
-                            ->placeholder('Contoh: Bonus lembur, denda keterlambatan, dll')
+                        Forms\Components\Repeater::make('adjustments')
+                            ->label('Item Tambahan / Pengurangan')
+                            ->schema([
+                                Forms\Components\Select::make('type')
+                                    ->label('Jenis')
+                                    ->options([
+                                        'addition' => 'Tambahan',
+                                        'deduction' => 'Pengurangan',
+                                    ])
+                                    ->required(),
+                                Forms\Components\TextInput::make('description')
+                                    ->label('Keterangan')
+                                    ->required(),
+                                Forms\Components\TextInput::make('amount')
+                                    ->label('Nominal')
+                                    ->numeric()
+                                    ->prefix('Rp')
+                                    ->required()
+                                    ->minValue(1),
+                            ])
+                            ->default([])
+                            ->columns(3)
+                            ->columnSpanFull(),
+                        Forms\Components\Placeholder::make('cashbon_preview')
+                            ->label('Rincian Potongan Cashbon (Periode Dipilih)')
+                            ->content(function (Forms\Get $get): string {
+                                $employeeId = $get('employee_id');
+                                $month = (int) ($get('month') ?? now()->month);
+                                $year = (int) ($get('year') ?? now()->year);
+
+                                if (!$employeeId) {
+                                    return 'Pilih karyawan terlebih dahulu untuk melihat rincian cashbon.';
+                                }
+
+                                $employee = Employee::find($employeeId);
+
+                                if (!$employee) {
+                                    return 'Data karyawan tidak ditemukan.';
+                                }
+
+                                $details = self::getCashbonDetailsForPeriod($employee, $month, $year);
+
+                                if (count($details) === 0) {
+                                    return 'Tidak ada potongan cashbon untuk periode ini.';
+                                }
+
+                                $lines = [];
+                                foreach ($details as $detail) {
+                                    $line = sprintf(
+                                        '- %s | %s | Rp %s',
+                                        $detail['date'],
+                                        $detail['reason'],
+                                        number_format((float) $detail['amount'], 0, ',', '.')
+                                    );
+
+                                    if (($detail['type'] ?? null) === 'cicilan') {
+                                        $line .= sprintf(' (Cicilan %d/%d)', $detail['installment_number'], $detail['total_installments']);
+                                    }
+
+                                    $lines[] = $line;
+                                }
+
+                                return implode("\n", $lines);
+                            })
                             ->columnSpanFull(),
                         Forms\Components\TextInput::make('base_salary')
                             ->label('Gaji Pokok (Auto)')
@@ -137,6 +187,15 @@ class SalaryPaymentResource extends Resource
             ->defaultSort('month', 'desc')
             ->actions([
                 Tables\Actions\ViewAction::make(),
+                Tables\Actions\Action::make('lihatSlip')
+                    ->label('Lihat Slip')
+                    ->icon('heroicon-o-document-text')
+                    ->url(fn (SalaryPayment $record) => route('employee.salary-slip', [
+                        'employee' => $record->employee_id,
+                        'month' => $record->month,
+                        'year' => $record->year,
+                    ]))
+                    ->openUrlInNewTab(),
                 Tables\Actions\Action::make('markAsPaid')
                     ->label('Sudah Digaji')
                     ->icon('heroicon-o-check-circle')
@@ -193,6 +252,71 @@ class SalaryPaymentResource extends Resource
             'create' => Pages\CreateSalaryPayment::route('/create'),
             'edit' => Pages\EditSalaryPayment::route('/{record}/edit'),
         ];
+    }
+
+    public static function calculateMonthlyCashbon(Employee $employee, int $month, int $year): float
+    {
+        $details = self::getCashbonDetailsForPeriod($employee, $month, $year);
+
+        return (float) collect($details)->sum(fn (array $detail) => (float) $detail['amount']);
+    }
+
+    public static function getCashbonDetailsForPeriod(Employee $employee, int $month, int $year): array
+    {
+        $currentDate = \Carbon\Carbon::create($year, $month, 1);
+        $details = [];
+
+        $cashbons = Cashbon::where('employee_id', $employee->id)
+            ->where('status', 'paid')
+            ->get();
+
+        foreach ($cashbons as $cashbon) {
+            $requestDate = \Carbon\Carbon::parse($cashbon->request_date);
+            $installmentMonths = $cashbon->installment_months;
+
+            if ($installmentMonths === null) {
+                if ($requestDate->month == $month && $requestDate->year == $year) {
+                    $details[] = [
+                        'cashbon' => $cashbon,
+                        'amount' => (float) $cashbon->amount,
+                        'reason' => $cashbon->reason,
+                        'date' => $requestDate->format('d/m/Y'),
+                        'type' => 'langsung',
+                    ];
+                }
+                continue;
+            }
+
+            $startDate = \Carbon\Carbon::create($requestDate->year, $requestDate->month, 1);
+            $endDate = $startDate->copy()->addMonths($installmentMonths - 1)->endOfMonth();
+
+            if ($currentDate->year == $startDate->year && $currentDate->month == $startDate->month) {
+                $details[] = [
+                    'cashbon' => $cashbon,
+                    'amount' => ((float) $cashbon->amount / (int) $installmentMonths),
+                    'reason' => $cashbon->reason,
+                    'date' => $requestDate->format('d/m/Y'),
+                    'type' => 'cicilan',
+                    'installment_number' => 1,
+                    'total_installments' => (int) $installmentMonths,
+                ];
+            } elseif ($currentDate->greaterThan($startDate) && $currentDate->lessThanOrEqualTo($endDate)) {
+                $monthsDiff = $currentDate->diffInMonths($startDate);
+                if ($monthsDiff < $installmentMonths) {
+                    $details[] = [
+                        'cashbon' => $cashbon,
+                        'amount' => ((float) $cashbon->amount / (int) $installmentMonths),
+                        'reason' => $cashbon->reason,
+                        'date' => $requestDate->format('d/m/Y'),
+                        'type' => 'cicilan',
+                        'installment_number' => $monthsDiff + 1,
+                        'total_installments' => (int) $installmentMonths,
+                    ];
+                }
+            }
+        }
+
+        return $details;
     }
 }
 

@@ -3,12 +3,12 @@
 namespace App\Filament\Resources\SalaryPaymentResource\Pages;
 
 use App\Filament\Resources\SalaryPaymentResource;
-use App\Models\Cashbon;
 use App\Models\Employee;
 use App\Models\SalaryPayment;
-use Carbon\Carbon;
+use App\Models\SalaryPaymentAdjustment;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 
 class CreateSalaryPayment extends CreateRecord
@@ -32,19 +32,47 @@ class CreateSalaryPayment extends CreateRecord
             ]);
         }
 
-        $totalCashbon = $this->calculateMonthlyCashbon($employee, $month, $year);
+        $totalCashbon = SalaryPaymentResource::calculateMonthlyCashbon($employee, $month, $year);
         $baseSalary = (float) $employee->base_salary;
         $bpjs = (float) $employee->bpjs_allowance;
-        $addition = (float) ($data['adjustment_addition'] ?? 0);
-        $deduction = (float) ($data['adjustment_deduction'] ?? 0);
+        $adjustments = $data['adjustments'] ?? [];
+        $addition = (float) collect($adjustments)->where('type', 'addition')->sum('amount');
+        $deduction = (float) collect($adjustments)->where('type', 'deduction')->sum('amount');
 
         $data['base_salary'] = $baseSalary;
         $data['total_cashbon'] = $totalCashbon;
         $data['bpjs_allowance'] = $bpjs;
+        $data['adjustment_addition'] = $addition;
+        $data['adjustment_deduction'] = $deduction;
+        $data['adjustment_note'] = null;
         $data['net_salary'] = $baseSalary - $totalCashbon - $bpjs + $addition - $deduction;
         $data['status'] = 'draft';
 
         return $data;
+    }
+
+    protected function handleRecordCreation(array $data): Model
+    {
+        $adjustments = $data['adjustments'] ?? [];
+        unset($data['adjustments']);
+
+        /** @var SalaryPayment $salaryPayment */
+        $salaryPayment = static::getModel()::create($data);
+
+        foreach ($adjustments as $adjustment) {
+            if (empty($adjustment['type']) || empty($adjustment['description']) || empty($adjustment['amount'])) {
+                continue;
+            }
+
+            SalaryPaymentAdjustment::create([
+                'salary_payment_id' => $salaryPayment->id,
+                'type' => $adjustment['type'],
+                'description' => $adjustment['description'],
+                'amount' => (float) $adjustment['amount'],
+            ]);
+        }
+
+        return $salaryPayment;
     }
 
     protected function afterCreate(): void
@@ -55,40 +83,5 @@ class CreateSalaryPayment extends CreateRecord
             ->send();
     }
 
-    private function calculateMonthlyCashbon(Employee $employee, int $month, int $year): float
-    {
-        $currentDate = Carbon::create($year, $month, 1);
-        $totalCashbon = 0.0;
-
-        $cashbons = Cashbon::where('employee_id', $employee->id)
-            ->where('status', 'paid')
-            ->get();
-
-        foreach ($cashbons as $cashbon) {
-            $requestDate = Carbon::parse($cashbon->request_date);
-            $installmentMonths = $cashbon->installment_months;
-
-            if ($installmentMonths === null) {
-                if ($requestDate->month == $month && $requestDate->year == $year) {
-                    $totalCashbon += (float) $cashbon->amount;
-                }
-                continue;
-            }
-
-            $startDate = Carbon::create($requestDate->year, $requestDate->month, 1);
-            $endDate = $startDate->copy()->addMonths($installmentMonths - 1)->endOfMonth();
-
-            if ($currentDate->year == $startDate->year && $currentDate->month == $startDate->month) {
-                $totalCashbon += ((float) $cashbon->amount / (int) $installmentMonths);
-            } elseif ($currentDate->greaterThan($startDate) && $currentDate->lessThanOrEqualTo($endDate)) {
-                $monthsDiff = $currentDate->diffInMonths($startDate);
-                if ($monthsDiff < $installmentMonths) {
-                    $totalCashbon += ((float) $cashbon->amount / (int) $installmentMonths);
-                }
-            }
-        }
-
-        return $totalCashbon;
-    }
 }
 

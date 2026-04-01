@@ -154,6 +154,30 @@
     </table>
     @endif
 
+    @if(!empty($adjustment_items) && count($adjustment_items) > 0)
+    <table class="details">
+        <thead>
+            <tr>
+                <th>Jenis</th>
+                <th>Keterangan Penyesuaian</th>
+                <th>Nominal</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach($adjustment_items as $item)
+            <tr>
+                <td>{{ ($item['type'] ?? '') === 'addition' ? 'Tambahan' : 'Pengurangan' }}</td>
+                <td>{{ $item['description'] ?? '-' }}</td>
+                <td class="text-right">
+                    {{ ($item['type'] ?? '') === 'addition' ? '+' : '-' }}
+                    Rp {{ number_format((float) ($item['amount'] ?? 0), 0, ',', '.') }}
+                </td>
+            </tr>
+        @endforeach
+        </tbody>
+    </table>
+    @endif
+
     <div class="summary">
         <table>
             <tr>
@@ -167,6 +191,14 @@
             <tr>
                 <td>Potongan BPJS</td>
                 <td>Rp {{ number_format($bpjs_allowance, 0, ',', '.') }}</td>
+            </tr>
+            <tr>
+                <td>Total Tambahan</td>
+                <td>Rp {{ number_format($adjustment_addition ?? 0, 0, ',', '.') }}</td>
+            </tr>
+            <tr>
+                <td>Total Pengurangan</td>
+                <td>Rp {{ number_format($adjustment_deduction ?? 0, 0, ',', '.') }}</td>
             </tr>
             <tr class="total-row">
                 <td>Gaji Bersih</td>
