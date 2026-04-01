@@ -10,7 +10,6 @@ use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\View\PanelsRenderHook;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -45,10 +44,6 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->profile(\App\Filament\Pages\EditProfile::class)
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
-            ->renderHook(
-                PanelsRenderHook::BODY_END,
-                fn (): string => view('filament.components.dono-chat-widget')->render()
-            )
             ->widgets([
                 Widgets\AccountWidget::class,
                 Widgets\FilamentInfoWidget::class,
@@ -61,6 +56,7 @@ class AdminPanelProvider extends PanelProvider
                 ShareErrorsFromSession::class,
                 VerifyCsrfToken::class,
                 SubstituteBindings::class,
+                \App\Http\Middleware\InjectDonoWidget::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
