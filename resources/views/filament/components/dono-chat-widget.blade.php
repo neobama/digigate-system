@@ -1,4 +1,4 @@
-<div id="dono-widget" style="position:fixed;right:16px;bottom:16px;z-index:2147483000;font-family:Inter,Arial,sans-serif;">
+<div id="dono-widget" style="position:fixed;right:16px;bottom:16px;z-index:2147483000;font-family:Inter,Arial,sans-serif;color-scheme:light;color:#111827;">
     <button id="dono-toggle" type="button" style="background:#2563eb;color:#fff;border:none;border-radius:9999px;padding:10px 16px;font-size:14px;font-weight:600;box-shadow:0 8px 20px rgba(0,0,0,.28);cursor:pointer;">
         Dono
     </button>
@@ -10,7 +10,7 @@
         <div id="dono-messages" style="height:280px;overflow-y:auto;padding:10px;background:#fff;"></div>
         <div id="dono-action" style="padding:0 10px 10px 10px;"></div>
         <div style="display:flex;gap:8px;padding:10px;border-top:1px solid #e5e7eb;">
-            <input id="dono-input" type="text" placeholder="Ketik perintah..." style="flex:1;border:1px solid #d1d5db;border-radius:8px;padding:8px 10px;font-size:13px;" />
+            <input id="dono-input" type="text" placeholder="Ketik perintah..." style="flex:1;border:1px solid #d1d5db;border-radius:8px;padding:8px 10px;font-size:13px;background:#fff;color:#111827;caret-color:#111827;" />
             <button id="dono-send" type="button" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;">Kirim</button>
         </div>
     </div>
