@@ -20,7 +20,7 @@
     if (window.__donoMounted) return;
     window.__donoMounted = true;
 
-    const panel = document.getElementById('dono-panel');
+    const panelEl = document.getElementById('dono-panel');
     const toggle = document.getElementById('dono-toggle');
     const closeBtn = document.getElementById('dono-close');
     const messages = document.getElementById('dono-messages');
@@ -78,7 +78,10 @@
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
-                body: JSON.stringify({ message: text }),
+                body: JSON.stringify({
+                    message: text,
+                    panel: window.location.pathname.startsWith('/employee') ? 'employee' : 'admin',
+                }),
             });
             const data = await res.json();
             addMessage('assistant', data.reply || 'Siap.');
@@ -91,9 +94,9 @@
     };
 
     toggle.addEventListener('click', () => {
-        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        panelEl.style.display = panelEl.style.display === 'none' ? 'block' : 'none';
     });
-    closeBtn.addEventListener('click', () => { panel.style.display = 'none'; });
+    closeBtn.addEventListener('click', () => { panelEl.style.display = 'none'; });
     sendBtn.addEventListener('click', send);
     input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
@@ -102,7 +105,7 @@
         }
     });
 
-    addMessage('assistant', 'Halo, saya Dono. Saya bisa bantu isi cepat form fitur apa saja.');
+    addMessage('assistant', 'Halo, saya Dono. Tanya cara pakai menu di DigiGate, minta buka halaman tertentu, atau buat task / buka form (sesuai akses Anda).');
 })();
 </script>
 

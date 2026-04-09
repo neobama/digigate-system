@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 class GeminiService
 {
     protected ?string $apiKey;
+
     protected string $baseUrl;
 
     public function __construct()
@@ -16,36 +17,76 @@ class GeminiService
         // Force use gemini-1.5-pro as it's the most stable
         $model = config('gemini.model', 'gemini-1.5-pro');
         $this->baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
-        
+
         // Log for debugging
         Log::debug('GeminiService initialized', [
             'model' => $model,
             'baseUrl' => $this->baseUrl,
-            'hasApiKey' => !empty($this->apiKey),
+            'hasApiKey' => ! empty($this->apiKey),
         ]);
     }
-    
+
     /**
      * Check if API key is configured
      */
     protected function hasApiKey(): bool
     {
-        return !empty($this->apiKey);
+        return ! empty($this->apiKey);
+    }
+
+    /**
+     * Generate JSON object from a prompt (text-only). Returns null if API unavailable or response invalid.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function generateJsonFromPrompt(string $prompt): ?array
+    {
+        if (! $this->hasApiKey()) {
+            return null;
+        }
+
+        try {
+            $response = Http::timeout((int) config('gemini.timeout', 30))
+                ->post($this->baseUrl.'?key='.$this->apiKey, [
+                    'contents' => [[
+                        'parts' => [['text' => $prompt]],
+                    ]],
+                ]);
+
+            if (! $response->successful()) {
+                return null;
+            }
+
+            $text = $response->json('candidates.0.content.parts.0.text');
+            if (! is_string($text) || $text === '') {
+                return null;
+            }
+
+            $text = preg_replace('/```json\s*/', '', $text);
+            $text = preg_replace('/```\s*/', '', $text);
+            $decoded = json_decode(trim((string) $text), true);
+
+            return is_array($decoded) ? $decoded : null;
+        } catch (\Throwable $e) {
+            Log::warning('Gemini generateJsonFromPrompt failed', ['message' => $e->getMessage()]);
+
+            return null;
+        }
     }
 
     /**
      * Parse reimbursement invoice/bon untuk extract informasi
-     * 
-     * @param string $imageBase64 Base64 encoded image
-     * @return array|null
+     *
+     * @param  string  $imageBase64  Base64 encoded image
      */
     public function parseReimbursementInvoice(string $imageBase64): ?array
     {
-        if (!$this->hasApiKey()) {
+        if (! $this->hasApiKey()) {
             Log::error('Gemini API Key not configured');
+
             return null;
         }
-        
+
         $prompt = "Analyze this invoice/receipt image and extract the following information in JSON format:
 {
   \"purpose\": \"Short description of what the expense is for (e.g., 'Transport ke client', 'Makan siang meeting')\",
@@ -57,36 +98,36 @@ class GeminiService
 Only return valid JSON, no other text. If any field cannot be determined, use null.";
 
         try {
-            $response = Http::timeout(30)->post($this->baseUrl . '?key=' . $this->apiKey, [
+            $response = Http::timeout(30)->post($this->baseUrl.'?key='.$this->apiKey, [
                 'contents' => [
                     [
                         'parts' => [
                             [
-                                'text' => $prompt
+                                'text' => $prompt,
                             ],
                             [
                                 'inline_data' => [
                                     'mime_type' => $this->detectMimeType($imageBase64),
-                                    'data' => $imageBase64
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
+                                    'data' => $imageBase64,
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
             ]);
 
             if ($response->successful()) {
                 $content = $response->json();
                 $text = $content['candidates'][0]['content']['parts'][0]['text'] ?? null;
-                
+
                 if ($text) {
                     // Extract JSON from response (might have markdown code blocks)
                     $text = preg_replace('/```json\s*/', '', $text);
                     $text = preg_replace('/```\s*/', '', $text);
                     $text = trim($text);
-                    
+
                     $parsed = json_decode($text, true);
-                    
+
                     if ($parsed && is_array($parsed)) {
                         return [
                             'purpose' => $parsed['purpose'] ?? null,
@@ -100,31 +141,33 @@ Only return valid JSON, no other text. If any field cannot be determined, use nu
 
             Log::error('Gemini API Error', [
                 'status' => $response->status(),
-                'response' => $response->body()
+                'response' => $response->body(),
             ]);
 
             return null;
         } catch (\Exception $e) {
             Log::error('Gemini Service Exception', [
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
 
     /**
      * Parse component invoice untuk extract multiple items
-     * 
-     * @param string $imageBase64 Base64 encoded image
+     *
+     * @param  string  $imageBase64  Base64 encoded image
      * @return array|null Array of items
      */
     public function parseComponentInvoice(string $imageBase64): ?array
     {
-        if (!$this->hasApiKey()) {
+        if (! $this->hasApiKey()) {
             Log::error('Gemini API Key not configured');
+
             return null;
         }
-        
+
         $prompt = "Analyze this invoice/receipt image and extract ALL items/products listed. Return as JSON array:
 [
   {
@@ -141,36 +184,36 @@ IMPORTANT: The 'name' field MUST be exactly one of: 'Processor i7 11700K', 'Proc
 Only return valid JSON array, no other text. If invoice date is not found, use today's date. Extract all items from the invoice.";
 
         try {
-            $response = Http::timeout(30)->post($this->baseUrl . '?key=' . $this->apiKey, [
+            $response = Http::timeout(30)->post($this->baseUrl.'?key='.$this->apiKey, [
                 'contents' => [
                     [
                         'parts' => [
                             [
-                                'text' => $prompt
+                                'text' => $prompt,
                             ],
                             [
                                 'inline_data' => [
                                     'mime_type' => $this->detectMimeType($imageBase64),
-                                    'data' => $imageBase64
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
+                                    'data' => $imageBase64,
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
             ]);
 
             if ($response->successful()) {
                 $content = $response->json();
                 $text = $content['candidates'][0]['content']['parts'][0]['text'] ?? null;
-                
+
                 if ($text) {
                     // Extract JSON from response (might have markdown code blocks)
                     $text = preg_replace('/```json\s*/', '', $text);
                     $text = preg_replace('/```\s*/', '', $text);
                     $text = trim($text);
-                    
+
                     $parsed = json_decode($text, true);
-                    
+
                     if ($parsed && is_array($parsed)) {
                         // Normalize items and map to dropdown options
                         $items = [];
@@ -184,7 +227,7 @@ Only return valid JSON array, no other text. If invoice date is not found, use t
                                 ];
                             }
                         }
-                        
+
                         return $items;
                     }
                 }
@@ -192,28 +235,26 @@ Only return valid JSON array, no other text. If invoice date is not found, use t
 
             Log::error('Gemini API Error', [
                 'status' => $response->status(),
-                'response' => $response->body()
+                'response' => $response->body(),
             ]);
 
             return null;
         } catch (\Exception $e) {
             Log::error('Gemini Service Exception', [
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
 
     /**
      * Map component name to dropdown options
-     * 
-     * @param string $name
-     * @return string
      */
     protected function mapComponentName(string $name): string
     {
         $name = strtolower(trim($name));
-        
+
         // Available options
         $options = [
             'Processor i7 11700K',
@@ -226,86 +267,82 @@ Only return valid JSON array, no other text. If invoice date is not found, use t
             'Chassis Maleo',
             'Chassis Komodo',
         ];
-        
+
         // Mapping rules (order matters - check more specific first)
         // Chassis Komodo -> Chassis Komodo
         if (preg_match('/\b(chassis\s*komodo|komodo\s*chassis|case\s*komodo)\b/i', $name)) {
             return 'Chassis Komodo';
         }
-        
+
         // Chassis Macan -> Chassis Macan
         if (preg_match('/\b(chassis\s*macan|macan\s*chassis|case\s*macan)\b/i', $name)) {
             return 'Chassis Macan';
         }
-        
+
         // Chassis Maleo -> Chassis Maleo
         if (preg_match('/\b(chassis\s*maleo|maleo\s*chassis|case\s*maleo)\b/i', $name)) {
             return 'Chassis Maleo';
         }
-        
+
         // RAM/DDR5 -> RAM DDR5 (check DDR5 before DDR4)
         if (preg_match('/\b(ddr5|ddr\s*5)\b/i', $name)) {
             return 'RAM DDR5';
         }
-        
+
         // RAM/DDR4 -> RAM DDR4
         if (preg_match('/\b(ram|ddr4|ddr\s*4|memory)\b/i', $name)) {
             return 'RAM DDR4';
         }
-        
+
         // Processor i7 14700 variants -> Processor i7 14700K
         if (preg_match('/\b(i7\s*14700|14700k|14700f|14700)\b/i', $name)) {
             return 'Processor i7 14700K';
         }
-        
+
         // Processor i7 11700 variants -> Processor i7 11700K
         if (preg_match('/\b(i7\s*11700|11700k|11700f|11700)\b/i', $name)) {
             return 'Processor i7 11700K';
         }
-        
+
         // Processor i7 8700 variants -> Processor i7 8700K
         if (preg_match('/\b(i7\s*8700|8700k|8700f|8700)\b/i', $name)) {
             return 'Processor i7 8700K';
         }
-        
+
         // SSD (any brand/model) -> SSD
         if (preg_match('/\b(ssd|solid\s*state|samsung|kingston|wd|western\s*digital|crucial|adata|sandisk)\b/i', $name)) {
             return 'SSD';
         }
-        
+
         // Default: return first option if no match
         return $options[0];
     }
 
     /**
      * Detect MIME type from base64 image
-     * 
-     * @param string $base64
-     * @return string
      */
     protected function detectMimeType(string $base64): string
     {
         // Remove data URI prefix if present
         $base64 = preg_replace('/^data:image\/[^;]+;base64,/', '', $base64);
-        
+
         // Decode to get image info
         $imageData = base64_decode($base64, true);
-        
+
         if ($imageData === false) {
             return 'image/jpeg'; // Default
         }
-        
+
         // Use finfo to detect MIME type
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mimeType = finfo_buffer($finfo, $imageData);
         finfo_close($finfo);
-        
+
         // Validate and return
         if (in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'])) {
             return $mimeType;
         }
-        
+
         return 'image/jpeg'; // Default fallback
     }
 }
-
