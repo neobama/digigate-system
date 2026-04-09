@@ -12,14 +12,15 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Storage;
 
 class BudgetRequestResource extends Resource
 {
     protected static ?string $model = BudgetRequest::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
+
     protected static ?string $navigationLabel = 'Request Anggaran';
+
     protected static ?string $navigationGroup = 'HR';
 
     public static function form(Form $form): Form
@@ -122,23 +123,42 @@ class BudgetRequestResource extends Resource
                     ->label('Tanggal Paid')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->visible(fn ($record) => $record && $record->status === 'paid' && !empty($record->paid_at)),
-                Tables\Columns\BadgeColumn::make('status')
+                    ->visible(fn ($record) => $record && $record->status === 'paid' && ! empty($record->paid_at)),
+                Tables\Columns\TextColumn::make('status')
                     ->label('Status')
-                    ->colors([
-                        'warning' => 'pending',
-                        'success' => 'approved',
-                        'danger' => 'rejected',
-                        'info' => 'paid',
-                    ])
-                    ->formatStateUsing(fn ($state): string => match ($state) {
-                        'pending' => 'Pending',
-                        'approved' => 'Approved',
-                        'rejected' => 'Rejected',
-                        'paid' => 'Paid',
-                        default => $state,
+                    ->badge()
+                    ->color(function ($state, BudgetRequest $record): string {
+                        return match (true) {
+                            $record->status === 'pending' => 'warning',
+                            $record->status === 'approved' => 'success',
+                            $record->status === 'rejected' => 'danger',
+                            $record->status === 'paid' && $record->realization_submitted_at === null => 'warning',
+                            $record->status === 'paid' => 'success',
+                            default => 'gray',
+                        };
+                    })
+                    ->formatStateUsing(function ($state, BudgetRequest $record): string {
+                        if ($record->status === 'paid' && $record->realization_submitted_at === null) {
+                            return 'Paid · tunggu realisasi';
+                        }
+                        if ($record->status === 'paid') {
+                            return 'Paid · tercatat';
+                        }
+
+                        return match ($record->status) {
+                            'pending' => 'Pending',
+                            'approved' => 'Approved',
+                            'rejected' => 'Rejected',
+                            default => (string) $record->status,
+                        };
                     })
                     ->sortable(),
+                Tables\Columns\TextColumn::make('realized_amount')
+                    ->label('Realisasi (nominal)')
+                    ->money('IDR')
+                    ->sortable()
+                    ->placeholder('—')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
                     ->dateTime('d/m/Y H:i')
@@ -237,7 +257,7 @@ class BudgetRequestResource extends Resource
                         Infolists\Components\TextEntry::make('paid_at')
                             ->label('Tanggal Paid')
                             ->dateTime('d/m/Y H:i')
-                            ->visible(fn ($record) => $record && $record->status === 'paid' && !empty($record->paid_at)),
+                            ->visible(fn ($record) => $record && $record->status === 'paid' && ! empty($record->paid_at)),
                         Infolists\Components\TextEntry::make('created_at')
                             ->label('Dibuat')
                             ->dateTime('d/m/Y H:i'),
@@ -254,7 +274,7 @@ class BudgetRequestResource extends Resource
                             })
                             ->columnSpanFull(),
                     ])
-                    ->visible(fn (BudgetRequest $record) => !empty($record->invoice)),
+                    ->visible(fn (BudgetRequest $record) => ! empty($record->invoice)),
                 Infolists\Components\Section::make('Bukti Pembayaran')
                     ->schema([
                         Infolists\Components\ViewEntry::make('proof_of_payment')
@@ -267,7 +287,32 @@ class BudgetRequestResource extends Resource
                             })
                             ->columnSpanFull(),
                     ])
-                    ->visible(fn (BudgetRequest $record) => !empty($record->proof_of_payment)),
+                    ->visible(fn (BudgetRequest $record) => ! empty($record->proof_of_payment)),
+                Infolists\Components\Section::make('Realisasi karyawan')
+                    ->description('Pengeluaran di laporan keuangan dibuat dari data ini setelah karyawan mengirim realisasi.')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('realized_amount')
+                            ->label('Nominal realisasi')
+                            ->money('IDR')
+                            ->placeholder('—'),
+                        Infolists\Components\TextEntry::make('realization_notes')
+                            ->label('Keterangan')
+                            ->placeholder('—')
+                            ->columnSpanFull(),
+                        Infolists\Components\TextEntry::make('realization_submitted_at')
+                            ->label('Dikirim pada')
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('—'),
+                        Infolists\Components\ViewEntry::make('realization_gallery')
+                            ->label('Bukti pembelian')
+                            ->view('filament.infolists.components.budget-realization-proofs')
+                            ->viewData(fn (BudgetRequest $record) => [
+                                'proofs' => $record->realization_proof_images ?? [],
+                            ])
+                            ->columnSpanFull(),
+                    ])
+                    ->visible(fn (BudgetRequest $record) => $record->realization_submitted_at !== null)
+                    ->columns(2),
             ]);
     }
 

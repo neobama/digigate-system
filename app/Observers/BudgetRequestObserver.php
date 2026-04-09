@@ -3,7 +3,6 @@
 namespace App\Observers;
 
 use App\Models\BudgetRequest;
-use App\Models\Expense;
 use App\Services\ActivityLogService;
 use App\Services\WhatsAppService;
 
@@ -30,33 +29,33 @@ class BudgetRequestObserver
                 'error' => $e->getMessage(),
             ]);
         }
-        
+
         $budgetRequest->load('employee');
         $employee = $budgetRequest->employee;
-        
-        if (!$employee) {
+
+        if (! $employee) {
             return; // Skip if employee not found
         }
-        
+
         $message = "📋 *Request Anggaran Baru*\n\n";
         $message .= "Karyawan: {$employee->name}\n";
         $message .= "Nama Anggaran: {$budgetRequest->budget_name}\n";
         $message .= "Detail: {$budgetRequest->budget_detail}\n";
         $message .= "Rekening: {$budgetRequest->recipient_account}\n";
-        $message .= "Nominal: Rp " . number_format($budgetRequest->amount, 0, ',', '.') . "\n";
-        
+        $message .= 'Nominal: Rp '.number_format($budgetRequest->amount, 0, ',', '.')."\n";
+
         // Safely format date
         $requestDate = $budgetRequest->request_date;
         if ($requestDate instanceof \Carbon\Carbon) {
-            $message .= "Tanggal Request: " . $requestDate->format('d/m/Y') . "\n";
+            $message .= 'Tanggal Request: '.$requestDate->format('d/m/Y')."\n";
         } elseif (is_string($requestDate)) {
-            $message .= "Tanggal Request: " . \Carbon\Carbon::parse($requestDate)->format('d/m/Y') . "\n";
+            $message .= 'Tanggal Request: '.\Carbon\Carbon::parse($requestDate)->format('d/m/Y')."\n";
         } else {
-            $message .= "Tanggal Request: " . ($requestDate ?? 'N/A') . "\n";
+            $message .= 'Tanggal Request: '.($requestDate ?? 'N/A')."\n";
         }
-        
-        $message .= "Status: " . ucfirst($budgetRequest->status);
-        
+
+        $message .= 'Status: '.ucfirst($budgetRequest->status);
+
         // Send notification to admin (don't fail if WhatsApp fails)
         try {
             $this->whatsapp->sendToAdmin($message);
@@ -79,19 +78,19 @@ class BudgetRequestObserver
         if ($budgetRequest->wasChanged('status')) {
             $budgetRequest->load('employee');
             $employee = $budgetRequest->employee;
-            
-            if (!$employee) {
+
+            if (! $employee) {
                 return; // Skip if employee not found
             }
-            
+
             $newStatus = $budgetRequest->status;
-            
+
             // Log activity (don't fail if logging fails)
             try {
                 $oldValues = $budgetRequest->getOriginal();
                 $newValues = $budgetRequest->getChanges();
                 unset($oldValues['updated_at'], $newValues['updated_at']);
-                if (!empty($newValues)) {
+                if (! empty($newValues)) {
                     ActivityLogService::logUpdate($budgetRequest, $oldValues, $newValues);
                 }
             } catch (\Exception $e) {
@@ -100,51 +99,29 @@ class BudgetRequestObserver
                     'error' => $e->getMessage(),
                 ]);
             }
-            
-            // Auto-create Expense record when status changes to "paid"
-            if ($newStatus === 'paid') {
-                // Check if expense already exists for this budget request
-                $existingExpense = Expense::where('budget_request_id', $budgetRequest->id)->first();
-                
-                if (!$existingExpense) {
-                    try {
-                        Expense::create([
-                            'budget_request_id' => $budgetRequest->id,
-                            'description' => $budgetRequest->budget_name . ' - ' . $employee->name . ' | ' . $budgetRequest->budget_detail,
-                            'expense_date' => $budgetRequest->request_date,
-                            'amount' => $budgetRequest->amount,
-                            'proof_of_payment' => $budgetRequest->proof_of_payment,
-                            'fund_source' => 'bank_perusahaan', // Default untuk budget request
-                            'vendor_invoice_number' => null, // Bisa diisi manual nanti jika perlu
-                        ]);
-                    } catch (\Exception $e) {
-                        // Log error but don't stop the process
-                        \Log::error('Failed to create expense for budget request', [
-                            'budget_request_id' => $budgetRequest->id,
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
-                }
-            }
-            
+
+            // Pengeluaran (Expense) dicatat setelah karyawan mengirim realisasi + bukti di panel Employee,
+            // bukan otomatis saat paid (lihat BudgetRealizationService).
+
             // Notify employee if status is approved, rejected, or paid
-            if (in_array($newStatus, ['approved', 'rejected', 'paid']) && !empty($employee->phone_number)) {
+            if (in_array($newStatus, ['approved', 'rejected', 'paid']) && ! empty($employee->phone_number)) {
                 try {
                     $employeeMessage = "📋 *Update Request Anggaran Anda*\n\n";
                     $employeeMessage .= "Nama Anggaran: {$budgetRequest->budget_name}\n";
-                    $employeeMessage .= "Nominal: Rp " . number_format($budgetRequest->amount, 0, ',', '.') . "\n";
-                    
+                    $employeeMessage .= 'Nominal: Rp '.number_format($budgetRequest->amount, 0, ',', '.')."\n";
+
                     if ($newStatus === 'approved') {
                         $employeeMessage .= "✅ Status: *Disetujui*\n\n";
-                        $employeeMessage .= "Request anggaran Anda telah disetujui.";
+                        $employeeMessage .= 'Request anggaran Anda telah disetujui.';
                     } elseif ($newStatus === 'rejected') {
                         $employeeMessage .= "❌ Status: *Ditolak*\n\n";
-                        $employeeMessage .= "Request anggaran Anda telah ditolak.";
+                        $employeeMessage .= 'Request anggaran Anda telah ditolak.';
                     } elseif ($newStatus === 'paid') {
                         $employeeMessage .= "✅ Status: *Sudah Dibayar*\n\n";
-                        $employeeMessage .= "Anggaran Anda sudah dibayar ke rekening: {$budgetRequest->recipient_account}";
+                        $employeeMessage .= "Anggaran sudah ditransfer ke: {$budgetRequest->recipient_account}\n\n";
+                        $employeeMessage .= 'Setelah memakai dana, *wajib* input *realisasi* (nominal aktual + bukti pembelian) di menu Request Anggaran di aplikasi agar pengeluaran tercatat.';
                     }
-                    
+
                     $this->whatsapp->sendMessage($employee->phone_number, $employeeMessage);
                 } catch (\Exception $e) {
                     // Log error but don't stop the process

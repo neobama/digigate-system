@@ -60,7 +60,7 @@ DigiGate adalah ERP internal. Ada dua panel:
 Ringkas modul:
 - Kalender Pekerjaan / Task: assign pekerjaan ke karyawan, status, upload bukti per karyawan (pivot), notifikasi WhatsApp. Admin: buat/mengelola semua task. Karyawan: lihat task yang di-assign ke mereka, upload bukti, ubah status sesuai alur.
 - Cashbon: pinjaman/uang muka; ada jatah bulanan per karyawan (di employee: Request Cashbon Baru dari halaman Cashbon).
-- Budget Request: pengajuan anggaran.
+- Budget Request: pengajuan anggaran; setelah admin set Paid, karyawan wajib input realisasi (nominal aktual + bukti) agar pengeluaran masuk laporan keuangan.
 - Reimbursement: klaim penggantian biaya (ada upload bon di alur admin).
 - Keuangan (admin): Pemasukan (Income), Pengeluaran (Expense), Laporan Keuangan.
 - Penjualan/operasional (admin): Invoice, Dokumen.
