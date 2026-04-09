@@ -6,22 +6,22 @@ return [
     | Google Gemini API Key
     |--------------------------------------------------------------------------
     |
-    | API key untuk Google Gemini API. Dapatkan dari:
-    | https://makersuite.google.com/app/apikey
+    | API key: https://aistudio.google.com/apikey
+    |
+    | GOOGLE_API_KEY dipakai jika GEMINI_API_KEY kosong (nama umum di dokumentasi Google).
+    |
+    | Setelah mengubah .env di server, jalankan: php artisan config:clear
+    | (wajib jika pernah menjalankan config:cache — tanpa ini, key baru tidak terbaca).
     |
     */
-    'api_key' => env('GEMINI_API_KEY', ''),
+    'api_key' => env('GEMINI_API_KEY') ?: env('GOOGLE_API_KEY') ?: '',
 
     /*
     |--------------------------------------------------------------------------
     | Gemini Model
     |--------------------------------------------------------------------------
     |
-    | Model yang digunakan untuk parsing. Default: gemini-3-pro
-    | Options:
-    |   - gemini-3-pro (Latest - terbaru)
-    |   - gemini-1.5-pro (Stable - lebih stabil)
-    |   - gemini-1.5-flash-latest (Lebih cepat)
+    | Model harus ada di Generative Language API. Contoh: gemini-2.0-flash, gemini-1.5-flash, gemini-1.5-pro
     |
     */
     'model' => env('GEMINI_MODEL', 'gemini-2.0-flash'),

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class GeminiService
 {
@@ -14,8 +15,7 @@ class GeminiService
     public function __construct()
     {
         $this->apiKey = config('gemini.api_key') ?: null;
-        // Force use gemini-1.5-pro as it's the most stable
-        $model = config('gemini.model', 'gemini-1.5-pro');
+        $model = config('gemini.model', 'gemini-2.0-flash');
         $this->baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
 
         // Log for debugging
@@ -42,6 +42,8 @@ class GeminiService
     public function generateJsonFromPrompt(string $prompt): ?array
     {
         if (! $this->hasApiKey()) {
+            Log::warning('Gemini: GEMINI_API_KEY / GOOGLE_API_KEY kosong di config. Pastikan ada di .env dan jalankan php artisan config:clear jika pakai config:cache.');
+
             return null;
         }
 
@@ -53,22 +55,65 @@ class GeminiService
                     ]],
                 ]);
 
+            $payload = $response->json();
+
             if (! $response->successful()) {
+                Log::warning('Gemini HTTP gagal', [
+                    'status' => $response->status(),
+                    'model' => config('gemini.model'),
+                    'body' => Str::limit(is_array($payload) ? json_encode($payload) : $response->body(), 800),
+                ]);
+
                 return null;
             }
 
-            $text = $response->json('candidates.0.content.parts.0.text');
+            if (isset($payload['error']) && is_array($payload['error'])) {
+                Log::warning('Gemini error payload', [
+                    'model' => config('gemini.model'),
+                    'error' => $payload['error'],
+                ]);
+
+                return null;
+            }
+
+            $text = data_get($payload, 'candidates.0.content.parts.0.text');
             if (! is_string($text) || $text === '') {
+                Log::warning('Gemini respons tanpa teks', [
+                    'model' => config('gemini.model'),
+                    'finish_reason' => data_get($payload, 'candidates.0.finishReason'),
+                    'block_reason' => data_get($payload, 'promptFeedback.blockReason'),
+                    'payload_excerpt' => Str::limit(json_encode($payload), 600),
+                ]);
+
                 return null;
             }
 
             $text = preg_replace('/```json\s*/', '', $text);
             $text = preg_replace('/```\s*/', '', $text);
-            $decoded = json_decode(trim((string) $text), true);
+            $trimmed = trim((string) $text);
+            $decoded = json_decode($trimmed, true);
 
-            return is_array($decoded) ? $decoded : null;
+            if (! is_array($decoded)) {
+                if (preg_match('/\{[\s\S]*\}/', $trimmed, $m)) {
+                    $decoded = json_decode($m[0], true);
+                }
+            }
+
+            if (! is_array($decoded)) {
+                Log::warning('Gemini: jawaban bukan JSON valid', [
+                    'model' => config('gemini.model'),
+                    'excerpt' => Str::limit($trimmed, 400),
+                ]);
+
+                return null;
+            }
+
+            return $decoded;
         } catch (\Throwable $e) {
-            Log::warning('Gemini generateJsonFromPrompt failed', ['message' => $e->getMessage()]);
+            Log::warning('Gemini generateJsonFromPrompt exception', [
+                'message' => $e->getMessage(),
+                'model' => config('gemini.model'),
+            ]);
 
             return null;
         }
