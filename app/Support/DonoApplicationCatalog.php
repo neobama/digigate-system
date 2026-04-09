@@ -115,10 +115,10 @@ TXT;
             'create_budget_request' => self::labeledUrl(self::budgetRequestUrl($panel), 'Buka Budget Request'),
             'create_reimbursement' => self::labeledUrl(self::reimbursementUrl($panel), 'Buka Reimbursement'),
             'create_expense' => $panel === 'admin'
-                ? self::labeledUrl(ExpenseResource::getUrl('create', [], true, 'admin'), 'Buka Form Pengeluaran')
+                ? self::expenseCreateAction($fields)
                 : null,
             'create_income' => $panel === 'admin'
-                ? self::labeledUrl(IncomeResource::getUrl('create', [], true, 'admin'), 'Buka Form Pemasukan')
+                ? self::incomeCreateAction($fields)
                 : null,
             'create_warranty_claim' => self::labeledUrl(self::warrantyClaimUrl($panel), 'Buka Warranty Claim'),
             'create_component' => self::labeledUrl(self::componentUrl($panel), 'Buka Komponen'),
@@ -151,6 +151,55 @@ TXT;
         }
 
         return ['label' => $label, 'url' => $url];
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     * @return array{label: string, url: string}|null
+     */
+    private static function expenseCreateAction(array $fields): ?array
+    {
+        $prefill = array_filter([
+            'description' => isset($fields['description']) ? (string) $fields['description'] : null,
+            'amount' => isset($fields['amount']) ? (float) $fields['amount'] : null,
+            'expense_date' => $fields['expense_date'] ?? null,
+            'fund_source' => $fields['fund_source'] ?? null,
+            'account_code' => $fields['account_code'] ?? null,
+            'vendor_invoice_number' => $fields['vendor_invoice_number'] ?? null,
+        ], fn ($v) => $v !== null && $v !== '');
+
+        $query = [];
+        if ($prefill !== []) {
+            $query['prefill'] = base64_encode(json_encode($prefill));
+        }
+
+        return [
+            'label' => 'Buka Form Pengeluaran',
+            'url' => ExpenseResource::getUrl('create', $query, true, 'admin'),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     * @return array{label: string, url: string}|null
+     */
+    private static function incomeCreateAction(array $fields): ?array
+    {
+        $prefill = array_filter([
+            'description' => isset($fields['description']) ? (string) $fields['description'] : null,
+            'amount' => isset($fields['amount']) ? (float) $fields['amount'] : null,
+            'income_date' => $fields['income_date'] ?? null,
+        ], fn ($v) => $v !== null && $v !== '');
+
+        $query = [];
+        if ($prefill !== []) {
+            $query['prefill'] = base64_encode(json_encode($prefill));
+        }
+
+        return [
+            'label' => 'Buka Form Pemasukan',
+            'url' => IncomeResource::getUrl('create', $query, true, 'admin'),
+        ];
     }
 
     private static function cashbonUrl(string $panel): ?string

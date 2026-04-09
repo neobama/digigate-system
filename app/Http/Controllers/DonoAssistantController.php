@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Employee;
 use App\Services\GeminiService;
 use App\Support\DonoApplicationCatalog;
+use App\Support\DonoFallbackIntentParser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -52,8 +53,12 @@ class DonoAssistantController extends Controller
         $result = $gemini->generateJsonFromPrompt($prompt);
 
         if (! $result) {
+            $result = DonoFallbackIntentParser::parse($message, $panel);
+        }
+
+        if (! $result) {
             return [
-                'reply' => 'Dono belum bisa memahami perintah itu (layanan AI tidak tersedia atau sibuk). Coba lagi, atau gunakan menu di sidebar. Contoh: buat task besok untuk Budi, atau tanya: apa itu cashbon?',
+                'reply' => 'Dono tidak bisa memproses perintah ini (layanan AI belum dikonfigurasi atau sibuk). Tambahkan GEMINI_API_KEY di .env dan pakai model yang valid (mis. gemini-2.0-flash). Atau buka **Financial → Pengeluaran** di sidebar untuk input manual.',
                 'intent' => 'unknown',
                 'action' => null,
             ];

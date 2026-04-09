@@ -18,13 +18,13 @@ return [
     |--------------------------------------------------------------------------
     |
     | Model yang digunakan untuk parsing. Default: gemini-3-pro
-    | Options: 
+    | Options:
     |   - gemini-3-pro (Latest - terbaru)
     |   - gemini-1.5-pro (Stable - lebih stabil)
     |   - gemini-1.5-flash-latest (Lebih cepat)
     |
     */
-    'model' => env('GEMINI_MODEL', 'gemini-3-pro'),
+    'model' => env('GEMINI_MODEL', 'gemini-2.0-flash'),
 
     /*
     |--------------------------------------------------------------------------
@@ -36,4 +36,3 @@ return [
     */
     'timeout' => env('GEMINI_TIMEOUT', 30),
 ];
-
