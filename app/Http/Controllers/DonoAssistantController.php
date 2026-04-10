@@ -6,6 +6,7 @@ use App\Models\Employee;
 use App\Services\GeminiService;
 use App\Support\DonoApplicationCatalog;
 use App\Support\DonoFallbackIntentParser;
+use App\Support\DonoTaskFieldNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -44,6 +45,8 @@ class DonoAssistantController extends Controller
         $prompt = "Anda adalah asisten internal bernama Dono untuk ERP DigiGate.\n"
             ."Pengguna saat ini di panel: **{$panel}** (employee = karyawan /employee, admin = panel utama).\n\n"
             .DonoApplicationCatalog::knowledgeBaseForPrompt()."\n\n"
+            .DonoApplicationCatalog::taskCalendarContextBlock()."\n"
+            .DonoApplicationCatalog::taskFieldRulesForPrompt()."\n\n"
             .DonoApplicationCatalog::jsonSchemaInstruction()."\n\n"
             .'Nama karyawan valid (untuk task / assign): '.implode(', ', $employeeNames)."\n"
             .'Riwayat chat singkat: '.json_encode($history, JSON_UNESCAPED_UNICODE)."\n"
@@ -66,6 +69,10 @@ class DonoAssistantController extends Controller
 
         $intent = $result['intent'] ?? 'unknown';
         $fields = is_array($result['fields'] ?? null) ? $result['fields'] : [];
+
+        if ($intent === 'create_task') {
+            $fields = DonoTaskFieldNormalizer::normalize($fields, $message);
+        }
 
         $reply = $result['reply'] ?? 'Siap, saya bantu.';
 

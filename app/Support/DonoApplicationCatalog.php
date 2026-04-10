@@ -73,6 +73,39 @@ Jika pengguna karyawan menanyakan fitur yang hanya di admin, jelaskan singkat da
 TXT;
     }
 
+    public static function taskCalendarContextBlock(): string
+    {
+        $tz = 'Asia/Jakarta';
+        $today = \Carbon\Carbon::now($tz)->startOfDay();
+
+        $todayStr = $today->format('Y-m-d');
+        $besok = $today->copy()->addDay()->format('Y-m-d');
+        $kemarin = $today->copy()->subDay()->format('Y-m-d');
+        $lusa = $today->copy()->addDays(2)->format('Y-m-d');
+
+        return <<<TXT
+KONTEKS TANGGAL SERVER (timezone Asia/Jakarta — pakai nilai ini untuk task, jangan menebak tahun dari ingatan):
+- "Hari ini" / today = {$todayStr}
+- Besok = {$besok}
+- Kemarin = {$kemarin}
+- Lusa = {$lusa}
+TXT;
+    }
+
+    /**
+     * Aturan khusus parsing task (ditambahkan ke prompt Gemini).
+     */
+    public static function taskFieldRulesForPrompt(): string
+    {
+        return <<<'TXT'
+
+Aturan KHUSUS intent create_task:
+- start_date dan end_date: isi dengan YYYY-MM-DD sesuai blok "KONTEKS TANGGAL SERVER" di atas. Untuk "hari ini" gunakan tanggal Hari ini persis. Jangan mengisi tahun 2023/2024 kecuali user menyebut tahun itu eksplisit.
+- title: judul singkat (maks ~100 karakter), **Title Case** (setiap kata penting kapital), ringkas dari maksud user. Contoh: "Assembling 2 Unit Maleo (Tanpa License)" — bukan kalimat panjang penuh.
+- description: **wajib berbeda** dari title. Tulis 2–4 kalimat: apa yang dikerjakan, ruang lingkup, catatan teknis/operasional (mis. tanpa license, jumlah unit), dan apa yang harus dicek. Jangan copy-paste title ke description.
+TXT;
+    }
+
     public static function jsonSchemaInstruction(): string
     {
         return <<<'TXT'
