@@ -26,7 +26,7 @@ class EmployeePanelProvider extends PanelProvider
         return $panel
             ->id('employee')
             ->path('employee')
-            ->login()
+            ->login(\App\Filament\Employee\Pages\EmployeeLogin::class)
             ->loginRouteSlug('login')
             ->brandName('DigiGate System')
             ->brandLogo(Storage::disk('s3_public')->url('assets/digigate-logo.png'))
