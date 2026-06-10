@@ -3,7 +3,6 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\CashbonResource\Pages;
-use App\Filament\Resources\CashbonResource\RelationManagers;
 use App\Models\Cashbon;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -11,14 +10,15 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class CashbonResource extends Resource
 {
     protected static ?string $model = Cashbon::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
+
     protected static ?string $navigationLabel = 'Cashbon';
+
     protected static ?string $navigationGroup = 'HR';
 
     public static function form(Form $form): Form
@@ -52,22 +52,29 @@ class CashbonResource extends Resource
                         ->label('Alasan')
                         ->required()
                         ->rows(3),
+                    Forms\Components\Placeholder::make('record_type')
+                        ->label('Tipe')
+                        ->content(fn (?Cashbon $record): string => $record?->is_term_loan
+                            ? 'Pinjaman term (input admin, di luar jatah cashbon)'
+                            : 'Request karyawan')
+                        ->visibleOn('edit'),
                     Forms\Components\Select::make('installment_months')
                         ->label('Cicilan (Bulan)')
-                        ->helperText('Pilih jumlah bulan untuk mencicil cashbon. Hanya muncul jika jumlah >= 2 juta. Kosongkan jika ingin langsung dipotong.')
-                        ->options(function (Forms\Get $get) {
-                            $amount = $get('amount');
-                            if ($amount >= 2000000) {
-                                $options = [null => 'Langsung dipotong (tidak dicicil)'];
-                                for ($i = 1; $i <= 12; $i++) {
-                                    $options[$i] = "$i bulan";
-                                }
-                                return $options;
+                        ->helperText('Pilih jumlah bulan untuk mencicil. Kosongkan = potong penuh di bulan pertama.')
+                        ->options(function (Forms\Get $get, ?Cashbon $record): array {
+                            if ($record?->is_term_loan) {
+                                return self::installmentMonthOptionsForTermLoan();
                             }
+
+                            $amount = (float) $get('amount');
+                            if ($amount >= 2000000) {
+                                return self::installmentMonthOptionsForEmployeeRequest();
+                            }
+
                             return [];
                         })
                         ->placeholder('Pilih jumlah bulan cicilan')
-                        ->visible(fn (Forms\Get $get) => $get('amount') >= 2000000)
+                        ->visible(fn (Forms\Get $get, ?Cashbon $record): bool => $record?->is_term_loan || (float) $get('amount') >= 2000000)
                         ->nullable(),
                     Forms\Components\Select::make('status')
                         ->label('Status')
@@ -79,7 +86,7 @@ class CashbonResource extends Resource
                         ])
                         ->default('pending')
                         ->required(),
-                ])->columns(2)
+                ])->columns(2),
             ]);
     }
 
@@ -104,6 +111,12 @@ class CashbonResource extends Resource
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Jumlah')
                     ->money('IDR')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('is_term_loan')
+                    ->label('Tipe')
+                    ->badge()
+                    ->formatStateUsing(fn ($state): string => $state ? 'Pinjaman term' : 'Request')
+                    ->color(fn ($state): string => $state ? 'info' : 'gray')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('reason')
                     ->label('Alasan')
@@ -136,7 +149,7 @@ class CashbonResource extends Resource
                     ->label('Tanggal Paid')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->visible(fn ($record) => $record && $record->status === 'paid' && !empty($record->paid_at)),
+                    ->visible(fn ($record) => $record && $record->status === 'paid' && ! empty($record->paid_at)),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
                     ->dateTime()
@@ -156,6 +169,11 @@ class CashbonResource extends Resource
                     ->relationship('employee', 'name')
                     ->searchable()
                     ->preload(),
+                Tables\Filters\TernaryFilter::make('is_term_loan')
+                    ->label('Pinjaman term')
+                    ->placeholder('Semua')
+                    ->trueLabel('Hanya pinjaman term')
+                    ->falseLabel('Hanya request karyawan'),
             ])
             ->defaultSort('created_at', 'desc')
             ->actions([
@@ -164,7 +182,7 @@ class CashbonResource extends Resource
                     ->label('Approve')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn (Cashbon $record) => $record->status === 'pending')
+                    ->visible(fn (Cashbon $record) => $record->status === 'pending' && ! $record->is_term_loan)
                     ->action(function (Cashbon $record) {
                         $record->update(['status' => 'approved']);
                     })
@@ -173,7 +191,7 @@ class CashbonResource extends Resource
                     ->label('Reject')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn (Cashbon $record) => $record->status === 'pending')
+                    ->visible(fn (Cashbon $record) => $record->status === 'pending' && ! $record->is_term_loan)
                     ->action(function (Cashbon $record) {
                         $record->update(['status' => 'rejected']);
                     })
@@ -182,7 +200,7 @@ class CashbonResource extends Resource
                     ->label('Set Paid')
                     ->icon('heroicon-o-banknotes')
                     ->color('info')
-                    ->visible(fn (Cashbon $record) => $record->status === 'approved')
+                    ->visible(fn (Cashbon $record) => $record->status === 'approved' && ! $record->is_term_loan)
                     ->action(function (Cashbon $record) {
                         $record->update([
                             'status' => 'paid',
@@ -211,5 +229,73 @@ class CashbonResource extends Resource
             'index' => Pages\ListCashbons::route('/'),
             'edit' => Pages\EditCashbon::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Form khusus admin: pinjaman term (di luar jatah cashbon bulanan karyawan).
+     *
+     * @return array<int, \Filament\Forms\Components\Component>
+     */
+    public static function getTermLoanFormSchema(): array
+    {
+        return [
+            Forms\Components\Section::make('Pinjaman Term')
+                ->description('Dicatat langsung sebagai paid. Potong gaji mengikuti jumlah bulan cicilan dan muncul di slip gaji. Tidak mengurangi jatah cashbon request karyawan.')
+                ->schema([
+                    Forms\Components\Select::make('employee_id')
+                        ->label('Karyawan')
+                        ->relationship('employee', 'name')
+                        ->searchable()
+                        ->preload()
+                        ->required(),
+                    Forms\Components\DatePicker::make('request_date')
+                        ->label('Mulai potong gaji (bulan cicilan pertama)')
+                        ->default(now())
+                        ->required(),
+                    Forms\Components\TextInput::make('amount')
+                        ->label('Total pinjaman')
+                        ->numeric()
+                        ->prefix('Rp')
+                        ->required()
+                        ->minValue(1),
+                    Forms\Components\Textarea::make('reason')
+                        ->label('Keterangan pinjaman')
+                        ->required()
+                        ->rows(3)
+                        ->columnSpanFull(),
+                    Forms\Components\Select::make('installment_months')
+                        ->label('Cicilan (bulan)')
+                        ->helperText('Total pinjaman dibagi rata per bulan. Pilih 1 jika ingin dipotong penuh di bulan pertama.')
+                        ->options(self::installmentMonthOptionsForTermLoan())
+                        ->default(3)
+                        ->required(),
+                ])->columns(2),
+        ];
+    }
+
+    /**
+     * @return array<int|string, string>
+     */
+    public static function installmentMonthOptionsForTermLoan(): array
+    {
+        $options = [];
+        for ($i = 1; $i <= 12; $i++) {
+            $options[$i] = $i === 1 ? '1 bulan (potong penuh)' : "{$i} bulan";
+        }
+
+        return $options;
+    }
+
+    /**
+     * @return array<int|string, string>
+     */
+    public static function installmentMonthOptionsForEmployeeRequest(): array
+    {
+        $options = [null => 'Langsung dipotong (tidak dicicil)'];
+        for ($i = 1; $i <= 12; $i++) {
+            $options[$i] = "{$i} bulan";
+        }
+
+        return $options;
     }
 }

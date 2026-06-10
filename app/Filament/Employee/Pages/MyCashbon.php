@@ -7,15 +7,17 @@ use Filament\Forms;
 use Filament\Pages\Page;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class MyCashbon extends Page implements Tables\Contracts\HasTable
 {
     use Tables\Concerns\InteractsWithTable;
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
+
     protected static string $view = 'filament.employee.pages.my-cashbon';
+
     protected static ?string $navigationLabel = 'Cashbon';
+
     protected static ?string $title = 'Request Cashbon';
 
     public function table(Table $table): Table
@@ -31,6 +33,11 @@ class MyCashbon extends Page implements Tables\Contracts\HasTable
                     ->label('Jumlah')
                     ->money('IDR')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('is_term_loan')
+                    ->label('Tipe')
+                    ->badge()
+                    ->formatStateUsing(fn ($state): string => $state ? 'Pinjaman term' : 'Request')
+                    ->color(fn ($state): string => $state ? 'info' : 'gray'),
                 Tables\Columns\TextColumn::make('installment_months')
                     ->label('Cicilan')
                     ->formatStateUsing(fn ($state) => $state ? "$state bulan" : 'Langsung')
@@ -73,35 +80,38 @@ class MyCashbon extends Page implements Tables\Contracts\HasTable
                             ->live()
                             ->helperText(function () {
                                 $employee = auth()->user()->employee;
-                                if (!$employee) return '';
-                                
+                                if (! $employee) {
+                                    return '';
+                                }
+
                                 $maxAllowance = $employee->getMaxCashbonPerMonth();
                                 $remaining = $employee->getRemainingCashbonAllowance();
                                 $used = $employee->getCurrentMonthCashbonTotal();
-                                
-                                return "Jatah maksimal: Rp " . number_format($maxAllowance, 0, ',', '.') . 
-                                       " | Sisa jatah: Rp " . number_format($remaining, 0, ',', '.') . 
-                                       " | Terpakai: Rp " . number_format($used, 0, ',', '.');
+
+                                return 'Jatah maksimal: Rp '.number_format($maxAllowance, 0, ',', '.').
+                                       ' | Sisa jatah: Rp '.number_format($remaining, 0, ',', '.').
+                                       ' | Terpakai: Rp '.number_format($used, 0, ',', '.');
                             })
                             ->rules([
                                 function () {
                                     return function (string $attribute, $value, \Closure $fail) {
                                         $employee = auth()->user()->employee;
-                                        if (!$employee) {
+                                        if (! $employee) {
                                             $fail('Data employee tidak ditemukan.');
+
                                             return;
                                         }
-                                        
+
                                         $amount = (float) $value;
                                         $remaining = $employee->getRemainingCashbonAllowance();
-                                        
+
                                         if ($amount > $remaining) {
                                             $maxAllowance = $employee->getMaxCashbonPerMonth();
                                             $used = $employee->getCurrentMonthCashbonTotal();
-                                            $fail("Jumlah melebihi sisa jatah cashbon bulanan. Jatah maksimal: Rp " . 
-                                                  number_format($maxAllowance, 0, ',', '.') . 
-                                                  " | Terpakai: Rp " . number_format($used, 0, ',', '.') . 
-                                                  " | Sisa: Rp " . number_format($remaining, 0, ',', '.'));
+                                            $fail('Jumlah melebihi sisa jatah cashbon bulanan. Jatah maksimal: Rp '.
+                                                  number_format($maxAllowance, 0, ',', '.').
+                                                  ' | Terpakai: Rp '.number_format($used, 0, ',', '.').
+                                                  ' | Sisa: Rp '.number_format($remaining, 0, ',', '.'));
                                         }
                                     };
                                 },
@@ -126,8 +136,10 @@ class MyCashbon extends Page implements Tables\Contracts\HasTable
                                     for ($i = 1; $i <= 12; $i++) {
                                         $options[$i] = "$i bulan";
                                     }
+
                                     return $options;
                                 }
+
                                 return [];
                             })
                             ->placeholder('Pilih jumlah bulan cicilan')
@@ -136,32 +148,34 @@ class MyCashbon extends Page implements Tables\Contracts\HasTable
                     ])
                     ->mutateFormDataUsing(function (array $data): array {
                         $employee = auth()->user()->employee;
-                        if (!$employee) {
+                        if (! $employee) {
                             throw new \Exception('Data employee tidak ditemukan.');
                         }
-                        
+
                         $amount = (float) ($data['amount'] ?? 0);
-                        
+
                         // Auto-reject if exceeds allowance
-                        if (!$employee->canRequestCashbon($amount)) {
+                        if (! $employee->canRequestCashbon($amount)) {
                             $data['employee_id'] = $employee->id;
                             $data['status'] = 'rejected';
                         } else {
                             $data['employee_id'] = $employee->id;
                             $data['status'] = 'pending';
                         }
-                        
+
+                        $data['is_term_loan'] = false;
+
                         return $data;
                     })
                     ->beforeFormFilled(function () {
-                        if (!auth()->user()->employee) {
+                        if (! auth()->user()->employee) {
                             throw new \Exception('User tidak memiliki data employee. Silakan hubungi admin.');
                         }
                     }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
-                    ->visible(fn (Cashbon $record) => $record->status === 'pending')
+                    ->visible(fn (Cashbon $record) => $record->status === 'pending' && ! $record->is_term_loan)
                     ->form([
                         Forms\Components\DatePicker::make('request_date')
                             ->label('Tanggal Request')
@@ -174,37 +188,40 @@ class MyCashbon extends Page implements Tables\Contracts\HasTable
                             ->live()
                             ->helperText(function (Cashbon $record) {
                                 $employee = auth()->user()->employee;
-                                if (!$employee) return '';
-                                
+                                if (! $employee) {
+                                    return '';
+                                }
+
                                 $maxAllowance = $employee->getMaxCashbonPerMonth();
                                 // Exclude current cashbon amount from used calculation
                                 $used = $employee->getCurrentMonthCashbonTotal() - $record->amount;
                                 $remaining = $maxAllowance - $used;
-                                
-                                return "Jatah maksimal: Rp " . number_format($maxAllowance, 0, ',', '.') . 
-                                       " | Sisa jatah: Rp " . number_format($remaining, 0, ',', '.') . 
-                                       " | Terpakai (selain ini): Rp " . number_format($used, 0, ',', '.');
+
+                                return 'Jatah maksimal: Rp '.number_format($maxAllowance, 0, ',', '.').
+                                       ' | Sisa jatah: Rp '.number_format($remaining, 0, ',', '.').
+                                       ' | Terpakai (selain ini): Rp '.number_format($used, 0, ',', '.');
                             })
                             ->rules([
                                 function (Cashbon $record) {
                                     return function (string $attribute, $value, \Closure $fail) use ($record) {
                                         $employee = auth()->user()->employee;
-                                        if (!$employee) {
+                                        if (! $employee) {
                                             $fail('Data employee tidak ditemukan.');
+
                                             return;
                                         }
-                                        
+
                                         $amount = (float) $value;
                                         // Exclude current cashbon amount from used calculation
                                         $used = $employee->getCurrentMonthCashbonTotal() - $record->amount;
                                         $maxAllowance = $employee->getMaxCashbonPerMonth();
                                         $remaining = $maxAllowance - $used;
-                                        
+
                                         if ($amount > $remaining) {
-                                            $fail("Jumlah melebihi sisa jatah cashbon bulanan. Jatah maksimal: Rp " . 
-                                                  number_format($maxAllowance, 0, ',', '.') . 
-                                                  " | Terpakai (selain ini): Rp " . number_format($used, 0, ',', '.') . 
-                                                  " | Sisa: Rp " . number_format($remaining, 0, ',', '.'));
+                                            $fail('Jumlah melebihi sisa jatah cashbon bulanan. Jatah maksimal: Rp '.
+                                                  number_format($maxAllowance, 0, ',', '.').
+                                                  ' | Terpakai (selain ini): Rp '.number_format($used, 0, ',', '.').
+                                                  ' | Sisa: Rp '.number_format($remaining, 0, ',', '.'));
                                         }
                                     };
                                 },
@@ -229,8 +246,10 @@ class MyCashbon extends Page implements Tables\Contracts\HasTable
                                     for ($i = 1; $i <= 12; $i++) {
                                         $options[$i] = "$i bulan";
                                     }
+
                                     return $options;
                                 }
+
                                 return [];
                             })
                             ->placeholder('Pilih jumlah bulan cicilan')
@@ -240,4 +259,3 @@ class MyCashbon extends Page implements Tables\Contracts\HasTable
             ]);
     }
 }
-

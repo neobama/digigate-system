@@ -143,6 +143,9 @@
                 <td>{{ \Carbon\Carbon::parse($detail['cashbon']->request_date)->format('d/m/Y') }}</td>
                 <td>
                     {{ $detail['cashbon']->reason }}
+                    @if($detail['cashbon']->is_term_loan)
+                        <br><small style="color: #666;">(Pinjaman term)</small>
+                    @endif
                     @if($detail['type'] === 'cicilan')
                         <br><small style="color: #666;">(Cicilan {{ $detail['installment_number'] }}/{{ $detail['total_installments'] }})</small>
                     @endif

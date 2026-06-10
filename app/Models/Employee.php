@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Employee extends Model
 {
     use HasUuids, LogsActivity;
+
     protected $fillable = ['user_id', 'nik', 'name', 'birth_date', 'position', 'phone_number', 'base_salary', 'bpjs_allowance', 'is_active'];
 
     protected $casts = [
@@ -54,6 +55,7 @@ class Employee extends Model
         $currentMonthEnd = now()->endOfMonth();
 
         return $this->cashbons()
+            ->where('is_term_loan', false)
             ->whereBetween('request_date', [$currentMonth, $currentMonthEnd])
             ->whereIn('status', ['pending', 'approved', 'paid'])
             ->sum('amount');
@@ -67,7 +69,7 @@ class Employee extends Model
         $maxAllowance = $this->getMaxCashbonPerMonth();
         $used = $this->getCurrentMonthCashbonTotal();
         $remaining = $maxAllowance - $used;
-        
+
         return max(0, $remaining); // Don't return negative
     }
 
@@ -77,6 +79,7 @@ class Employee extends Model
     public function canRequestCashbon(float $amount): bool
     {
         $remaining = $this->getRemainingCashbonAllowance();
+
         return $amount <= $remaining;
     }
 }

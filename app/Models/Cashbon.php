@@ -8,10 +8,21 @@ use Illuminate\Database\Eloquent\Model;
 class Cashbon extends Model
 {
     use HasUuids;
-    protected $fillable = ['employee_id', 'amount', 'reason', 'request_date', 'status', 'installment_months', 'paid_at'];
-    
+
+    protected $fillable = [
+        'employee_id',
+        'amount',
+        'reason',
+        'request_date',
+        'status',
+        'installment_months',
+        'is_term_loan',
+        'paid_at',
+    ];
+
     protected $casts = [
         'installment_months' => 'integer',
+        'is_term_loan' => 'boolean',
         'request_date' => 'date',
         'paid_at' => 'datetime',
     ];

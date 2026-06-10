@@ -21,9 +21,13 @@ class SalaryPaymentResource extends Resource
     protected static ?string $model = SalaryPayment::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
+
     protected static ?string $navigationGroup = 'Financial';
+
     protected static ?string $navigationLabel = 'Gaji';
+
     protected static ?string $modelLabel = 'Gaji';
+
     protected static ?string $pluralModelLabel = 'Gaji';
 
     public static function form(Form $form): Form
@@ -94,13 +98,13 @@ class SalaryPaymentResource extends Resource
                                 $month = (int) ($get('month') ?? now()->month);
                                 $year = (int) ($get('year') ?? now()->year);
 
-                                if (!$employeeId) {
+                                if (! $employeeId) {
                                     return new HtmlString('<span style="color:#6b7280;">Pilih karyawan terlebih dahulu untuk melihat rincian cashbon.</span>');
                                 }
 
                                 $employee = Employee::find($employeeId);
 
-                                if (!$employee) {
+                                if (! $employee) {
                                     return new HtmlString('<span style="color:#dc2626;">Data karyawan tidak ditemukan.</span>');
                                 }
 
@@ -113,8 +117,11 @@ class SalaryPaymentResource extends Resource
                                 $rows = '';
                                 foreach ($details as $detail) {
                                     $info = '';
+                                    if (! empty($detail['cashbon']?->is_term_loan)) {
+                                        $info .= ' [Pinjaman term]';
+                                    }
                                     if (($detail['type'] ?? null) === 'cicilan') {
-                                        $info = sprintf(' (Cicilan %d/%d)', $detail['installment_number'], $detail['total_installments']);
+                                        $info .= sprintf(' (Cicilan %d/%d)', $detail['installment_number'], $detail['total_installments']);
                                     }
 
                                     $rows .= sprintf(
@@ -135,7 +142,7 @@ class SalaryPaymentResource extends Resource
                                                 <th style="border:1px solid #e5e7eb; padding:6px; text-align:right; background:#f9fafb;">Nominal</th>
                                             </tr>
                                         </thead>
-                                        <tbody>' . $rows . '</tbody>
+                                        <tbody>'.$rows.'</tbody>
                                     </table>
                                 ';
 
@@ -251,7 +258,7 @@ class SalaryPaymentResource extends Resource
                             $period = \Carbon\Carbon::create($record->year, $record->month, 1)->translatedFormat('F Y');
                             $message = "Halo {$employee->name},\n";
                             $message .= "Gaji periode {$period} sudah dibayarkan.\n";
-                            $message .= "Slip gaji: " . route('salary-payments.slip', [
+                            $message .= 'Slip gaji: '.route('salary-payments.slip', [
                                 'salaryPayment' => $record->id,
                             ]);
 
@@ -322,6 +329,7 @@ class SalaryPaymentResource extends Resource
                         'type' => 'langsung',
                     ];
                 }
+
                 continue;
             }
 
@@ -357,4 +365,3 @@ class SalaryPaymentResource extends Resource
         return $details;
     }
 }
-
