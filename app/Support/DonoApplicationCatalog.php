@@ -2,6 +2,9 @@
 
 namespace App\Support;
 
+use App\Filament\Employee\Resources\ExpenseResource as EmployeeExpenseResource;
+use App\Filament\Employee\Resources\IncomeResource as EmployeeIncomeResource;
+use App\Filament\Employee\Resources\InvoiceResource as EmployeeInvoiceResource;
 use App\Filament\Employee\Pages\Dashboard as EmployeeDashboard;
 use App\Filament\Employee\Pages\MyAssembly;
 use App\Filament\Employee\Pages\MyBudgetRequest;
@@ -56,6 +59,7 @@ final class DonoApplicationCatalog
 DigiGate adalah ERP internal. Ada dua panel:
 1) Panel Admin (URL path biasanya "/", bukan diawali /employee): akses penuh ke HR, keuangan, penjualan, inventori, dokumen, dll.
 2) Panel Karyawan (/employee): self-service — task/kalender sendiri, cashbon, budget request, reimbursement, warranty claim, komponen, assembly, logbook.
+3) Role Finance (tetap login di /employee): selain fitur karyawan biasa, bisa akses Pemasukan, Pengeluaran, dan Invoice di grup menu Keuangan.
 
 Ringkas modul:
 - Kalender Pekerjaan / Task: assign pekerjaan ke karyawan, status, upload bukti per karyawan (pivot), notifikasi WhatsApp. Admin: buat/mengelola semua task. Karyawan: lihat task yang di-assign ke mereka, upload bukti, ubah status sesuai alur.
@@ -69,7 +73,8 @@ Ringkas modul:
 - Device Return (admin): retur perangkat — biasanya dari daftar/tracking, bukan form "create" sederhana.
 - Activity Log (admin): jejak aktivitas sistem (baca saja).
 
-Jika pengguna karyawan menanyakan fitur yang hanya di admin, jelaskan singkat dan arahkan minta bantu admin atau tim terkait — jangan mengarang URL yang tidak ada.
+Jika pengguna karyawan biasa menanyakan fitur yang hanya di admin, jelaskan singkat dan arahkan minta bantu admin atau tim terkait — jangan mengarang URL yang tidak ada.
+Jika pengguna role Finance di panel employee, boleh arahkan ke Pemasukan/Pengeluaran/Invoice di menu Keuangan.
 TXT;
     }
 
@@ -133,7 +138,7 @@ Aturan intent:
 - unknown : tidak yakin — reply minta perjelas.
 
 Jika pertanyaan murni informasi / bantuan (bukan buka form), gunakan app_help.
-Jika panel employee tetapi user meminta fitur khusus admin (invoice, gaji, dll.), gunakan app_help dan jelaskan di reply; jangan pakai intent create_* yang tidak tersedia untuk karyawan.
+Jika panel employee tetapi user meminta fitur khusus admin (invoice, gaji, dll.), gunakan app_help dan jelaskan di reply; jangan pakai intent create_* yang tidak tersedia untuk karyawan. Pengecualian: user role Finance boleh create_expense, create_income, create_invoice.
 TXT;
     }
 
@@ -147,17 +152,17 @@ TXT;
             'create_cashbon' => self::labeledUrl(self::cashbonUrl($panel), 'Buka Cashbon'),
             'create_budget_request' => self::labeledUrl(self::budgetRequestUrl($panel), 'Buka Budget Request'),
             'create_reimbursement' => self::labeledUrl(self::reimbursementUrl($panel), 'Buka Reimbursement'),
-            'create_expense' => $panel === 'admin'
-                ? self::expenseCreateAction($fields)
+            'create_expense' => self::resolveFinancialResourcePanel($panel) !== null
+                ? self::expenseCreateAction($fields, self::resolveFinancialResourcePanel($panel))
                 : null,
-            'create_income' => $panel === 'admin'
-                ? self::incomeCreateAction($fields)
+            'create_income' => self::resolveFinancialResourcePanel($panel) !== null
+                ? self::incomeCreateAction($fields, self::resolveFinancialResourcePanel($panel))
                 : null,
             'create_warranty_claim' => self::labeledUrl(self::warrantyClaimUrl($panel), 'Buka Warranty Claim'),
             'create_component' => self::labeledUrl(self::componentUrl($panel), 'Buka Komponen'),
             'create_assembly' => self::labeledUrl(self::assemblyUrl($panel), 'Buka Assembly'),
-            'create_invoice' => $panel === 'admin'
-                ? self::labeledUrl(InvoiceResource::getUrl('create', [], true, 'admin'), 'Buka Form Invoice')
+            'create_invoice' => self::resolveFinancialResourcePanel($panel) !== null
+                ? self::invoiceCreateAction(self::resolveFinancialResourcePanel($panel))
                 : null,
             'create_document' => $panel === 'admin'
                 ? self::labeledUrl(DocumentResource::getUrl('create', [], true, 'admin'), 'Buka Form Dokumen')
@@ -186,11 +191,34 @@ TXT;
         return ['label' => $label, 'url' => $url];
     }
 
+    public static function resolveFinancialResourcePanel(string $panel): ?string
+    {
+        if ($panel === 'admin') {
+            return 'admin';
+        }
+
+        if ($panel === 'employee' && auth()->user()?->employee?->isFinance()) {
+            return 'employee';
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{label: string, url: string}|null
+     */
+    private static function invoiceCreateAction(string $panel): ?array
+    {
+        $resource = $panel === 'employee' ? EmployeeInvoiceResource::class : InvoiceResource::class;
+
+        return self::labeledUrl($resource::getUrl('create', [], true, $panel), 'Buka Form Invoice');
+    }
+
     /**
      * @param  array<string, mixed>  $fields
      * @return array{label: string, url: string}|null
      */
-    private static function expenseCreateAction(array $fields): ?array
+    private static function expenseCreateAction(array $fields, string $panel): ?array
     {
         $prefill = array_filter([
             'description' => isset($fields['description']) ? (string) $fields['description'] : null,
@@ -208,7 +236,7 @@ TXT;
 
         return [
             'label' => 'Buka Form Pengeluaran',
-            'url' => ExpenseResource::getUrl('create', $query, true, 'admin'),
+            'url' => ($panel === 'employee' ? EmployeeExpenseResource::class : ExpenseResource::class)::getUrl('create', $query, true, $panel),
         ];
     }
 
@@ -216,7 +244,7 @@ TXT;
      * @param  array<string, mixed>  $fields
      * @return array{label: string, url: string}|null
      */
-    private static function incomeCreateAction(array $fields): ?array
+    private static function incomeCreateAction(array $fields, string $panel): ?array
     {
         $prefill = array_filter([
             'description' => isset($fields['description']) ? (string) $fields['description'] : null,
@@ -231,7 +259,7 @@ TXT;
 
         return [
             'label' => 'Buka Form Pemasukan',
-            'url' => IncomeResource::getUrl('create', $query, true, 'admin'),
+            'url' => ($panel === 'employee' ? EmployeeIncomeResource::class : IncomeResource::class)::getUrl('create', $query, true, $panel),
         ];
     }
 
@@ -333,7 +361,7 @@ TXT;
         $key = strtolower(trim($featureKey));
 
         if ($panel === 'employee') {
-            return match ($key) {
+            $employeeFeatures = match ($key) {
                 'dashboard', 'beranda' => [
                     'label' => 'Dashboard',
                     'url' => EmployeeDashboard::getUrl([], true, 'employee'),
@@ -351,6 +379,30 @@ TXT;
                 'logbook' => ['label' => 'Logbook', 'url' => MyLogbook::getUrl([], true, 'employee')],
                 default => null,
             };
+
+            if ($employeeFeatures !== null) {
+                return $employeeFeatures;
+            }
+
+            if (auth()->user()?->employee?->isFinance()) {
+                return match ($key) {
+                    'income', 'pemasukan' => [
+                        'label' => 'Pemasukan',
+                        'url' => EmployeeIncomeResource::getUrl('index', [], true, 'employee'),
+                    ],
+                    'expenses', 'pengeluaran' => [
+                        'label' => 'Pengeluaran',
+                        'url' => EmployeeExpenseResource::getUrl('index', [], true, 'employee'),
+                    ],
+                    'invoices', 'invoice' => [
+                        'label' => 'Invoice',
+                        'url' => EmployeeInvoiceResource::getUrl('index', [], true, 'employee'),
+                    ],
+                    default => null,
+                };
+            }
+
+            return null;
         }
 
         return match ($key) {

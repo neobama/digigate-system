@@ -19,7 +19,7 @@ final class DonoFallbackIntentParser
 
         $lower = mb_strtolower($trimmed, 'UTF-8');
 
-        if ($panel === 'admin') {
+        if ($panel === 'admin' || ($panel === 'employee' && auth()->user()?->employee?->isFinance())) {
             $expense = self::tryParseExpense($trimmed, $lower);
             if ($expense !== null) {
                 return $expense;

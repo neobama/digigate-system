@@ -42,6 +42,12 @@ class EmployeeResource extends Resource
                         ->label('Posisi')
                         ->required()
                         ->maxLength(255),
+                    Forms\Components\Select::make('role')
+                        ->label('Role Akses')
+                        ->options(\App\Enums\EmployeeRole::options())
+                        ->default(\App\Enums\EmployeeRole::Employee->value)
+                        ->required()
+                        ->helperText('Finance: akses pemasukan, pengeluaran, invoice + fitur karyawan biasa'),
                     Forms\Components\TextInput::make('phone_number')
                         ->label('Nomor WhatsApp')
                         ->tel()
@@ -118,6 +124,12 @@ class EmployeeResource extends Resource
                 Tables\Columns\TextColumn::make('position')
                     ->label('Posisi')
                     ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('role')
+                    ->label('Role')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => $state?->label() ?? '-')
+                    ->color(fn ($state) => $state === \App\Enums\EmployeeRole::Finance ? 'success' : 'gray')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('phone_number')
                     ->label('Nomor WhatsApp')

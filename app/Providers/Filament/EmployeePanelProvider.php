@@ -37,6 +37,7 @@ class EmployeePanelProvider extends PanelProvider
                 'primary' => Color::Blue,
             ])
             ->discoverPages(in: app_path('Filament/Employee/Pages'), for: 'App\\Filament\\Employee\\Pages')
+            ->discoverResources(in: app_path('Filament/Employee/Resources'), for: 'App\\Filament\\Employee\\Resources')
             ->discoverWidgets(in: app_path('Filament/Employee/Widgets'), for: 'App\\Filament\\Employee\\Widgets')
             ->middleware([
                 EncryptCookies::class,

@@ -2,20 +2,23 @@
 
 namespace App\Models;
 
+use App\Enums\EmployeeRole;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Employee extends Model
 {
     use HasUuids, LogsActivity;
 
-    protected $fillable = ['user_id', 'nik', 'name', 'birth_date', 'position', 'phone_number', 'base_salary', 'bpjs_allowance', 'is_active'];
+    protected $fillable = ['user_id', 'nik', 'name', 'birth_date', 'position', 'role', 'phone_number', 'base_salary', 'bpjs_allowance', 'is_active'];
 
     protected $casts = [
         'birth_date' => 'date',
+        'role' => EmployeeRole::class,
     ];
 
     public function user(): BelongsTo
@@ -81,5 +84,10 @@ class Employee extends Model
         $remaining = $this->getRemainingCashbonAllowance();
 
         return $amount <= $remaining;
+    }
+
+    public function isFinance(): bool
+    {
+        return $this->role === EmployeeRole::Finance;
     }
 }
