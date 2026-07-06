@@ -22,12 +22,14 @@ class AttendanceObserver
         }
 
         $recordedAt = $attendance->recorded_at?->timezone('Asia/Jakarta')->format('d/m/Y H:i') ?? '-';
+        $typeLabel = $attendance->type?->label() ?? 'Absensi';
         $locationNote = $attendance->is_within_radius
             ? 'Dalam radius kantor'
             : 'Di luar radius ('.number_format((float) $attendance->distance_meters, 0, ',', '.').' m)';
 
         $message = "📸 *Absensi Baru*\n\n";
         $message .= "Karyawan: {$employee->name}\n";
+        $message .= "Jenis: {$typeLabel}\n";
         $message .= "Waktu: {$recordedAt}\n";
         $message .= "Lokasi: {$locationNote}\n";
         $message .= "Koordinat: {$attendance->latitude}, {$attendance->longitude}\n";
@@ -73,8 +75,10 @@ class AttendanceObserver
         }
 
         $recordedAt = $attendance->recorded_at?->timezone('Asia/Jakarta')->format('d/m/Y H:i') ?? '-';
+        $typeLabel = $attendance->type?->label() ?? 'Absensi';
 
         $employeeMessage = "📸 *Update Absensi Anda*\n\n";
+        $employeeMessage .= "Jenis: {$typeLabel}\n";
         $employeeMessage .= "Waktu absen: {$recordedAt}\n";
 
         if ($attendance->status === 'approved') {

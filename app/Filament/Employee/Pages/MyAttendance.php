@@ -2,9 +2,11 @@
 
 namespace App\Filament\Employee\Pages;
 
+use App\Enums\AttendanceType;
 use App\Models\Attendance;
 use App\Services\AttendanceLocationService;
 use App\Services\AttendancePhotoService;
+use App\Services\AttendanceWorkingHoursService;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Tables;
@@ -32,6 +34,41 @@ class MyAttendance extends Page implements HasTable
 
     public ?string $description = null;
 
+    public function getTodayTapInProperty(): ?Attendance
+    {
+        $employee = auth()->user()?->employee;
+
+        if (! $employee) {
+            return null;
+        }
+
+        return app(AttendanceWorkingHoursService::class)
+            ->findForDay($employee, now('Asia/Jakarta'), AttendanceType::TapIn);
+    }
+
+    public function getTodayTapOutProperty(): ?Attendance
+    {
+        $employee = auth()->user()?->employee;
+
+        if (! $employee) {
+            return null;
+        }
+
+        return app(AttendanceWorkingHoursService::class)
+            ->findForDay($employee, now('Asia/Jakarta'), AttendanceType::TapOut);
+    }
+
+    public function getNextAttendanceTypeProperty(): ?AttendanceType
+    {
+        $employee = auth()->user()?->employee;
+
+        if (! $employee) {
+            return null;
+        }
+
+        return app(AttendanceWorkingHoursService::class)->resolveNextType($employee);
+    }
+
     public function submitAttendance(): void
     {
         if (! auth()->user()?->employee) {
@@ -57,20 +94,23 @@ class MyAttendance extends Page implements HasTable
         ]);
 
         $employee = auth()->user()->employee;
+        $workingHoursService = app(AttendanceWorkingHoursService::class);
+        $attendanceType = $workingHoursService->resolveNextType($employee);
 
-        $todayStart = now('Asia/Jakarta')->startOfDay();
-        $todayEnd = now('Asia/Jakarta')->endOfDay();
-
-        $alreadySubmitted = Attendance::query()
-            ->where('employee_id', $employee->id)
-            ->whereBetween('recorded_at', [$todayStart, $todayEnd])
-            ->whereIn('status', ['pending', 'approved'])
-            ->exists();
-
-        if ($alreadySubmitted) {
+        if ($attendanceType === null) {
             Notification::make()
-                ->title('Sudah absen hari ini')
-                ->body('Anda sudah mengirim absensi hari ini. Tunggu verifikasi admin atau coba lagi besok.')
+                ->title('Absensi hari ini selesai')
+                ->body('Anda sudah tap in dan tap out hari ini.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        if ($attendanceType === AttendanceType::TapOut && ! $workingHoursService->canTapOutToday($employee)) {
+            Notification::make()
+                ->title('Tap in dulu')
+                ->body('Anda harus tap in terlebih dahulu sebelum tap out.')
                 ->warning()
                 ->send();
 
@@ -90,11 +130,13 @@ class MyAttendance extends Page implements HasTable
             $photoPath,
             $recordedAt,
             (float) $this->latitude,
-            (float) $this->longitude
+            (float) $this->longitude,
+            $attendanceType->label()
         );
 
         Attendance::create([
             'employee_id' => $employee->id,
+            'type' => $attendanceType,
             'photo' => $stampedPhoto,
             'description' => $this->description,
             'latitude' => $this->latitude,
@@ -107,9 +149,10 @@ class MyAttendance extends Page implements HasTable
 
         $this->reset(['latitude', 'longitude', 'photo_base64', 'description']);
 
+        $typeLabel = $attendanceType->label();
         $message = $evaluation['is_within_radius']
-            ? 'Absensi berhasil dikirim. Menunggu verifikasi admin.'
-            : 'Absensi dikirim di luar wilayah kantor ('.number_format($evaluation['distance_meters'], 0, ',', '.').' m). Menunggu verifikasi admin.';
+            ? "{$typeLabel} berhasil dikirim. Menunggu verifikasi admin."
+            : "{$typeLabel} dikirim di luar wilayah kantor (".number_format($evaluation['distance_meters'], 0, ',', '.').' m). Menunggu verifikasi admin.';
 
         Notification::make()
             ->title('Absensi tercatat')
@@ -130,9 +173,17 @@ class MyAttendance extends Page implements HasTable
             )
             ->columns([
                 Tables\Columns\TextColumn::make('recorded_at')
-                    ->label('Waktu Absen')
+                    ->label('Waktu')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('type')
+                    ->label('Jenis')
+                    ->badge()
+                    ->formatStateUsing(fn (AttendanceType $state): string => $state->label())
+                    ->color(fn (AttendanceType $state): string => match ($state) {
+                        AttendanceType::TapIn => 'success',
+                        AttendanceType::TapOut => 'info',
+                    }),
                 Tables\Columns\IconColumn::make('is_within_radius')
                     ->label('Lokasi')
                     ->boolean()

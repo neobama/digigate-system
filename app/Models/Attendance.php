@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AttendanceType;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +13,7 @@ class Attendance extends Model
 
     protected $fillable = [
         'employee_id',
+        'type',
         'photo',
         'description',
         'latitude',
@@ -26,6 +28,7 @@ class Attendance extends Model
     ];
 
     protected $casts = [
+        'type' => AttendanceType::class,
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
         'distance_meters' => 'decimal:2',

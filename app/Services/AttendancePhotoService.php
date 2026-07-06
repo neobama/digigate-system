@@ -34,8 +34,13 @@ class AttendancePhotoService
     /**
      * Tambahkan timestamp + koordinat ke foto selfie, simpan kembali ke storage.
      */
-    public function stampPhoto(string $path, Carbon $recordedAt, float $latitude, float $longitude): string
-    {
+    public function stampPhoto(
+        string $path,
+        Carbon $recordedAt,
+        float $latitude,
+        float $longitude,
+        ?string $typeLabel = null
+    ): string {
         $disk = Storage::disk($this->disk());
         $contents = $disk->get($path);
 
@@ -46,7 +51,9 @@ class AttendancePhotoService
 
         $timestamp = $recordedAt->timezone('Asia/Jakarta')->format('d/m/Y H:i:s').' WIB';
         $coords = sprintf('Lat: %.6f, Lng: %.6f', $latitude, $longitude);
-        $overlayText = $timestamp."\n".$coords;
+        $overlayText = collect([$typeLabel, $timestamp, $coords])
+            ->filter()
+            ->implode("\n");
 
         $this->drawOverlay($image, $overlayText);
 

@@ -41,6 +41,7 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 \App\Filament\Pages\Dashboard::class,
                 \App\Filament\Pages\FinancialReport::class,
+                \App\Filament\Pages\AttendanceWorkingHoursReport::class,
             ])
             ->profile(\App\Filament\Pages\EditProfile::class)
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\AttendanceType;
 use App\Filament\Resources\AttendanceResource\Pages;
 use App\Models\Attendance;
 use Filament\Forms;
@@ -56,6 +57,15 @@ class AttendanceResource extends Resource
                     ->label('Karyawan')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('type')
+                    ->label('Jenis')
+                    ->badge()
+                    ->formatStateUsing(fn (AttendanceType $state): string => $state->label())
+                    ->color(fn (AttendanceType $state): string => match ($state) {
+                        AttendanceType::TapIn => 'success',
+                        AttendanceType::TapOut => 'info',
+                    })
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('recorded_at')
                     ->label('Waktu Absen')
                     ->dateTime('d/m/Y H:i')
@@ -100,6 +110,9 @@ class AttendanceResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('type')
+                    ->label('Jenis')
+                    ->options(AttendanceType::options()),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'pending' => 'Menunggu',
@@ -177,6 +190,14 @@ class AttendanceResource extends Resource
                     ->schema([
                         Infolists\Components\TextEntry::make('employee.name')
                             ->label('Karyawan'),
+                        Infolists\Components\TextEntry::make('type')
+                            ->label('Jenis')
+                            ->badge()
+                            ->formatStateUsing(fn (AttendanceType $state): string => $state->label())
+                            ->color(fn (AttendanceType $state): string => match ($state) {
+                                AttendanceType::TapIn => 'success',
+                                AttendanceType::TapOut => 'info',
+                            }),
                         Infolists\Components\TextEntry::make('recorded_at')
                             ->label('Waktu Absen')
                             ->dateTime('d/m/Y H:i:s'),

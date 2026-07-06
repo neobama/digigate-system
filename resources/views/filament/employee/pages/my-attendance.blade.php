@@ -1,45 +1,97 @@
 <x-filament-panels::page>
+    @php
+        $nextType = $this->nextAttendanceType;
+        $todayTapIn = $this->todayTapIn;
+        $todayTapOut = $this->todayTapOut;
+        $workingHoursService = app(\App\Services\AttendanceWorkingHoursService::class);
+        $todayMinutes = $workingHoursService->calculateMinutes($todayTapIn, $todayTapOut);
+    @endphp
+
     <div class="space-y-8">
         <x-filament::section>
             <x-slot name="heading">
-                Absen Hari Ini
+                Status Hari Ini
             </x-slot>
             <x-slot name="description">
-                Buka kamera dan ambil selfie. Lokasi GPS otomatis diambil saat foto — koordinat &amp; status radius ditampilkan sebelum kirim.
+                Setiap hari ada 2 kesempatan absen: tap in saat mulai kerja dan tap out saat selesai.
             </x-slot>
 
-            <div class="space-y-6">
-                @include('filament.employee.components.attendance-camera')
-
-                <div>
-                    <label class="fi-fo-field-wrp-label inline-flex items-center gap-x-3">
-                        <span class="text-sm font-medium text-gray-950 dark:text-white">
-                            Keterangan (opsional)
-                        </span>
-                    </label>
-                    <textarea
-                        wire:model="description"
-                        rows="3"
-                        placeholder="Contoh: Meeting di luar kantor, kunjungan klien, dll."
-                        class="fi-input mt-2 block w-full rounded-lg border-none bg-white px-3 py-2 text-sm text-gray-950 shadow-sm ring-1 ring-gray-950/10 transition duration-75 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-600 dark:bg-white/5 dark:text-white dark:ring-white/10 dark:placeholder:text-gray-500 dark:focus:ring-primary-500"
-                    ></textarea>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        Keterangan ini terpisah dari teks di dalam foto.
+            <div class="grid gap-4 sm:grid-cols-3">
+                <div class="rounded-xl bg-white p-4 ring-1 ring-gray-950/5 dark:bg-white/5 dark:ring-white/10">
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Tap In</p>
+                    <p class="mt-1 text-lg font-semibold text-gray-950 dark:text-white">
+                        {{ $workingHoursService::formatAttendanceTime($todayTapIn) }}
                     </p>
                 </div>
-
-                <div class="flex justify-end">
-                    <x-filament::button
-                        type="button"
-                        icon="heroicon-o-paper-airplane"
-                        wire:click="submitAttendance"
-                        wire:loading.attr="disabled"
-                    >
-                        <span wire:loading.remove wire:target="submitAttendance">Kirim Absensi</span>
-                        <span wire:loading wire:target="submitAttendance">Mengirim...</span>
-                    </x-filament::button>
+                <div class="rounded-xl bg-white p-4 ring-1 ring-gray-950/5 dark:bg-white/5 dark:ring-white/10">
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Tap Out</p>
+                    <p class="mt-1 text-lg font-semibold text-gray-950 dark:text-white">
+                        {{ $workingHoursService::formatAttendanceTime($todayTapOut) }}
+                    </p>
+                </div>
+                <div class="rounded-xl bg-white p-4 ring-1 ring-gray-950/5 dark:bg-white/5 dark:ring-white/10">
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Jam Kerja (disetujui)</p>
+                    <p class="mt-1 text-lg font-semibold text-gray-950 dark:text-white">
+                        {{ $workingHoursService::formatMinutes($todayMinutes) }}
+                    </p>
                 </div>
             </div>
+        </x-filament::section>
+
+        <x-filament::section>
+            <x-slot name="heading">
+                @if ($nextType)
+                    {{ $nextType->label() }} Hari Ini
+                @else
+                    Absensi Hari Ini Selesai
+                @endif
+            </x-slot>
+            <x-slot name="description">
+                @if ($nextType)
+                    Buka kamera dan ambil selfie untuk {{ strtolower($nextType->label()) }}. Lokasi GPS otomatis diambil saat foto.
+                @else
+                    Anda sudah tap in dan tap out hari ini. Coba lagi besok.
+                @endif
+            </x-slot>
+
+            @if ($nextType)
+                <div class="space-y-6">
+                    @include('filament.employee.components.attendance-camera')
+
+                    <div>
+                        <label class="fi-fo-field-wrp-label inline-flex items-center gap-x-3">
+                            <span class="text-sm font-medium text-gray-950 dark:text-white">
+                                Keterangan (opsional)
+                            </span>
+                        </label>
+                        <textarea
+                            wire:model="description"
+                            rows="3"
+                            placeholder="Contoh: Meeting di luar kantor, kunjungan klien, dll."
+                            class="fi-input mt-2 block w-full rounded-lg border-none bg-white px-3 py-2 text-sm text-gray-950 shadow-sm ring-1 ring-gray-950/10 transition duration-75 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-600 dark:bg-white/5 dark:text-white dark:ring-white/10 dark:placeholder:text-gray-500 dark:focus:ring-primary-500"
+                        ></textarea>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            Keterangan ini terpisah dari teks di dalam foto.
+                        </p>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <x-filament::button
+                            type="button"
+                            icon="heroicon-o-paper-airplane"
+                            wire:click="submitAttendance"
+                            wire:loading.attr="disabled"
+                        >
+                            <span wire:loading.remove wire:target="submitAttendance">Kirim {{ $nextType->label() }}</span>
+                            <span wire:loading wire:target="submitAttendance">Mengirim...</span>
+                        </x-filament::button>
+                    </div>
+                </div>
+            @else
+                <div class="rounded-xl bg-success-50 p-4 text-sm text-success-700 ring-1 ring-success-600/20 dark:bg-success-500/10 dark:text-success-300 dark:ring-success-500/30">
+                    Tap in dan tap out hari ini sudah tercatat. Jam kerja di atas dihitung setelah admin menyetujui kedua absensi.
+                </div>
+            @endif
         </x-filament::section>
 
         <x-filament::section>
