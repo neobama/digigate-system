@@ -28,13 +28,13 @@
         </x-filament::button>
     </div>
 
-    <div id="camera-loading" class="hidden flex items-center justify-center gap-2 rounded-lg bg-gray-50 p-8 text-sm text-gray-500 ring-1 ring-gray-950/5 dark:bg-gray-900 dark:text-gray-400 dark:ring-white/10">
+    <div id="camera-loading" class="hidden flex items-center justify-center gap-2 rounded-xl bg-white p-8 text-sm text-gray-500 shadow-sm ring-1 ring-gray-950/5 dark:bg-white/5 dark:text-gray-400 dark:ring-white/10">
         <x-filament::loading-indicator class="h-4 w-4" />
         <span id="camera-loading-text">Membuka kamera...</span>
     </div>
 
-    <div id="camera-error" class="hidden rounded-lg bg-danger-50 p-4 ring-1 ring-danger-600/20 dark:bg-danger-950/30 dark:ring-danger-400/30">
-        <p id="camera-error-text" class="text-sm text-danger-700 dark:text-danger-400"></p>
+    <div id="camera-error" class="hidden rounded-xl bg-white p-4 shadow-sm ring-1 ring-danger-600/30 dark:bg-white/5 dark:ring-danger-400/40">
+        <p id="camera-error-text" class="text-sm font-medium text-danger-600 dark:text-danger-400"></p>
         <div class="mt-3">
             <x-filament::button type="button" id="btn-retry-camera" size="sm" color="gray">
                 Coba lagi
@@ -63,37 +63,43 @@
         </div>
         <p class="text-sm font-medium text-success-600 dark:text-success-400">Foto berhasil diambil. Periksa lokasi di bawah sebelum kirim absensi.</p>
 
-        <div id="location-loading" class="hidden flex items-center gap-2 rounded-lg bg-gray-50 p-3 text-sm text-gray-500 ring-1 ring-gray-950/5 dark:bg-gray-800/50 dark:text-gray-400 dark:ring-white/10">
+        <div id="location-loading" class="hidden flex items-center gap-2 rounded-xl bg-white p-4 text-sm text-gray-500 shadow-sm ring-1 ring-gray-950/5 dark:bg-white/5 dark:text-gray-400 dark:ring-white/10">
             <x-filament::loading-indicator class="h-4 w-4" />
             <span>Mengambil lokasi GPS...</span>
         </div>
 
-        <div id="location-summary" class="hidden rounded-lg bg-gray-50 p-4 ring-1 ring-gray-950/5 dark:bg-gray-800/50 dark:ring-white/10">
-            <div class="mb-2 flex items-center gap-2">
+        <div id="location-summary" class="hidden rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-950/5 dark:bg-white/5 dark:ring-white/10">
+            <div class="mb-3 flex items-center gap-2">
                 <x-filament::icon icon="heroicon-o-map-pin" class="h-5 w-5 text-primary-600 dark:text-primary-400" />
                 <p class="text-sm font-semibold text-gray-950 dark:text-white">Lokasi saat absen</p>
             </div>
-            <div class="space-y-1 text-sm text-gray-600 dark:text-gray-300">
-                <p>
-                    Koordinat:
-                    <span id="location-coords" class="font-mono font-medium text-gray-950 dark:text-white">-</span>
-                </p>
-                <p>
-                    Jarak dari kantor:
-                    <span id="location-distance" class="font-medium text-gray-950 dark:text-white">-</span>
-                    <span class="text-gray-500 dark:text-gray-400">(radius {{ $radius }} m)</span>
-                </p>
+            <dl class="space-y-2 text-sm">
+                <div class="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
+                    <dt class="shrink-0 text-gray-500 dark:text-gray-400">Koordinat</dt>
+                    <dd id="location-coords" class="font-mono font-medium text-gray-950 dark:text-white">-</dd>
+                </div>
+                <div class="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
+                    <dt class="shrink-0 text-gray-500 dark:text-gray-400">Jarak dari kantor</dt>
+                    <dd class="text-gray-950 dark:text-white">
+                        <span id="location-distance" class="font-medium">-</span>
+                        <span class="text-gray-500 dark:text-gray-400"> (radius {{ $radius }} m)</span>
+                    </dd>
+                </div>
+            </dl>
+            <div id="location-inside-note" class="mt-3 hidden">
+                <x-filament::badge color="success" icon="heroicon-o-check-circle">
+                    Dalam radius wilayah absen
+                </x-filament::badge>
             </div>
-            <p id="location-inside-note" class="mt-2 hidden text-sm font-medium text-success-600 dark:text-success-400">
-                ✓ Dalam radius wilayah absen
-            </p>
-            <p id="location-outside-warning" class="mt-2 hidden text-sm font-medium text-warning-600 dark:text-warning-400">
-                ⚠ Di luar wilayah absen — tetap bisa kirim, perlu verifikasi admin
-            </p>
+            <div id="location-outside-warning" class="mt-3 hidden">
+                <x-filament::badge color="warning" icon="heroicon-o-exclamation-triangle">
+                    Di luar wilayah absen — perlu verifikasi admin
+                </x-filament::badge>
+            </div>
         </div>
 
-        <div id="location-error" class="hidden rounded-lg bg-danger-50 p-4 ring-1 ring-danger-600/20 dark:bg-danger-950/30 dark:ring-danger-400/30">
-            <p id="location-error-text" class="text-sm font-medium text-danger-700 dark:text-danger-400"></p>
+        <div id="location-error" class="hidden rounded-xl bg-white p-4 shadow-sm ring-1 ring-danger-600/30 dark:bg-white/5 dark:ring-danger-400/40">
+            <p id="location-error-text" class="text-sm font-medium text-danger-600 dark:text-danger-400"></p>
             <div class="mt-3">
                 <x-filament::button type="button" id="btn-retry-location" size="sm" color="gray">
                     Ambil ulang lokasi
