@@ -5,11 +5,10 @@
                 Absen Hari Ini
             </x-slot>
             <x-slot name="description">
-                Klik tombol izin GPS dan buka kamera terlebih dahulu. Foto selfie wajib diambil langsung dari kamera.
+                Buka kamera dan ambil selfie. Lokasi GPS otomatis diambil saat foto — koordinat &amp; status radius ditampilkan sebelum kirim.
             </x-slot>
 
             <div class="space-y-6">
-                @include('filament.employee.components.attendance-location')
                 @include('filament.employee.components.attendance-camera')
 
                 <div>
@@ -22,7 +21,7 @@
                         wire:model="description"
                         rows="3"
                         placeholder="Contoh: Meeting di luar kantor, kunjungan klien, dll."
-                        class="fi-input mt-2 block w-full rounded-lg border-none bg-white px-3 py-2 text-sm text-gray-950 shadow-sm ring-1 ring-gray-950/10 transition duration-75 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-600 dark:bg-white/5 dark:text-white dark:ring-white/20 dark:placeholder:text-gray-500 dark:focus:ring-primary-500"
+                        class="fi-input mt-2 block w-full rounded-lg border-none bg-white px-3 py-2 text-sm text-gray-950 shadow-sm ring-1 ring-gray-950/10 transition duration-75 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-600 dark:bg-white/5 dark:text-white dark:ring-white/10 dark:placeholder:text-gray-500 dark:focus:ring-primary-500"
                     ></textarea>
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                         Keterangan ini terpisah dari teks di dalam foto.
@@ -57,6 +56,7 @@
         const AttendanceUi = {
             show(el) { el?.classList.remove('hidden'); },
             hide(el) { el?.classList.add('hidden'); },
+            panel() { return document.getElementById('attendance-camera-panel'); },
             haversine(lat1, lon1, lat2, lon2) {
                 const R = 6371000;
                 const toRad = (deg) => deg * Math.PI / 180;
@@ -68,82 +68,70 @@
             },
             formatGeoError(err) {
                 return {
-                    1: 'Izin lokasi ditolak. Buka pengaturan browser/situs lalu izinkan akses lokasi untuk situs ini.',
+                    1: 'Izin lokasi ditolak. Izinkan akses lokasi di pengaturan browser lalu ambil ulang foto.',
                     2: 'Lokasi tidak tersedia. Pastikan GPS perangkat aktif.',
-                    3: 'Waktu habis saat mengambil lokasi. Coba lagi di area terbuka.',
+                    3: 'Waktu habis saat mengambil lokasi. Coba ambil ulang foto di area terbuka.',
                 }[err.code] || ('Gagal mengambil lokasi GPS: ' + err.message);
             },
-            resetLocationUi() {
-                const panel = document.getElementById('attendance-location-panel');
-                if (!panel) return;
-                this.show(panel.querySelector('#location-idle'));
-                this.hide(panel.querySelector('#location-loading'));
-                this.hide(panel.querySelector('#location-error'));
-                this.hide(panel.querySelector('#location-success'));
+            getLocationConfig() {
+                const panel = this.panel();
+                return {
+                    officeLat: parseFloat(panel.dataset.officeLat),
+                    officeLng: parseFloat(panel.dataset.officeLng),
+                    radius: parseInt(panel.dataset.radius, 10),
+                };
             },
-            captureLocation() {
-                const panel = document.getElementById('attendance-location-panel');
-                if (!panel) return;
+            requestLocation() {
+                return new Promise((resolve, reject) => {
+                    if (!window.isSecureContext) {
+                        reject(new Error('GPS membutuhkan HTTPS. Buka situs lewat https://'));
+                        return;
+                    }
+                    if (!navigator.geolocation) {
+                        reject(new Error('Browser tidak mendukung GPS. Gunakan Chrome/Safari di HP.'));
+                        return;
+                    }
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 30000,
+                        maximumAge: 0,
+                    });
+                });
+            },
+            applyLocation(position) {
+                const panel = this.panel();
+                const { officeLat, officeLng, radius } = this.getLocationConfig();
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const distance = this.haversine(lat, lng, officeLat, officeLng);
+                const outside = distance > radius;
 
-                const idle = panel.querySelector('#location-idle');
-                const loading = panel.querySelector('#location-loading');
-                const errorBox = panel.querySelector('#location-error');
-                const errorText = panel.querySelector('#location-error-text');
-                const success = panel.querySelector('#location-success');
+                $wire.set('latitude', lat);
+                $wire.set('longitude', lng);
 
-                const officeLat = parseFloat(panel.dataset.officeLat);
-                const officeLng = parseFloat(panel.dataset.officeLng);
-                const radius = parseInt(panel.dataset.radius, 10);
+                panel.querySelector('#location-coords').textContent =
+                    lat.toFixed(6) + ', ' + lng.toFixed(6);
+                panel.querySelector('#location-distance').textContent =
+                    new Intl.NumberFormat('id-ID').format(distance) + ' m';
 
-                this.hide(idle);
-                this.hide(errorBox);
-                this.hide(success);
-                this.show(loading);
+                const outsideWarning = panel.querySelector('#location-outside-warning');
+                const insideNote = panel.querySelector('#location-inside-note');
+                outside ? this.show(outsideWarning) : this.hide(outsideWarning);
+                outside ? this.hide(insideNote) : this.show(insideNote);
 
-                if (!window.isSecureContext) {
-                    errorText.textContent = 'GPS membutuhkan HTTPS. Buka situs lewat https:// bukan http://';
-                    this.hide(loading);
-                    this.show(errorBox);
-                    return;
-                }
-
-                if (!navigator.geolocation) {
-                    errorText.textContent = 'Browser tidak mendukung GPS. Gunakan Chrome/Safari di HP.';
-                    this.hide(loading);
-                    this.show(errorBox);
-                    return;
-                }
-
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        const distance = this.haversine(lat, lng, officeLat, officeLng);
-                        const outside = distance > radius;
-
-                        $wire.set('latitude', lat);
-                        $wire.set('longitude', lng);
-
-                        panel.querySelector('#location-coords').textContent =
-                            lat.toFixed(6) + ', ' + lng.toFixed(6);
-                        panel.querySelector('#location-distance').textContent =
-                            new Intl.NumberFormat('id-ID').format(distance) + ' m';
-
-                        const outsideWarning = panel.querySelector('#location-outside-warning');
-                        const insideNote = panel.querySelector('#location-inside-note');
-                        outside ? this.show(outsideWarning) : this.hide(outsideWarning);
-                        outside ? this.hide(insideNote) : this.show(insideNote);
-
-                        this.hide(loading);
-                        this.show(success);
-                    },
-                    (err) => {
-                        errorText.textContent = this.formatGeoError(err);
-                        this.hide(loading);
-                        this.show(errorBox);
-                    },
-                    { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
-                );
+                this.hide(panel.querySelector('#location-error'));
+                this.show(panel.querySelector('#location-summary'));
+            },
+            showLocationError(message) {
+                const panel = this.panel();
+                panel.querySelector('#location-error-text').textContent = message;
+                this.hide(panel.querySelector('#location-summary'));
+                this.show(panel.querySelector('#location-error'));
+            },
+            hideLocationUi() {
+                const panel = this.panel();
+                this.hide(panel.querySelector('#location-summary'));
+                this.hide(panel.querySelector('#location-error'));
             },
             cameraStream: null,
             stopCamera() {
@@ -155,9 +143,12 @@
                 if (video) video.srcObject = null;
             },
             resetCameraUi() {
-                const panel = document.getElementById('attendance-camera-panel');
+                const panel = this.panel();
                 if (!panel) return;
                 this.stopCamera();
+                this.hideLocationUi();
+                $wire.set('latitude', null);
+                $wire.set('longitude', null);
                 this.show(panel.querySelector('#camera-idle'));
                 this.hide(panel.querySelector('#camera-loading'));
                 this.hide(panel.querySelector('#camera-error'));
@@ -165,11 +156,12 @@
                 this.hide(panel.querySelector('#camera-preview'));
             },
             async startCamera() {
-                const panel = document.getElementById('attendance-camera-panel');
+                const panel = this.panel();
                 if (!panel) return;
 
                 const idle = panel.querySelector('#camera-idle');
                 const loading = panel.querySelector('#camera-loading');
+                const loadingText = panel.querySelector('#camera-loading-text');
                 const errorBox = panel.querySelector('#camera-error');
                 const errorText = panel.querySelector('#camera-error-text');
                 const active = panel.querySelector('#camera-active');
@@ -178,6 +170,7 @@
                 this.hide(idle);
                 this.hide(errorBox);
                 this.hide(panel.querySelector('#camera-preview'));
+                loadingText.textContent = 'Membuka kamera...';
                 this.show(loading);
                 this.stopCamera();
 
@@ -210,11 +203,19 @@
                     this.show(errorBox);
                 }
             },
-            capturePhoto() {
+            async capturePhoto() {
+                const panel = this.panel();
                 const video = document.getElementById('attendance-camera-video');
                 const canvas = document.getElementById('attendance-camera-canvas');
-                const panel = document.getElementById('attendance-camera-panel');
+                const loading = panel.querySelector('#camera-loading');
+                const loadingText = panel.querySelector('#camera-loading-text');
+                const active = panel.querySelector('#camera-active');
+
                 if (!video?.videoWidth || !canvas || !panel) return;
+
+                this.hide(active);
+                loadingText.textContent = 'Mengambil foto & lokasi GPS...';
+                this.show(loading);
 
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
@@ -223,32 +224,61 @@
 
                 $wire.set('photo_base64', photoData);
                 document.getElementById('attendance-camera-preview-img').src = photoData;
-
                 this.stopCamera();
-                this.hide(panel.querySelector('#camera-active'));
+
+                try {
+                    const position = await this.requestLocation();
+                    this.applyLocation(position);
+                } catch (err) {
+                    const message = err.code !== undefined
+                        ? this.formatGeoError(err)
+                        : (err.message || 'Gagal mengambil lokasi GPS.');
+                    this.showLocationError(message);
+                }
+
+                this.hide(loading);
                 this.show(panel.querySelector('#camera-preview'));
+            },
+            async retryLocation() {
+                const panel = this.panel();
+                const loading = panel.querySelector('#camera-loading');
+                const loadingText = panel.querySelector('#camera-loading-text');
+
+                loadingText.textContent = 'Mengambil lokasi GPS...';
+                this.show(loading);
+
+                try {
+                    const position = await this.requestLocation();
+                    this.applyLocation(position);
+                } catch (err) {
+                    const message = err.code !== undefined
+                        ? this.formatGeoError(err)
+                        : (err.message || 'Gagal mengambil lokasi GPS.');
+                    this.showLocationError(message);
+                }
+
+                this.hide(loading);
             },
             retakePhoto() {
                 $wire.set('photo_base64', null);
+                $wire.set('latitude', null);
+                $wire.set('longitude', null);
                 this.resetCameraUi();
             },
             bind() {
-                document.getElementById('btn-capture-location')?.addEventListener('click', () => this.captureLocation());
-                document.getElementById('btn-retry-location')?.addEventListener('click', () => this.captureLocation());
-                document.getElementById('btn-refresh-location')?.addEventListener('click', () => this.captureLocation());
                 document.getElementById('btn-start-camera')?.addEventListener('click', () => this.startCamera());
                 document.getElementById('btn-retry-camera')?.addEventListener('click', () => this.startCamera());
                 document.getElementById('btn-capture-photo')?.addEventListener('click', () => this.capturePhoto());
                 document.getElementById('btn-retake-photo')?.addEventListener('click', () => this.retakePhoto());
+                document.getElementById('btn-retry-location')?.addEventListener('click', () => this.retryLocation());
             },
             resetAll() {
-                this.resetLocationUi();
-                this.resetCameraUi();
+                $wire.set('photo_base64', null);
+                this.retakePhoto();
             },
         };
 
         AttendanceUi.bind();
-
         $wire.on('attendance-submitted', () => AttendanceUi.resetAll());
     </script>
     @endscript
