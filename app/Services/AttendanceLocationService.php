@@ -4,9 +4,9 @@ namespace App\Services;
 
 class AttendanceLocationService
 {
-    private const DEFAULT_OFFICE_LATITUDE = -6.19990280418286;
+    private const DEFAULT_OFFICE_LATITUDE = -6.199934;
 
-    private const DEFAULT_OFFICE_LONGITUDE = 106.8561197453926;
+    private const DEFAULT_OFFICE_LONGITUDE = 106.856236;
 
     public function officeLatitude(): float
     {
