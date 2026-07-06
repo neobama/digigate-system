@@ -5,7 +5,7 @@
                 Absen Hari Ini
             </x-slot>
             <x-slot name="description">
-                Izinkan akses kamera dan GPS. Foto selfie akan diberi timestamp dan koordinat otomatis.
+                Izinkan akses kamera dan GPS. Foto selfie wajib diambil langsung dari kamera — tidak bisa upload dari galeri.
             </x-slot>
 
             <form wire:submit="submitAttendance" class="space-y-6">

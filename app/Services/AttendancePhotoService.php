@@ -14,6 +14,24 @@ class AttendancePhotoService
     }
 
     /**
+     * Simpan foto dari kamera (base64 data URL) ke storage.
+     */
+    public function storeCameraPhoto(string $base64Data): string
+    {
+        $base64 = preg_replace('#^data:image/\w+;base64,#i', '', $base64Data);
+        $contents = base64_decode($base64, true);
+
+        if ($contents === false) {
+            throw new \InvalidArgumentException('Data foto tidak valid.');
+        }
+
+        $path = 'attendances/'.Str::uuid().'.jpg';
+        Storage::disk($this->disk())->put($path, $contents, 'public');
+
+        return $path;
+    }
+
+    /**
      * Tambahkan timestamp + koordinat ke foto selfie, simpan kembali ke storage.
      */
     public function stampPhoto(string $path, Carbon $recordedAt, float $latitude, float $longitude): string

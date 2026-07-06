@@ -48,23 +48,13 @@ class MyAttendance extends Page implements HasForms, HasTable
             ->schema([
                 Forms\Components\ViewField::make('location_status')
                     ->view('filament.employee.components.attendance-location'),
+                Forms\Components\ViewField::make('camera_capture')
+                    ->view('filament.employee.components.attendance-camera'),
                 Forms\Components\Hidden::make('latitude')
                     ->required(),
                 Forms\Components\Hidden::make('longitude')
                     ->required(),
-                Forms\Components\FileUpload::make('photo')
-                    ->label('Selfie Absen')
-                    ->image()
-                    ->directory('attendances')
-                    ->disk(config('filesystems.default') === 's3' ? 's3_public' : 'public')
-                    ->visibility('public')
-                    ->required()
-                    ->maxSize(5120)
-                    ->acceptedFileTypes(['image/*'])
-                    ->helperText('Ambil foto selfie. Timestamp dan koordinat GPS akan ditambahkan otomatis ke foto.')
-                    ->extraAttributes([
-                        'capture' => 'user',
-                    ]),
+                Forms\Components\Hidden::make('photo_base64'),
                 Forms\Components\Textarea::make('description')
                     ->label('Keterangan (opsional)')
                     ->rows(3)
@@ -89,11 +79,12 @@ class MyAttendance extends Page implements HasForms, HasTable
         $this->validate([
             'attendanceFormData.latitude' => ['required', 'numeric'],
             'attendanceFormData.longitude' => ['required', 'numeric'],
-            'attendanceFormData.photo' => ['required', 'string'],
+            'attendanceFormData.photo_base64' => ['required', 'string', 'starts_with:data:image/'],
         ], [
             'attendanceFormData.latitude.required' => 'Lokasi GPS belum terdeteksi. Izinkan akses lokasi lalu coba lagi.',
             'attendanceFormData.longitude.required' => 'Lokasi GPS belum terdeteksi. Izinkan akses lokasi lalu coba lagi.',
-            'attendanceFormData.photo.required' => 'Foto selfie wajib diunggah.',
+            'attendanceFormData.photo_base64.required' => 'Foto selfie wajib diambil dari kamera.',
+            'attendanceFormData.photo_base64.starts_with' => 'Foto harus diambil langsung dari kamera.',
         ]);
 
         $data = $this->form->getState();
@@ -126,8 +117,9 @@ class MyAttendance extends Page implements HasForms, HasTable
 
         $recordedAt = now('Asia/Jakarta');
         $photoService = app(AttendancePhotoService::class);
+        $photoPath = $photoService->storeCameraPhoto($data['photo_base64']);
         $stampedPhoto = $photoService->stampPhoto(
-            $data['photo'],
+            $photoPath,
             $recordedAt,
             (float) $data['latitude'],
             (float) $data['longitude']
@@ -148,7 +140,7 @@ class MyAttendance extends Page implements HasForms, HasTable
         $this->form->fill([
             'latitude' => null,
             'longitude' => null,
-            'photo' => null,
+            'photo_base64' => null,
             'description' => null,
         ]);
 
