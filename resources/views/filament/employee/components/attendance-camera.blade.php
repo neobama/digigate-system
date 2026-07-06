@@ -1,7 +1,8 @@
 @php
-    $officeLat = config('attendance.office_latitude');
-    $officeLng = config('attendance.office_longitude');
-    $radius = app(\App\Services\AttendanceLocationService::class)->radiusMeters();
+    $locationService = app(\App\Services\AttendanceLocationService::class);
+    $officeLat = $locationService->officeLatitude();
+    $officeLng = $locationService->officeLongitude();
+    $radius = $locationService->radiusMeters();
 @endphp
 
 <div

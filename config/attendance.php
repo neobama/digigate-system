@@ -1,9 +1,13 @@
 <?php
 
+$officeLatitude = env('ATTENDANCE_OFFICE_LATITUDE');
+$officeLongitude = env('ATTENDANCE_OFFICE_LONGITUDE');
+
 return [
-    'office_latitude' => (float) env('ATTENDANCE_OFFICE_LATITUDE', -6.19990280418286),
-    'office_longitude' => (float) env('ATTENDANCE_OFFICE_LONGITUDE', 106.8561197453926),
-    'radius_meters' => (int) env('ATTENDANCE_RADIUS_METERS', 50),
+    // Empty .env values must not become 0 — (float) env('KEY', default) ignores default when KEY=""
+    'office_latitude' => (float) (filled($officeLatitude) ? $officeLatitude : -6.19990280418286),
+    'office_longitude' => (float) (filled($officeLongitude) ? $officeLongitude : 106.8561197453926),
+    'radius_meters' => (int) (filled(env('ATTENDANCE_RADIUS_METERS')) ? env('ATTENDANCE_RADIUS_METERS') : 50),
     'min_radius_meters' => 10,
     'max_radius_meters' => 50,
 ];

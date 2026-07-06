@@ -4,14 +4,18 @@ namespace App\Services;
 
 class AttendanceLocationService
 {
+    private const DEFAULT_OFFICE_LATITUDE = -6.19990280418286;
+
+    private const DEFAULT_OFFICE_LONGITUDE = 106.8561197453926;
+
     public function officeLatitude(): float
     {
-        return (float) config('attendance.office_latitude');
+        return $this->resolveOfficeCoordinates()[0];
     }
 
     public function officeLongitude(): float
     {
-        return (float) config('attendance.office_longitude');
+        return $this->resolveOfficeCoordinates()[1];
     }
 
     public function radiusMeters(): int
@@ -70,5 +74,28 @@ class AttendanceLocationService
             'distance_meters' => $distance,
             'is_within_radius' => $distance <= $this->radiusMeters(),
         ];
+    }
+
+    /**
+     * @return array{0: float, 1: float}
+     */
+    private function resolveOfficeCoordinates(): array
+    {
+        $latitude = (float) config('attendance.office_latitude');
+        $longitude = (float) config('attendance.office_longitude');
+
+        if ($latitude === 0.0 && $longitude === 0.0) {
+            return [self::DEFAULT_OFFICE_LATITUDE, self::DEFAULT_OFFICE_LONGITUDE];
+        }
+
+        if (abs($latitude) > 50 && abs($longitude) <= 50) {
+            [$latitude, $longitude] = [$longitude, $latitude];
+        }
+
+        if (abs($latitude) > 90 || abs($longitude) > 180) {
+            return [self::DEFAULT_OFFICE_LATITUDE, self::DEFAULT_OFFICE_LONGITUDE];
+        }
+
+        return [$latitude, $longitude];
     }
 }
