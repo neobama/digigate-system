@@ -106,8 +106,8 @@
                 const distance = this.haversine(lat, lng, officeLat, officeLng);
                 const outside = distance > radius;
 
-                $wire.set('latitude', lat);
-                $wire.set('longitude', lng);
+                $wire.set('latitude', lat, false);
+                $wire.set('longitude', lng, false);
 
                 panel.querySelector('#location-coords').textContent =
                     lat.toFixed(6) + ', ' + lng.toFixed(6);
@@ -130,8 +130,12 @@
             },
             hideLocationUi() {
                 const panel = this.panel();
+                this.hide(panel.querySelector('#location-loading'));
                 this.hide(panel.querySelector('#location-summary'));
                 this.hide(panel.querySelector('#location-error'));
+            },
+            setWire(property, value) {
+                $wire.set(property, value, false);
             },
             cameraStream: null,
             stopCamera() {
@@ -147,8 +151,8 @@
                 if (!panel) return;
                 this.stopCamera();
                 this.hideLocationUi();
-                $wire.set('latitude', null);
-                $wire.set('longitude', null);
+                this.setWire('latitude', null);
+                this.setWire('longitude', null);
                 this.show(panel.querySelector('#camera-idle'));
                 this.hide(panel.querySelector('#camera-loading'));
                 this.hide(panel.querySelector('#camera-error'));
@@ -207,62 +211,63 @@
                 const panel = this.panel();
                 const video = document.getElementById('attendance-camera-video');
                 const canvas = document.getElementById('attendance-camera-canvas');
-                const loading = panel.querySelector('#camera-loading');
-                const loadingText = panel.querySelector('#camera-loading-text');
                 const active = panel.querySelector('#camera-active');
+                const preview = panel.querySelector('#camera-preview');
 
                 if (!video?.videoWidth || !canvas || !panel) return;
-
-                this.hide(active);
-                loadingText.textContent = 'Mengambil foto & lokasi GPS...';
-                this.show(loading);
 
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 canvas.getContext('2d').drawImage(video, 0, 0);
                 const photoData = canvas.toDataURL('image/jpeg', 0.9);
 
-                $wire.set('photo_base64', photoData);
-                document.getElementById('attendance-camera-preview-img').src = photoData;
                 this.stopCamera();
+                this.hide(active);
+                this.hide(panel.querySelector('#camera-idle'));
+                this.hide(panel.querySelector('#camera-loading'));
+                this.hide(panel.querySelector('#camera-error'));
+
+                document.getElementById('attendance-camera-preview-img').src = photoData;
+                this.setWire('photo_base64', photoData);
+                this.hideLocationUi();
+                this.show(preview);
+                this.show(panel.querySelector('#location-loading'));
 
                 try {
                     const position = await this.requestLocation();
+                    this.hide(panel.querySelector('#location-loading'));
                     this.applyLocation(position);
                 } catch (err) {
+                    this.hide(panel.querySelector('#location-loading'));
                     const message = err.code !== undefined
                         ? this.formatGeoError(err)
                         : (err.message || 'Gagal mengambil lokasi GPS.');
                     this.showLocationError(message);
                 }
-
-                this.hide(loading);
-                this.show(panel.querySelector('#camera-preview'));
             },
             async retryLocation() {
                 const panel = this.panel();
-                const loading = panel.querySelector('#camera-loading');
-                const loadingText = panel.querySelector('#camera-loading-text');
 
-                loadingText.textContent = 'Mengambil lokasi GPS...';
-                this.show(loading);
+                this.hide(panel.querySelector('#location-summary'));
+                this.hide(panel.querySelector('#location-error'));
+                this.show(panel.querySelector('#location-loading'));
 
                 try {
                     const position = await this.requestLocation();
+                    this.hide(panel.querySelector('#location-loading'));
                     this.applyLocation(position);
                 } catch (err) {
+                    this.hide(panel.querySelector('#location-loading'));
                     const message = err.code !== undefined
                         ? this.formatGeoError(err)
                         : (err.message || 'Gagal mengambil lokasi GPS.');
                     this.showLocationError(message);
                 }
-
-                this.hide(loading);
             },
             retakePhoto() {
-                $wire.set('photo_base64', null);
-                $wire.set('latitude', null);
-                $wire.set('longitude', null);
+                this.setWire('photo_base64', null);
+                this.setWire('latitude', null);
+                this.setWire('longitude', null);
                 this.resetCameraUi();
             },
             bind() {
@@ -273,8 +278,10 @@
                 document.getElementById('btn-retry-location')?.addEventListener('click', () => this.retryLocation());
             },
             resetAll() {
-                $wire.set('photo_base64', null);
-                this.retakePhoto();
+                this.setWire('photo_base64', null);
+                this.setWire('latitude', null);
+                this.setWire('longitude', null);
+                this.resetCameraUi();
             },
         };
 

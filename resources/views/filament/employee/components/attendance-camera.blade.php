@@ -6,6 +6,7 @@
 
 <div
     id="attendance-camera-panel"
+    wire:ignore
     data-office-lat="{{ $officeLat }}"
     data-office-lng="{{ $officeLng }}"
     data-radius="{{ $radius }}"
@@ -60,7 +61,12 @@
         <div class="overflow-hidden rounded-xl ring-1 ring-success-600/30 dark:ring-success-400/30">
             <img id="attendance-camera-preview-img" alt="Preview selfie" class="mx-auto w-full max-w-md object-cover" style="max-height: 400px;" />
         </div>
-        <p class="text-sm font-medium text-success-600 dark:text-success-400">Foto berhasil diambil.</p>
+        <p class="text-sm font-medium text-success-600 dark:text-success-400">Foto berhasil diambil. Periksa lokasi di bawah sebelum kirim absensi.</p>
+
+        <div id="location-loading" class="hidden flex items-center gap-2 rounded-lg bg-gray-50 p-3 text-sm text-gray-500 ring-1 ring-gray-950/5 dark:bg-gray-800/50 dark:text-gray-400 dark:ring-white/10">
+            <x-filament::loading-indicator class="h-4 w-4" />
+            <span>Mengambil lokasi GPS...</span>
+        </div>
 
         <div id="location-summary" class="hidden rounded-lg bg-gray-50 p-4 ring-1 ring-gray-950/5 dark:bg-gray-800/50 dark:ring-white/10">
             <div class="mb-2 flex items-center gap-2">
