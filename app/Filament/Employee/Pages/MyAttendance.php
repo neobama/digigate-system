@@ -5,10 +5,6 @@ namespace App\Filament\Employee\Pages;
 use App\Models\Attendance;
 use App\Services\AttendanceLocationService;
 use App\Services\AttendancePhotoService;
-use Filament\Forms;
-use Filament\Forms\Concerns\InteractsWithForms;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Tables;
@@ -16,9 +12,8 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 
-class MyAttendance extends Page implements HasForms, HasTable
+class MyAttendance extends Page implements HasTable
 {
-    use InteractsWithForms;
     use InteractsWithTable;
 
     protected static ?string $navigationIcon = 'heroicon-o-camera';
@@ -29,40 +24,13 @@ class MyAttendance extends Page implements HasForms, HasTable
 
     protected static ?string $title = 'Absensi';
 
-  /**
-     * @var array<string, mixed>|null
-     */
-    public ?array $attendanceFormData = [];
+    public ?float $latitude = null;
 
-    public function mount(): void
-    {
-        $this->form->fill([
-            'latitude' => null,
-            'longitude' => null,
-        ]);
-    }
+    public ?float $longitude = null;
 
-    public function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                Forms\Components\ViewField::make('location_status')
-                    ->view('filament.employee.components.attendance-location'),
-                Forms\Components\ViewField::make('camera_capture')
-                    ->view('filament.employee.components.attendance-camera'),
-                Forms\Components\Hidden::make('latitude')
-                    ->required(),
-                Forms\Components\Hidden::make('longitude')
-                    ->required(),
-                Forms\Components\Hidden::make('photo_base64'),
-                Forms\Components\Textarea::make('description')
-                    ->label('Keterangan (opsional)')
-                    ->rows(3)
-                    ->placeholder('Contoh: Meeting di luar kantor, kunjungan klien, dll.')
-                    ->helperText('Keterangan ini terpisah dari teks di dalam foto.'),
-            ])
-            ->statePath('attendanceFormData');
-    }
+    public ?string $photo_base64 = null;
+
+    public ?string $description = null;
 
     public function submitAttendance(): void
     {
@@ -77,17 +45,17 @@ class MyAttendance extends Page implements HasForms, HasTable
         }
 
         $this->validate([
-            'attendanceFormData.latitude' => ['required', 'numeric'],
-            'attendanceFormData.longitude' => ['required', 'numeric'],
-            'attendanceFormData.photo_base64' => ['required', 'string', 'starts_with:data:image/'],
+            'latitude' => ['required', 'numeric'],
+            'longitude' => ['required', 'numeric'],
+            'photo_base64' => ['required', 'string', 'starts_with:data:image/'],
+            'description' => ['nullable', 'string', 'max:1000'],
         ], [
-            'attendanceFormData.latitude.required' => 'Lokasi GPS belum terdeteksi. Izinkan akses lokasi lalu coba lagi.',
-            'attendanceFormData.longitude.required' => 'Lokasi GPS belum terdeteksi. Izinkan akses lokasi lalu coba lagi.',
-            'attendanceFormData.photo_base64.required' => 'Foto selfie wajib diambil dari kamera.',
-            'attendanceFormData.photo_base64.starts_with' => 'Foto harus diambil langsung dari kamera.',
+            'latitude.required' => 'Lokasi GPS belum terdeteksi. Klik tombol izin lokasi lalu coba lagi.',
+            'longitude.required' => 'Lokasi GPS belum terdeteksi. Klik tombol izin lokasi lalu coba lagi.',
+            'photo_base64.required' => 'Foto selfie wajib diambil dari kamera.',
+            'photo_base64.starts_with' => 'Foto harus diambil langsung dari kamera.',
         ]);
 
-        $data = $this->form->getState();
         $employee = auth()->user()->employee;
 
         $todayStart = now('Asia/Jakarta')->startOfDay();
@@ -111,38 +79,33 @@ class MyAttendance extends Page implements HasForms, HasTable
 
         $locationService = app(AttendanceLocationService::class);
         $evaluation = $locationService->evaluate(
-            (float) $data['latitude'],
-            (float) $data['longitude']
+            (float) $this->latitude,
+            (float) $this->longitude
         );
 
         $recordedAt = now('Asia/Jakarta');
         $photoService = app(AttendancePhotoService::class);
-        $photoPath = $photoService->storeCameraPhoto($data['photo_base64']);
+        $photoPath = $photoService->storeCameraPhoto($this->photo_base64);
         $stampedPhoto = $photoService->stampPhoto(
             $photoPath,
             $recordedAt,
-            (float) $data['latitude'],
-            (float) $data['longitude']
+            (float) $this->latitude,
+            (float) $this->longitude
         );
 
         Attendance::create([
             'employee_id' => $employee->id,
             'photo' => $stampedPhoto,
-            'description' => $data['description'] ?? null,
-            'latitude' => $data['latitude'],
-            'longitude' => $data['longitude'],
+            'description' => $this->description,
+            'latitude' => $this->latitude,
+            'longitude' => $this->longitude,
             'distance_meters' => $evaluation['distance_meters'],
             'is_within_radius' => $evaluation['is_within_radius'],
             'recorded_at' => $recordedAt,
             'status' => 'pending',
         ]);
 
-        $this->form->fill([
-            'latitude' => null,
-            'longitude' => null,
-            'photo_base64' => null,
-            'description' => null,
-        ]);
+        $this->reset(['latitude', 'longitude', 'photo_base64', 'description']);
 
         $message = $evaluation['is_within_radius']
             ? 'Absensi berhasil dikirim. Menunggu verifikasi admin.'
