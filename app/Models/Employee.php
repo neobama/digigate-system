@@ -36,6 +36,11 @@ class Employee extends Model
         return $this->hasMany(Logbook::class);
     }
 
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(Attendance::class);
+    }
+
     public function tasks(): BelongsToMany
     {
         return $this->belongsToMany(Task::class, 'task_employee');

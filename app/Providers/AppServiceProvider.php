@@ -3,12 +3,14 @@
 namespace App\Providers;
 
 use App\Models\Assembly;
+use App\Models\Attendance;
 use App\Models\BudgetRequest;
 use App\Models\Cashbon;
 use App\Models\Invoice;
 use App\Models\Reimbursement;
 use App\Models\Task;
 use App\Observers\AssemblyObserver;
+use App\Observers\AttendanceObserver;
 use App\Observers\BudgetRequestObserver;
 use App\Observers\CashbonObserver;
 use App\Observers\InvoiceObserver;
@@ -52,6 +54,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Register observers
         Assembly::observe(AssemblyObserver::class);
+        Attendance::observe(AttendanceObserver::class);
         Reimbursement::observe(ReimbursementObserver::class);
         Cashbon::observe(CashbonObserver::class);
         Task::observe(TaskObserver::class);
