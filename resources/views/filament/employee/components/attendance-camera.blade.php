@@ -3,20 +3,22 @@
         stream: null,
         photoData: @entangle('attendanceFormData.photo_base64'),
         captured: false,
-        loading: true,
+        loading: false,
+        started: false,
         error: null,
         async init() {
-            await this.startCamera();
             Livewire.on('attendance-submitted', () => {
                 this.photoData = null;
                 this.captured = false;
-                this.startCamera();
+                this.started = false;
+                this.stopCamera();
             });
         },
         async startCamera() {
             this.loading = true;
             this.error = null;
             this.stopCamera();
+            this.started = true;
 
             if (!navigator.mediaDevices?.getUserMedia) {
                 this.error = 'Browser tidak mendukung kamera. Gunakan Chrome/Safari di HP dengan HTTPS.';
@@ -52,7 +54,7 @@
         retake() {
             this.photoData = null;
             this.captured = false;
-            this.startCamera();
+            this.started = false;
         },
         stopCamera() {
             if (this.stream) {
@@ -77,19 +79,34 @@
         </p>
     </div>
 
-    <div x-show="loading" class="rounded-xl border border-gray-200 bg-gray-50 p-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800/50">
-        Membuka kamera...
-    </div>
-
-    <div x-show="!loading && error" class="space-y-3 rounded-xl border border-danger-200 bg-danger-50 p-4 dark:border-danger-800 dark:bg-danger-950/30">
-        <p class="text-sm text-danger-600 dark:text-danger-400" x-text="error"></p>
-        <x-filament::button size="sm" color="gray" type="button" x-on:click="startCamera()">
-            Coba buka kamera lagi
+    <div x-show="!started && !loading && !error">
+        <x-filament::button type="button" icon="heroicon-o-camera" x-on:click="startCamera()">
+            Buka Kamera untuk Selfie
         </x-filament::button>
     </div>
 
-    <div x-show="!loading && !error && !captured" class="space-y-3">
-        <div class="overflow-hidden rounded-xl border border-gray-200 bg-black dark:border-gray-700">
+    <div x-show="loading" class="flex items-center justify-center gap-2 rounded-xl bg-gray-50 p-8 text-sm text-gray-500 ring-1 ring-gray-950/5 dark:bg-gray-900 dark:text-gray-400 dark:ring-white/10">
+        <x-filament::loading-indicator class="h-4 w-4" />
+        Membuka kamera...
+    </div>
+
+    <x-filament::section
+        x-show="!loading && error"
+        x-cloak
+        icon="heroicon-o-exclamation-triangle"
+        icon-color="danger"
+        heading="Kamera tidak tersedia"
+    >
+        <p class="text-sm text-danger-600 dark:text-danger-400" x-text="error"></p>
+        <div class="mt-3">
+            <x-filament::button size="sm" color="gray" type="button" x-on:click="startCamera()">
+                Coba buka kamera lagi
+            </x-filament::button>
+        </div>
+    </x-filament::section>
+
+    <div x-show="started && !loading && !error && !captured" class="space-y-3">
+        <div class="overflow-hidden rounded-xl bg-black ring-1 ring-gray-950/5 dark:ring-white/10">
             <video
                 x-ref="video"
                 playsinline
@@ -103,11 +120,15 @@
         </x-filament::button>
     </div>
 
-    <div x-show="captured && photoData" class="space-y-3">
-        <div class="overflow-hidden rounded-xl border border-success-200 dark:border-success-800">
+        <div x-show="captured && photoData" x-cloak class="space-y-3">
+        <div class="overflow-hidden rounded-xl ring-1 ring-success-600/30 dark:ring-success-400/30">
             <img :src="photoData" alt="Preview selfie" class="mx-auto w-full max-w-md object-cover" style="max-height: 400px;" />
         </div>
-        <p class="text-sm text-success-600 dark:text-success-400">Foto berhasil diambil. Klik "Ulangi Foto" jika perlu mengambil ulang.</p>
+        <div>
+            <x-filament::badge color="success" icon="heroicon-o-check-circle">
+                Foto berhasil diambil
+            </x-filament::badge>
+        </div>
         <x-filament::button type="button" color="gray" size="sm" x-on:click="retake()">
             Ulangi Foto
         </x-filament::button>

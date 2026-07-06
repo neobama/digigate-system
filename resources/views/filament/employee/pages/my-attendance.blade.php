@@ -5,7 +5,7 @@
                 Absen Hari Ini
             </x-slot>
             <x-slot name="description">
-                Izinkan akses kamera dan GPS. Foto selfie wajib diambil langsung dari kamera — tidak bisa upload dari galeri.
+                Klik tombol izin GPS dan buka kamera terlebih dahulu. Foto selfie wajib diambil langsung dari kamera.
             </x-slot>
 
             <form wire:submit="submitAttendance" class="space-y-6">
