@@ -2,14 +2,14 @@
 
 namespace App\Filament\Support;
 
-use Filament\Actions\Action;
+use Filament\Actions\MountableAction;
 
 class FilamentActions
 {
     public static function registerMacros(): void
     {
-        Action::macro('refreshAfter', function (): Action {
-            /** @var Action $this */
+        MountableAction::macro('refreshAfter', function (): MountableAction {
+            /** @var MountableAction $this */
             return $this->after(function ($livewire): void {
                 $url = request()->header('Referer') ?: url()->current();
 
