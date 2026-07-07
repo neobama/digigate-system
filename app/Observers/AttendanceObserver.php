@@ -21,7 +21,7 @@ class AttendanceObserver
             return;
         }
 
-        $recordedAt = $attendance->recorded_at?->timezone('Asia/Jakarta')->format('d/m/Y H:i') ?? '-';
+        $recordedAt = $attendance->recorded_at?->format('d/m/Y H:i') ?? '-';
         $typeLabel = $attendance->type?->label() ?? 'Absensi';
         $locationNote = $attendance->is_within_radius
             ? 'Dalam radius kantor'
@@ -74,7 +74,7 @@ class AttendanceObserver
             return;
         }
 
-        $recordedAt = $attendance->recorded_at?->timezone('Asia/Jakarta')->format('d/m/Y H:i') ?? '-';
+        $recordedAt = $attendance->recorded_at?->format('d/m/Y H:i') ?? '-';
         $typeLabel = $attendance->type?->label() ?? 'Absensi';
 
         $employeeMessage = "📸 *Update Absensi Anda*\n\n";

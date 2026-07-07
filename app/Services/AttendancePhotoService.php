@@ -49,7 +49,7 @@ class AttendancePhotoService
             return $path;
         }
 
-        $timestamp = $recordedAt->timezone('Asia/Jakarta')->format('d/m/Y H:i:s').' WIB';
+        $timestamp = $recordedAt->format('d/m/Y H:i:s').' WIB';
         $coords = sprintf('Lat: %.6f, Lng: %.6f', $latitude, $longitude);
         $overlayText = collect([$typeLabel, $timestamp, $coords])
             ->filter()

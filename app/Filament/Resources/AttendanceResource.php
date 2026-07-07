@@ -69,6 +69,7 @@ class AttendanceResource extends Resource
                 Tables\Columns\TextColumn::make('recorded_at')
                     ->label('Waktu Absen')
                     ->dateTime('d/m/Y H:i')
+                    ->timezone(config('app.timezone'))
                     ->sortable(),
                 Tables\Columns\IconColumn::make('is_within_radius')
                     ->label('Lokasi')
@@ -106,6 +107,7 @@ class AttendanceResource extends Resource
                 Tables\Columns\TextColumn::make('verified_at')
                     ->label('Diverifikasi')
                     ->dateTime('d/m/Y H:i')
+                    ->timezone(config('app.timezone'))
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -200,7 +202,8 @@ class AttendanceResource extends Resource
                             }),
                         Infolists\Components\TextEntry::make('recorded_at')
                             ->label('Waktu Absen')
-                            ->dateTime('d/m/Y H:i:s'),
+                            ->dateTime('d/m/Y H:i:s')
+                            ->timezone(config('app.timezone')),
                         Infolists\Components\TextEntry::make('latitude')
                             ->label('Latitude')
                             ->formatStateUsing(fn ($state) => number_format((float) $state, 6)),
@@ -243,6 +246,7 @@ class AttendanceResource extends Resource
                         Infolists\Components\TextEntry::make('verified_at')
                             ->label('Waktu Verifikasi')
                             ->dateTime('d/m/Y H:i')
+                            ->timezone(config('app.timezone'))
                             ->placeholder('-'),
                     ])->columns(2),
             ]);

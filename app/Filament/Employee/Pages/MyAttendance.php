@@ -43,7 +43,7 @@ class MyAttendance extends Page implements HasTable
         }
 
         return app(AttendanceWorkingHoursService::class)
-            ->findForDay($employee, now('Asia/Jakarta'), AttendanceType::TapIn);
+            ->findForDay($employee, now(), AttendanceType::TapIn);
     }
 
     public function getTodayTapOutProperty(): ?Attendance
@@ -55,7 +55,7 @@ class MyAttendance extends Page implements HasTable
         }
 
         return app(AttendanceWorkingHoursService::class)
-            ->findForDay($employee, now('Asia/Jakarta'), AttendanceType::TapOut);
+            ->findForDay($employee, now(), AttendanceType::TapOut);
     }
 
     public function getNextAttendanceTypeProperty(): ?AttendanceType
@@ -123,7 +123,7 @@ class MyAttendance extends Page implements HasTable
             (float) $this->longitude
         );
 
-        $recordedAt = now('Asia/Jakarta');
+        $recordedAt = now();
         $photoService = app(AttendancePhotoService::class);
         $photoPath = $photoService->storeCameraPhoto($this->photo_base64);
         $stampedPhoto = $photoService->stampPhoto(
@@ -175,6 +175,7 @@ class MyAttendance extends Page implements HasTable
                 Tables\Columns\TextColumn::make('recorded_at')
                     ->label('Waktu')
                     ->dateTime('d/m/Y H:i')
+                    ->timezone(config('app.timezone'))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('type')
                     ->label('Jenis')

@@ -12,7 +12,7 @@ class AttendanceWorkingHoursService
 {
     public function timezone(): string
     {
-        return 'Asia/Jakarta';
+        return (string) config('app.timezone', 'Asia/Jakarta');
     }
 
     /**
@@ -139,9 +139,7 @@ class AttendanceWorkingHoursService
             return '-';
         }
 
-        $time = $attendance->recorded_at
-            ->timezone('Asia/Jakarta')
-            ->format('H:i');
+        $time = $attendance->recorded_at->format('H:i');
 
         $statusSuffix = match ($attendance->status) {
             'pending' => ' (menunggu)',

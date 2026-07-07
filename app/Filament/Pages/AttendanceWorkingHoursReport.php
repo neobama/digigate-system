@@ -36,7 +36,7 @@ class AttendanceWorkingHoursReport extends Page implements HasForms, HasTable
 
     public function mount(): void
     {
-        $this->workDate = now('Asia/Jakarta')->toDateString();
+        $this->workDate = now()->toDateString();
         $this->form->fill([
             'workDate' => $this->workDate,
         ]);
@@ -62,7 +62,7 @@ class AttendanceWorkingHoursReport extends Page implements HasForms, HasTable
     public function table(Table $table): Table
     {
         $service = app(AttendanceWorkingHoursService::class);
-        $date = Carbon::parse($this->workDate ?? now('Asia/Jakarta')->toDateString(), 'Asia/Jakarta');
+        $date = Carbon::parse($this->workDate ?? now()->toDateString(), config('app.timezone'));
 
         return $table
             ->query(Employee::query()->where('is_active', true)->orderBy('name'))
