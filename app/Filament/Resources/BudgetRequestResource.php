@@ -191,7 +191,8 @@ class BudgetRequestResource extends Resource
                     ->action(function (BudgetRequest $record) {
                         $record->update(['status' => 'approved']);
                     })
-                    ->successNotificationTitle('Request anggaran approved'),
+                    ->successNotificationTitle('Request anggaran approved')
+                    ->refreshAfter(),
                 Tables\Actions\Action::make('reject')
                     ->label('Reject')
                     ->icon('heroicon-o-x-circle')
@@ -200,7 +201,8 @@ class BudgetRequestResource extends Resource
                     ->action(function (BudgetRequest $record) {
                         $record->update(['status' => 'rejected']);
                     })
-                    ->successNotificationTitle('Request anggaran rejected'),
+                    ->successNotificationTitle('Request anggaran rejected')
+                    ->refreshAfter(),
                 Tables\Actions\Action::make('markAsPaid')
                     ->label('Set Paid')
                     ->icon('heroicon-o-banknotes')
@@ -212,7 +214,8 @@ class BudgetRequestResource extends Resource
                             'paid_at' => now(),
                         ]);
                     })
-                    ->successNotificationTitle('Request anggaran marked as paid'),
+                    ->successNotificationTitle('Request anggaran marked as paid')
+                    ->refreshAfter(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

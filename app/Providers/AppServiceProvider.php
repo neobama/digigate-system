@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Filament\Support\FilamentActions;
 use App\Models\Assembly;
 use App\Models\Attendance;
 use App\Models\BudgetRequest;
@@ -41,6 +42,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        FilamentActions::registerMacros();
+
         // Force HTTPS jika APP_ENV production dan APP_URL menggunakan HTTPS
         if (config('app.env') === 'production' && str_starts_with(config('app.url'), 'https://')) {
             URL::forceScheme('https');

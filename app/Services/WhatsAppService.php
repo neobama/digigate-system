@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Defer;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -49,8 +50,14 @@ class WhatsAppService
     /**
      * Send WhatsApp message
      */
-    public function sendMessage(string $phoneNumber, string $message): bool
+    public function sendMessage(string $phoneNumber, string $message, bool $defer = true): bool
     {
+        if ($defer && $this->shouldDeferNotifications()) {
+            Defer::afterResponse(fn () => $this->sendMessage($phoneNumber, $message, false));
+
+            return true;
+        }
+
         try {
             // Validate phone number
             if (empty($phoneNumber) || trim($phoneNumber) === '') {
@@ -127,8 +134,14 @@ class WhatsAppService
     /**
      * Send document as WhatsApp attachment using WAHA sendFile payload.
      */
-    public function sendDocument(string $phoneNumber, string $fileUrl, string $filename, string $mimetype = 'application/pdf', ?string $caption = null): bool
+    public function sendDocument(string $phoneNumber, string $fileUrl, string $filename, string $mimetype = 'application/pdf', ?string $caption = null, bool $defer = true): bool
     {
+        if ($defer && $this->shouldDeferNotifications()) {
+            Defer::afterResponse(fn () => $this->sendDocument($phoneNumber, $fileUrl, $filename, $mimetype, $caption, false));
+
+            return true;
+        }
+
         try {
             if (empty($phoneNumber) || trim($phoneNumber) === '') {
                 Log::warning('Empty phone number provided for WhatsApp document');
@@ -181,5 +194,10 @@ class WhatsAppService
             ]);
             return false;
         }
+    }
+
+    private function shouldDeferNotifications(): bool
+    {
+        return ! app()->runningInConsole();
     }
 }

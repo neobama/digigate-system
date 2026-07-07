@@ -277,7 +277,8 @@ class SalaryPaymentResource extends Resource
                             ->title('Gaji ditandai sudah dibayar')
                             ->success()
                             ->send();
-                    }),
+                    })
+                    ->refreshAfter(),
                 Tables\Actions\EditAction::make()
                     ->visible(fn (SalaryPayment $record) => $record->status !== 'paid'),
                 Tables\Actions\DeleteAction::make()

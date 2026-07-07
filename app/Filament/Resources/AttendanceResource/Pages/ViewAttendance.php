@@ -29,7 +29,8 @@ class ViewAttendance extends ViewRecord
                         'admin_notes' => null,
                     ]);
                 })
-                ->successNotificationTitle('Absensi diterima'),
+                ->successNotificationTitle('Absensi diterima')
+                ->refreshAfter(),
             Actions\Action::make('reject')
                 ->label('Tolak')
                 ->icon('heroicon-o-x-circle')
@@ -49,7 +50,8 @@ class ViewAttendance extends ViewRecord
                         'admin_notes' => $data['admin_notes'],
                     ]);
                 })
-                ->successNotificationTitle('Absensi ditolak'),
+                ->successNotificationTitle('Absensi ditolak')
+                ->refreshAfter(),
         ];
     }
 }

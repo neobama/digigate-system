@@ -219,7 +219,8 @@ class DeviceReturnResource extends Resource
                         // Update device return status
                         $record->update(['status' => $data['status']]);
                     })
-                    ->successNotificationTitle('Log berhasil ditambahkan'),
+                    ->successNotificationTitle('Log berhasil ditambahkan')
+                    ->refreshAfter(),
                 Tables\Actions\Action::make('cancel')
                     ->label('Cancel')
                     ->icon('heroicon-o-x-circle')
@@ -239,7 +240,8 @@ class DeviceReturnResource extends Resource
                         // Update status
                         $record->update(['status' => 'cancelled']);
                     })
-                    ->successNotificationTitle('Retur berhasil dibatalkan'),
+                    ->successNotificationTitle('Retur berhasil dibatalkan')
+                    ->refreshAfter(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

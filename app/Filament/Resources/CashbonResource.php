@@ -186,7 +186,8 @@ class CashbonResource extends Resource
                     ->action(function (Cashbon $record) {
                         $record->update(['status' => 'approved']);
                     })
-                    ->successNotificationTitle('Cashbon approved'),
+                    ->successNotificationTitle('Cashbon approved')
+                    ->refreshAfter(),
                 Tables\Actions\Action::make('reject')
                     ->label('Reject')
                     ->icon('heroicon-o-x-circle')
@@ -195,7 +196,8 @@ class CashbonResource extends Resource
                     ->action(function (Cashbon $record) {
                         $record->update(['status' => 'rejected']);
                     })
-                    ->successNotificationTitle('Cashbon rejected'),
+                    ->successNotificationTitle('Cashbon rejected')
+                    ->refreshAfter(),
                 Tables\Actions\Action::make('markAsPaid')
                     ->label('Set Paid')
                     ->icon('heroicon-o-banknotes')
@@ -207,7 +209,8 @@ class CashbonResource extends Resource
                             'paid_at' => now(),
                         ]);
                     })
-                    ->successNotificationTitle('Cashbon marked as paid'),
+                    ->successNotificationTitle('Cashbon marked as paid')
+                    ->refreshAfter(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

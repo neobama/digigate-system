@@ -149,7 +149,8 @@ class AttendanceResource extends Resource
                             'admin_notes' => null,
                         ]);
                     })
-                    ->successNotificationTitle('Absensi diterima'),
+                    ->successNotificationTitle('Absensi diterima')
+                    ->refreshAfter(),
                 Tables\Actions\Action::make('reject')
                     ->label('Tolak')
                     ->icon('heroicon-o-x-circle')
@@ -169,7 +170,8 @@ class AttendanceResource extends Resource
                             'admin_notes' => $data['admin_notes'],
                         ]);
                     })
-                    ->successNotificationTitle('Absensi ditolak'),
+                    ->successNotificationTitle('Absensi ditolak')
+                    ->refreshAfter(),
             ])
             ->bulkActions([]);
     }
