@@ -261,7 +261,6 @@ class ReimbursementResource extends Resource
     {
         return [
             'index' => Pages\ListReimbursements::route('/'),
-            'view' => Pages\ViewReimbursement::route('/{record}'),
             'edit' => Pages\EditReimbursement::route('/{record}/edit'),
         ];
     }

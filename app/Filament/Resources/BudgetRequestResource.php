@@ -330,7 +330,6 @@ class BudgetRequestResource extends Resource
     {
         return [
             'index' => Pages\ListBudgetRequests::route('/'),
-            'view' => Pages\ViewBudgetRequest::route('/{record}'),
             'edit' => Pages\EditBudgetRequest::route('/{record}/edit'),
         ];
     }

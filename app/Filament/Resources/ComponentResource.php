@@ -177,7 +177,6 @@ class ComponentResource extends Resource
         return [
             'index' => Pages\ListComponents::route('/'),
             'create' => Pages\CreateComponent::route('/create'),
-            'view' => Pages\ViewComponent::route('/{record}'),
             'edit' => Pages\EditComponent::route('/{record}/edit'),
         ];
     }

@@ -174,7 +174,6 @@ public static function form(Form $form): Form
         return [
             'index' => Pages\ListLogbooks::route('/'),
             'create' => Pages\CreateLogbook::route('/create'),
-            'view' => Pages\ViewLogbook::route('/{record}'),
             'edit' => Pages\EditLogbook::route('/{record}/edit'),
         ];
 }

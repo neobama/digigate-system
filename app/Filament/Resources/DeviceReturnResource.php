@@ -347,7 +347,6 @@ class DeviceReturnResource extends Resource
     {
         return [
             'index' => Pages\ListDeviceReturns::route('/'),
-            'view' => Pages\ViewDeviceReturn::route('/{record}'),
             'edit' => Pages\EditDeviceReturn::route('/{record}/edit'),
         ];
     }

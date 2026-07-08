@@ -208,7 +208,6 @@ class WarrantyClaimResource extends Resource
         return [
             'index' => Pages\ListWarrantyClaims::route('/'),
             'create' => Pages\CreateWarrantyClaim::route('/create'),
-            'view' => Pages\ViewWarrantyClaim::route('/{record}'),
             'edit' => Pages\EditWarrantyClaim::route('/{record}/edit'),
         ];
     }

@@ -139,8 +139,6 @@ class AttendanceResource extends Resource
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->visible(fn (?Attendance $record) => $record && $record->status === 'pending')
-                    ->requiresConfirmation()
-                    ->modalHeading('Terima absensi?')
                     ->action(function (Attendance $record) {
                         $record->update([
                             'status' => 'approved',
@@ -173,7 +171,30 @@ class AttendanceResource extends Resource
                     ->successNotificationTitle('Absensi ditolak')
                     ->refreshAfter(),
             ])
-            ->bulkActions([]);
+            ->bulkActions([
+                Tables\Actions\BulkAction::make('approveSelected')
+                    ->label('Terima Terpilih')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Terima absensi terpilih?')
+                    ->modalDescription('Semua absensi yang masih menunggu akan diterima.')
+                    ->action(function (\Illuminate\Support\Collection $records) {
+                        $records
+                            ->where('status', 'pending')
+                            ->each(function (Attendance $record) {
+                                $record->update([
+                                    'status' => 'approved',
+                                    'verified_by' => auth()->id(),
+                                    'verified_at' => now(),
+                                    'admin_notes' => null,
+                                ]);
+                            });
+                    })
+                    ->deselectRecordsAfterCompletion()
+                    ->successNotificationTitle('Absensi terpilih diterima')
+                    ->refreshAfter(),
+            ]);
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -263,7 +284,6 @@ class AttendanceResource extends Resource
     {
         return [
             'index' => Pages\ListAttendances::route('/'),
-            'view' => Pages\ViewAttendance::route('/{record}'),
         ];
     }
 }

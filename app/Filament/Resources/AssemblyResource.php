@@ -282,7 +282,6 @@ class AssemblyResource extends Resource
         return [
             'index' => Pages\ListAssemblies::route('/'),
             'create' => Pages\CreateAssembly::route('/create'),
-            'view' => Pages\ViewAssembly::route('/{record}'),
             'edit' => Pages\EditAssembly::route('/{record}/edit'),
         ];
     }
