@@ -37,9 +37,18 @@ Route::get('/dono/chat/{jobId}', [DonoAssistantController::class, 'status'])
 
 // Device Return portal dinonaktifkan permanen — diganti portal garansi/service.
 $repairPortalRoutes = function () {
-    Route::get('/', [RepairPortalController::class, 'create'])->name('create');
-    Route::post('/', [RepairPortalController::class, 'store'])->name('store');
-    Route::get('/success', [RepairPortalController::class, 'success'])->name('success');
+    Route::get('/', [RepairPortalController::class, 'create'])
+        ->middleware('throttle:30,1')
+        ->name('create');
+    Route::get('/captcha', [RepairPortalController::class, 'captcha'])
+        ->middleware('throttle:20,1')
+        ->name('captcha');
+    Route::post('/', [RepairPortalController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('store');
+    Route::get('/success', [RepairPortalController::class, 'success'])
+        ->middleware('throttle:30,1')
+        ->name('success');
 };
 
 if (app()->environment('production')) {
