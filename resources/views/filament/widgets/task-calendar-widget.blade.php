@@ -57,7 +57,7 @@
                     @php
                         $days = $this->getCalendarDays();
                         $tasksByDay = $this->getTasksByDay();
-                        $maxTasksPerDay = $this->getMaxTasksPerDay();
+                        $maxTasksPerDay = $this->getMaxTasksPerDay($tasksByDay);
                         // Calculate min height based on max tasks per day - smaller for widget
                         $minHeight = max(120, 50 + ($maxTasksPerDay * 36)); // Base height + task height in px
                     @endphp

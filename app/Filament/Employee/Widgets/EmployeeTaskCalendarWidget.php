@@ -2,7 +2,7 @@
 
 namespace App\Filament\Employee\Widgets;
 
-use App\Models\Task;
+use App\Services\TaskCalendarLoader;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -27,47 +27,19 @@ class EmployeeTaskCalendarWidget extends Widget
     public function loadTasks(): void
     {
         $employeeId = Auth::user()->employee?->id;
-        if (!$employeeId) {
+        if (! $employeeId) {
             $this->tasks = [];
+
             return;
         }
 
-        $startOfMonth = Carbon::create($this->currentYear, $this->currentMonth, 1)->startOfMonth();
-        $endOfMonth = Carbon::create($this->currentYear, $this->currentMonth, 1)->endOfMonth();
+        $tasks = TaskCalendarLoader::forMonth(
+            (int) $this->currentYear,
+            (int) $this->currentMonth,
+            fn ($query) => $query->whereHas('employees', fn ($q) => $q->where('employees.id', $employeeId)),
+        );
 
-        $tasks = Task::with(['employees' => function($query) {
-            $query->withPivot('proof_images', 'notes', 'proof_uploaded_at');
-        }])
-            ->whereHas('employees', function ($query) use ($employeeId) {
-                $query->where('employees.id', $employeeId);
-            })
-            ->where(function ($query) use ($startOfMonth, $endOfMonth) {
-                $query->whereBetween('start_date', [$startOfMonth, $endOfMonth])
-                    ->orWhereBetween('end_date', [$startOfMonth, $endOfMonth])
-                    ->orWhere(function ($q) use ($startOfMonth, $endOfMonth) {
-                        $q->where('start_date', '<=', $startOfMonth)
-                          ->where('end_date', '>=', $endOfMonth);
-                    });
-            })
-            ->get();
-
-        // Check and update late status for tasks that are past end_date
-        foreach ($tasks as $task) {
-            $task->checkAndUpdateLateStatus();
-        }
-
-        $this->tasks = $tasks->map(function ($task) {
-            return [
-                'id' => $task->id,
-                'title' => $task->title,
-                'start' => $task->start_date->format('Y-m-d'),
-                'end' => $task->end_date->format('Y-m-d'),
-                'status' => $task->fresh()->status, // Get fresh status after potential update
-                'employees' => $task->employees->pluck('name')->toArray(),
-                'description' => $task->description,
-                'proof_images' => $task->proof_images ?? [],
-            ];
-        })->toArray();
+        $this->tasks = TaskCalendarLoader::toCalendarRows($tasks, ['proof_images']);
     }
 
     public function previousMonth(): void
@@ -295,19 +267,8 @@ class EmployeeTaskCalendarWidget extends Widget
         return $tasksByDay;
     }
 
-    public function getMaxTasksPerDay(): int
+    public function getMaxTasksPerDay(?array $tasksByDay = null): int
     {
-        $tasksByDay = $this->getTasksByDay();
-        $maxRow = 0;
-        
-        foreach ($tasksByDay as $dayTasks) {
-            foreach ($dayTasks as $taskInfo) {
-                if (isset($taskInfo['row']) && $taskInfo['row'] > $maxRow) {
-                    $maxRow = $taskInfo['row'];
-                }
-            }
-        }
-        
-        return $maxRow + 1; // +1 because row is 0-based
+        return TaskCalendarLoader::maxRowsFromTasksByDay($tasksByDay ?? $this->getTasksByDay());
     }
 }

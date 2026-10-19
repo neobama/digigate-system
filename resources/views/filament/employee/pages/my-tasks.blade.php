@@ -51,7 +51,7 @@
                 @php
                     $days = $this->getCalendarDays();
                     $tasksByDay = $this->getTasksByDay();
-                    $maxTasksPerDay = $this->getMaxTasksPerDay();
+                    $maxTasksPerDay = $this->getMaxTasksPerDay($tasksByDay);
                     // Calculate min height based on max tasks per day
                     $minHeight = max(200, 80 + ($maxTasksPerDay * 48)); // Base height + task height in px
                 @endphp

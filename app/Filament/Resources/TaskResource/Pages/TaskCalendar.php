@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\TaskResource\Pages;
 
 use App\Filament\Resources\TaskResource;
-use App\Models\Task;
+use App\Services\TaskCalendarLoader;
 use Filament\Resources\Pages\Page;
 use Illuminate\Support\Carbon;
 
@@ -48,38 +48,8 @@ class TaskCalendar extends Page
 
     public function loadTasks(): void
     {
-        $startOfMonth = Carbon::create($this->currentYear, $this->currentMonth, 1)->startOfMonth();
-        $endOfMonth = Carbon::create($this->currentYear, $this->currentMonth, 1)->endOfMonth();
-
-        $tasks = Task::with(['employees' => function($query) {
-            $query->withPivot('proof_images', 'notes', 'proof_uploaded_at');
-        }])
-            ->where(function ($query) use ($startOfMonth, $endOfMonth) {
-                $query->whereBetween('start_date', [$startOfMonth, $endOfMonth])
-                    ->orWhereBetween('end_date', [$startOfMonth, $endOfMonth])
-                    ->orWhere(function ($q) use ($startOfMonth, $endOfMonth) {
-                        $q->where('start_date', '<=', $startOfMonth)
-                          ->where('end_date', '>=', $endOfMonth);
-                    });
-            })
-            ->get();
-
-        // Check and update late status for tasks that are past end_date
-        foreach ($tasks as $task) {
-            $task->checkAndUpdateLateStatus();
-        }
-
-        $this->tasks = $tasks->map(function ($task) {
-            return [
-                'id' => $task->id,
-                'title' => $task->title,
-                'start' => $task->start_date->format('Y-m-d'),
-                'end' => $task->end_date->format('Y-m-d'),
-                'status' => $task->fresh()->status, // Get fresh status after potential update
-                'employees' => $task->employees->pluck('name')->toArray(),
-                'description' => $task->description,
-            ];
-        })->toArray();
+        $tasks = TaskCalendarLoader::forMonth((int) $this->currentYear, (int) $this->currentMonth);
+        $this->tasks = TaskCalendarLoader::toCalendarRows($tasks);
     }
 
     public function previousMonth(): void
@@ -307,20 +277,9 @@ class TaskCalendar extends Page
         return $tasksByDay;
     }
 
-    public function getMaxTasksPerDay(): int
+    public function getMaxTasksPerDay(?array $tasksByDay = null): int
     {
-        $tasksByDay = $this->getTasksByDay();
-        $maxRow = 0;
-        
-        foreach ($tasksByDay as $dayTasks) {
-            foreach ($dayTasks as $taskInfo) {
-                if (isset($taskInfo['row']) && $taskInfo['row'] > $maxRow) {
-                    $maxRow = $taskInfo['row'];
-                }
-            }
-        }
-        
-        return $maxRow + 1; // +1 because row is 0-based
+        return TaskCalendarLoader::maxRowsFromTasksByDay($tasksByDay ?? $this->getTasksByDay());
     }
 
     public function getFullCalendarEvents(): array
