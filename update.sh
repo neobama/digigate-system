@@ -27,19 +27,30 @@ rollback() {
     exit 1
 }
 
-# Trap errors untuk rollback
-trap rollback ERR
+# Jangan auto-rollback pada error opsional (backup/sudo).
+# Rollback manual tetap bisa via: git reset --hard ORIG_HEAD
 
 # 1. Backup database (opsional, tapi recommended)
 echo "📦 Backing up database..."
 if command -v mysqldump &> /dev/null; then
-    DB_NAME=$(grep DB_DATABASE .env | cut -d '=' -f2 | tr -d ' ')
+    DB_NAME=$(grep DB_DATABASE .env | cut -d '=' -f2 | tr -d ' ' | tr -d '"' | tr -d "'")
     if [ ! -z "$DB_NAME" ] && [ "$DB_NAME" != "sqlite" ]; then
-        BACKUP_DIR="/var/backups/digigate"
-        mkdir -p "$BACKUP_DIR"
-        BACKUP_FILE="$BACKUP_DIR/digigate_$(date +%Y%m%d_%H%M%S).sql"
-        mysqldump -u root "$DB_NAME" > "$BACKUP_FILE" 2>/dev/null || echo "⚠️  Database backup skipped (mysqldump not available or no permission)"
-        echo "✅ Database backup: $BACKUP_FILE"
+        BACKUP_DIR="${HOME}/backups/digigate"
+        if ! mkdir -p "$BACKUP_DIR" 2>/dev/null; then
+            BACKUP_DIR="storage/backups"
+            mkdir -p "$BACKUP_DIR" 2>/dev/null || true
+        fi
+        if [ -d "$BACKUP_DIR" ] && [ -w "$BACKUP_DIR" ]; then
+            BACKUP_FILE="$BACKUP_DIR/digigate_$(date +%Y%m%d_%H%M%S).sql"
+            if mysqldump "$DB_NAME" > "$BACKUP_FILE" 2>/dev/null; then
+                echo "✅ Database backup: $BACKUP_FILE"
+            else
+                rm -f "$BACKUP_FILE" 2>/dev/null || true
+                echo "⚠️  Database backup skipped (mysqldump not available or no permission)"
+            fi
+        else
+            echo "⚠️  Database backup skipped (no writable backup directory)"
+        fi
     else
         echo "ℹ️  Using SQLite, backup skipped"
     fi
@@ -99,13 +110,22 @@ fi
 
 # 9. Set permissions
 echo "🔐 Setting permissions..."
-sudo chown -R www-data:www-data storage bootstrap/cache
-sudo chmod -R 775 storage bootstrap/cache
+chmod -R ug+rwX storage bootstrap/cache 2>/dev/null || true
+if sudo -n true 2>/dev/null; then
+    sudo chown -R www-data:www-data storage bootstrap/cache
+    sudo chmod -R 775 storage bootstrap/cache
+else
+    echo "⚠️  sudo passwordless not available; kept current ownership"
+fi
 
 # 10. Restart services
 echo "🔄 Restarting services..."
-sudo systemctl reload php8.4-fpm 2>/dev/null || echo "⚠️  PHP-FPM reload skipped"
-sudo systemctl reload nginx 2>/dev/null || echo "⚠️  Nginx reload skipped"
+if sudo -n true 2>/dev/null; then
+    sudo systemctl reload php8.4-fpm 2>/dev/null || echo "⚠️  PHP-FPM reload skipped"
+    sudo systemctl reload nginx 2>/dev/null || echo "⚠️  Nginx reload skipped"
+else
+    echo "⚠️  Service reload skipped (sudo password required)"
+fi
 
 # 11. Verify application
 echo "✅ Verifying application..."
