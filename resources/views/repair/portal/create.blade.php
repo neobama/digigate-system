@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Form Garansi / Service - DigiGate</title>
+    @php
+        $logoUrl = \Illuminate\Support\Facades\Storage::disk('s3_public')->url('assets/digigate-logo.png');
+        $faviconUrl = \Illuminate\Support\Facades\Storage::disk('s3_public')->url('assets/favicon.png');
+    @endphp
+    <link rel="icon" type="image/png" href="{{ $faviconUrl }}">
+    <link rel="shortcut icon" type="image/png" href="{{ $faviconUrl }}">
+    <link rel="apple-touch-icon" href="{{ $faviconUrl }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -33,9 +40,6 @@
         }
     </style>
 </head>
-@php
-    $logoUrl = \Illuminate\Support\Facades\Storage::disk('s3_public')->url('assets/digigate-logo.png');
-@endphp
 <body class="min-h-screen text-brand-ink">
     <div class="mx-auto max-w-2xl px-4 py-10 sm:py-14">
         <header class="mb-8 text-center">
