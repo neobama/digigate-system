@@ -5,16 +5,55 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Form Garansi / Service - DigiGate</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef7fc',
+                            100: '#d9eef9',
+                            200: '#b6dff3',
+                            400: '#00aae6',
+                            500: '#0a6eb4',
+                            600: '#085a96',
+                            700: '#064876',
+                            ink: '#50505a',
+                        },
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        body {
+            background:
+                radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0, 170, 230, 0.18), transparent 55%),
+                linear-gradient(180deg, #eef7fc 0%, #f4f7fb 45%, #e8f1f8 100%);
+        }
+    </style>
 </head>
-<body class="min-h-screen bg-slate-100 text-slate-900">
-    <div class="mx-auto max-w-2xl px-4 py-10">
-        <div class="mb-8">
-            <p class="text-sm font-semibold uppercase tracking-wide text-amber-700">DigiGate Repair</p>
-            <h1 class="mt-2 text-3xl font-bold">Form Garansi / Service</h1>
-            <p class="mt-2 text-slate-600">
+@php
+    $logoUrl = \Illuminate\Support\Facades\Storage::disk('s3_public')->url('assets/digigate-logo.png');
+@endphp
+<body class="min-h-screen text-brand-ink">
+    <div class="mx-auto max-w-2xl px-4 py-10 sm:py-14">
+        <header class="mb-8 text-center">
+            <img
+                src="{{ $logoUrl }}"
+                alt="DigiGate"
+                class="mx-auto h-12 w-auto sm:h-14"
+            >
+            <p class="mt-5 text-sm font-semibold uppercase tracking-[0.14em] text-brand-500">
+                Repair Portal
+            </p>
+            <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-800">
+                Form Garansi / Service
+            </h1>
+            <p class="mx-auto mt-2 max-w-md text-slate-600">
                 Isi formulir di bawah untuk mengajukan garansi atau service perangkat DigiGate.
             </p>
-        </div>
+        </header>
 
         @if ($errors->any())
             <div class="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -26,33 +65,33 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('repair.portal.store') }}" class="space-y-5 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <form method="POST" action="{{ route('repair.portal.store') }}" class="space-y-5 rounded-2xl bg-white/95 p-6 shadow-sm ring-1 ring-brand-200/70 backdrop-blur sm:p-8">
             @csrf
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium">Nomor Invoice *</label>
+                <label class="mb-1.5 block text-sm font-medium text-slate-700">Nomor Invoice *</label>
                 <input type="text" name="invoice_number" value="{{ old('invoice_number') }}" required
-                    class="w-full rounded-lg border-slate-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                    class="w-full rounded-lg border-slate-300 px-3 py-2 shadow-sm focus:border-brand-400 focus:ring-brand-400"
                     placeholder="Contoh: INV/2026/001">
             </div>
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium">Nama Perusahaan / Perorangan *</label>
+                <label class="mb-1.5 block text-sm font-medium text-slate-700">Nama Perusahaan / Perorangan *</label>
                 <input type="text" name="client_name" value="{{ old('client_name') }}" required
-                    class="w-full rounded-lg border-slate-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                    class="w-full rounded-lg border-slate-300 px-3 py-2 shadow-sm focus:border-brand-400 focus:ring-brand-400">
             </div>
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium">Nomor Telepon yang Bisa Dihubungi *</label>
+                <label class="mb-1.5 block text-sm font-medium text-slate-700">Nomor Telepon yang Bisa Dihubungi *</label>
                 <input type="text" name="phone_number" value="{{ old('phone_number') }}" required
-                    class="w-full rounded-lg border-slate-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                    class="w-full rounded-lg border-slate-300 px-3 py-2 shadow-sm focus:border-brand-400 focus:ring-brand-400"
                     placeholder="08xxxxxxxxxx">
             </div>
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium">Nama Perangkat *</label>
+                <label class="mb-1.5 block text-sm font-medium text-slate-700">Nama Perangkat *</label>
                 <select name="device_type" required
-                    class="w-full rounded-lg border-slate-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                    class="w-full rounded-lg border-slate-300 px-3 py-2 shadow-sm focus:border-brand-400 focus:ring-brand-400">
                     <option value="">Pilih perangkat</option>
                     @foreach ($deviceTypes as $value => $label)
                         <option value="{{ $value }}" @selected(old('device_type') === $value)>{{ $label }}</option>
@@ -61,9 +100,9 @@
             </div>
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium">Serial Number *</label>
+                <label class="mb-1.5 block text-sm font-medium text-slate-700">Serial Number *</label>
                 <input type="text" name="assembly_serial_number" value="{{ old('assembly_serial_number') }}" required
-                    class="w-full rounded-lg border-slate-300 px-3 py-2 uppercase shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                    class="w-full rounded-lg border-slate-300 px-3 py-2 uppercase shadow-sm focus:border-brand-400 focus:ring-brand-400"
                     placeholder="Contoh: DG202610001">
                 <p class="mt-1 text-xs text-slate-500">
                     Jika SN ada di sistem DigiGate, akan otomatis terhubung ke data assembly.
@@ -71,14 +110,14 @@
             </div>
 
             <div>
-                <label class="mb-1.5 block text-sm font-medium">Keluhan *</label>
+                <label class="mb-1.5 block text-sm font-medium text-slate-700">Keluhan *</label>
                 <textarea name="complaint" rows="5" required
-                    class="w-full rounded-lg border-slate-300 px-3 py-2 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                    class="w-full rounded-lg border-slate-300 px-3 py-2 shadow-sm focus:border-brand-400 focus:ring-brand-400"
                     placeholder="Jelaskan keluhan atau kerusakan perangkat...">{{ old('complaint') }}</textarea>
             </div>
 
             <button type="submit"
-                class="w-full rounded-xl bg-amber-600 px-4 py-3 text-sm font-semibold text-white hover:bg-amber-700">
+                class="w-full rounded-xl bg-brand-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2">
                 Kirim Pengajuan
             </button>
         </form>
