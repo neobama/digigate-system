@@ -1,0 +1,203 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Assembly;
+use App\Models\Component;
+use App\Models\WarrantyClaim;
+use App\Models\WarrantyLog;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class WarrantyClaimService
+{
+    public const DEVICE_TYPES = [
+        'Maleo' => 'DigiGate Maleo',
+        'Macan' => 'DigiGate Macan',
+        'Komodo' => 'DigiGate Komodo',
+    ];
+
+    public const COMPONENT_TYPES = [
+        'chassis' => 'Chassis',
+        'processor' => 'Processor',
+        'ram_1' => 'RAM Slot 1',
+        'ram_2' => 'RAM Slot 2',
+        'ssd' => 'SSD',
+    ];
+
+    public static function generateTicketNumber(): string
+    {
+        $prefix = 'GS-'.now()->format('Ymd').'-';
+        $latest = WarrantyClaim::query()
+            ->where('ticket_number', 'like', $prefix.'%')
+            ->orderByDesc('ticket_number')
+            ->value('ticket_number');
+
+        $sequence = $latest ? ((int) substr($latest, -4)) + 1 : 1;
+
+        return $prefix.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
+    }
+
+    public static function resolveAssemblyLink(string $serialNumber): array
+    {
+        $assembly = Assembly::query()
+            ->where('serial_number', $serialNumber)
+            ->first();
+
+        return [
+            'assembly' => $assembly,
+            'is_assembly_linked' => $assembly !== null,
+            'device_type' => $assembly?->product_type,
+        ];
+    }
+
+    public static function createFromClientPortal(array $data): WarrantyClaim
+    {
+        $serialNumber = strtoupper(trim($data['assembly_serial_number']));
+        $link = static::resolveAssemblyLink($serialNumber);
+
+        return DB::transaction(function () use ($data, $serialNumber, $link) {
+            $claim = WarrantyClaim::create([
+                'ticket_number' => static::generateTicketNumber(),
+                'invoice_number' => $data['invoice_number'],
+                'client_name' => $data['client_name'],
+                'phone_number' => $data['phone_number'],
+                'device_type' => $data['device_type'],
+                'complaint' => $data['complaint'],
+                'assembly_serial_number' => $serialNumber,
+                'is_assembly_linked' => $link['is_assembly_linked'],
+                'source' => 'client_portal',
+                'status' => 'pending',
+                'entry_date' => now(),
+                'notes' => null,
+                'created_by' => null,
+            ]);
+
+            $notes = 'Pengajuan dari portal client repair.digigate.id';
+            if ($link['is_assembly_linked']) {
+                $notes .= ' — SN terhubung otomatis ke assembly.';
+            } else {
+                $notes .= ' — SN belum ditemukan di ERP, perlu link manual.';
+            }
+
+            WarrantyLog::create([
+                'warranty_claim_id' => $claim->id,
+                'status' => 'pending',
+                'action_type' => 'client_submit',
+                'notes' => $notes,
+                'changed_by' => null,
+            ]);
+
+            return $claim;
+        });
+    }
+
+    public static function availableComponentOptions(string $componentType, ?string $deviceType = null): array
+    {
+        $names = match ($componentType) {
+            'chassis' => match ($deviceType) {
+                'Macan' => ['Chassis Macan'],
+                'Maleo' => ['Chassis Maleo'],
+                'Komodo' => ['Chassis Komodo'],
+                default => ['Chassis Macan', 'Chassis Maleo', 'Chassis Komodo'],
+            },
+            'processor' => match ($deviceType) {
+                'Macan' => ['Processor i7 11700K'],
+                'Maleo' => ['Processor i7 8700K'],
+                'Komodo' => ['Processor i7 14700K'],
+                default => ['Processor i7 11700K', 'Processor i7 8700K', 'Processor i7 14700K'],
+            },
+            'ram_1', 'ram_2' => $deviceType === 'Komodo'
+                ? ['RAM DDR5']
+                : ($deviceType ? ['RAM DDR4'] : ['RAM DDR4', 'RAM DDR5']),
+            'ssd' => ['SSD'],
+            default => [],
+        };
+
+        return Component::query()
+            ->whereIn('name', $names)
+            ->where('status', 'available')
+            ->pluck('sn', 'sn')
+            ->all();
+    }
+
+    public static function addWorkLog(WarrantyClaim $claim, array $data): WarrantyLog
+    {
+        $actionType = $data['action_type'] ?? 'status_update';
+        $newStatus = $data['status'] ?? $claim->status;
+
+        return DB::transaction(function () use ($claim, $data, $actionType, $newStatus) {
+            $claim->update([
+                'status' => $newStatus,
+                'completed_at' => $newStatus === 'completed' ? ($claim->completed_at ?? now()) : null,
+            ]);
+
+            $logData = [
+                'warranty_claim_id' => $claim->id,
+                'status' => $newStatus,
+                'action_type' => $actionType,
+                'notes' => $data['notes'] ?? null,
+                'changed_by' => Auth::id(),
+                'component_type' => $data['component_type'] ?? null,
+                'old_component_sn' => null,
+                'new_component_sn' => null,
+            ];
+
+            if ($actionType === 'service') {
+                if (empty($data['component_type'])) {
+                    throw ValidationException::withMessages([
+                        'component_type' => 'Pilih komponen yang di-service.',
+                    ]);
+                }
+
+                $assembly = $claim->findAssembly();
+                $logData['old_component_sn'] = $assembly?->sn_details[$data['component_type']] ?? null;
+            }
+
+            if ($actionType === 'replace') {
+                if (empty($data['component_type']) || empty($data['new_component_sn'])) {
+                    throw ValidationException::withMessages([
+                        'new_component_sn' => 'Penggantian komponen wajib memilih part dari stok.',
+                    ]);
+                }
+
+                $assembly = $claim->findAssembly();
+                if (! $assembly) {
+                    throw ValidationException::withMessages([
+                        'component_type' => 'SN perangkat belum terhubung ke assembly. Link manual dulu sebelum ganti part.',
+                    ]);
+                }
+
+                $oldSn = $assembly->sn_details[$data['component_type']] ?? null;
+                $newSn = $data['new_component_sn'];
+
+                $newComponent = Component::query()
+                    ->where('sn', $newSn)
+                    ->where('status', 'available')
+                    ->first();
+
+                if (! $newComponent) {
+                    throw ValidationException::withMessages([
+                        'new_component_sn' => 'Komponen baru tidak tersedia di stok.',
+                    ]);
+                }
+
+                $snDetails = $assembly->sn_details ?? [];
+                $snDetails[$data['component_type']] = $newSn;
+                $assembly->update(['sn_details' => $snDetails]);
+
+                if ($oldSn) {
+                    Component::where('sn', $oldSn)->update(['status' => 'damaged']);
+                }
+
+                $newComponent->update(['status' => 'used']);
+
+                $logData['old_component_sn'] = $oldSn;
+                $logData['new_component_sn'] = $newSn;
+            }
+
+            return WarrantyLog::create($logData);
+        });
+    }
+}

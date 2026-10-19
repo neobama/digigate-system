@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DonoAssistantController;
 use App\Http\Controllers\InvoicePdfController;
+use App\Http\Controllers\RepairPortalController;
 use App\Http\Controllers\SalarySlipController;
 
 // Root route now handled by Filament admin panel
@@ -34,4 +35,20 @@ Route::get('/dono/chat/{jobId}', [DonoAssistantController::class, 'status'])
     ->whereUuid('jobId')
     ->name('dono.chat.status');
 
-// (Device Return portal sementara dinonaktifkan)
+// Device Return portal dinonaktifkan permanen — diganti portal garansi/service.
+$repairPortalRoutes = function () {
+    Route::get('/', [RepairPortalController::class, 'create'])->name('create');
+    Route::post('/', [RepairPortalController::class, 'store'])->name('store');
+    Route::get('/success', [RepairPortalController::class, 'success'])->name('success');
+};
+
+if (app()->environment('production')) {
+    Route::domain('repair.digigate.id')
+        ->name('repair.portal.')
+        ->group($repairPortalRoutes);
+} else {
+    // Dev fallback: /repair-portal
+    Route::prefix('repair-portal')
+        ->name('repair.portal.')
+        ->group($repairPortalRoutes);
+}

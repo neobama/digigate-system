@@ -61,6 +61,7 @@ class ComponentResource extends Resource
                         'available' => 'Tersedia',
                         'used' => 'Terpakai',
                         'warranty_claim' => 'Klaim Garansi',
+                        'damaged' => 'Rusak',
                     ])
                     ->default('available')
                     ->required(),
@@ -84,13 +85,23 @@ class ComponentResource extends Resource
                     'success' => 'available',
                     'danger' => 'used',
                     'warning' => 'warranty_claim',
-                ]),
+                    'gray' => 'damaged',
+                ])
+                ->formatStateUsing(fn ($state) => match ($state) {
+                    'available' => 'Tersedia',
+                    'used' => 'Terpakai',
+                    'warranty_claim' => 'Klaim Garansi',
+                    'damaged' => 'Rusak',
+                    default => $state,
+                }),
         ])
         ->filters([
             Tables\Filters\SelectFilter::make('status')
                 ->options([
                     'available' => 'Tersedia',
                     'used' => 'Terpakai',
+                    'warranty_claim' => 'Klaim Garansi',
+                    'damaged' => 'Rusak',
                 ])
         ])
         ->headerActions([
@@ -127,12 +138,14 @@ class ComponentResource extends Resource
                                 'available' => 'success',
                                 'used' => 'danger',
                                 'warranty_claim' => 'warning',
+                                'damaged' => 'gray',
                                 default => 'gray',
                             })
                             ->formatStateUsing(fn (string $state): string => match ($state) {
                                 'available' => 'Tersedia',
                                 'used' => 'Terpakai',
                                 'warranty_claim' => 'Klaim Garansi',
+                                'damaged' => 'Rusak',
                                 default => $state,
                             }),
                     ])->columns(2),

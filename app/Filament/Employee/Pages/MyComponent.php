@@ -54,6 +54,7 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                         'success' => 'available',
                         'danger' => 'used',
                         'warning' => 'warranty_claim',
+                        'gray' => 'damaged',
                     ])
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
@@ -69,6 +70,7 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                         'available' => 'Tersedia',
                         'used' => 'Terpakai',
                         'warranty_claim' => 'Klaim Garansi',
+                                        'damaged' => 'Rusak',
                     ]),
                 Tables\Filters\SelectFilter::make('name')
                     ->label('Tipe Komponen')
@@ -265,6 +267,7 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                                         'available' => 'Tersedia',
                                         'used' => 'Terpakai',
                                         'warranty_claim' => 'Klaim Garansi',
+                                        'damaged' => 'Rusak',
                                     ])
                                     ->default('available')
                                     ->required(),
@@ -371,6 +374,7 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                                 'available' => 'Tersedia',
                                 'used' => 'Terpakai',
                                 'warranty_claim' => 'Klaim Garansi',
+                                        'damaged' => 'Rusak',
                             ])
                             ->default('available')
                             ->required(),
@@ -431,6 +435,7 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                                 'available' => 'Tersedia',
                                 'used' => 'Terpakai',
                                 'warranty_claim' => 'Klaim Garansi',
+                                        'damaged' => 'Rusak',
                             ])
                             ->required(),
                     ])

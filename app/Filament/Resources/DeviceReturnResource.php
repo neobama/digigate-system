@@ -21,11 +21,8 @@ class DeviceReturnResource extends Resource
     protected static ?string $model = DeviceReturn::class;
 
     /**
-     * We don't need this resource to appear in Filament navigation.
-     * This avoids Filament trying to generate a navigation URL
-     * for the (missing) admin index route name.
-     * Routes for the resource itself (index/show/edit) tetap ada
-     * dan bisa diakses langsung jika diperlukan.
+     * Device Return portal dinonaktifkan — diganti portal Garansi/Service
+     * di repair.digigate.id. Resource disembunyikan dari navigasi.
      */
     protected static bool $shouldRegisterNavigation = false;
 

@@ -2,39 +2,62 @@
 
 namespace App\Filament\Employee\Pages;
 
+use App\Filament\Concerns\HandlesWarrantyWorkLogs;
+use App\Models\Assembly;
 use App\Models\WarrantyClaim;
 use App\Models\WarrantyLog;
-use App\Models\Assembly;
-use App\Models\Component;
+use App\Services\WarrantyClaimService;
 use Filament\Forms;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Concerns\InteractsWithTable;
-use Illuminate\Database\Eloquent\Builder;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
-use Filament\Notifications\Notification;
 
 class MyWarrantyClaim extends Page implements HasTable
 {
+    use HandlesWarrantyWorkLogs;
     use InteractsWithTable;
 
     protected static ?string $navigationIcon = 'heroicon-o-shield-check';
+
     protected static string $view = 'filament.employee.pages.my-warranty-claim';
-    protected static ?string $navigationLabel = 'Garansi';
-    protected static ?string $title = 'Garansi Perangkat';
+
+    protected static ?string $navigationLabel = 'Garansi / Service';
+
+    protected static ?string $title = 'Garansi / Service';
 
     public function table(Table $table): Table
     {
         return $table
             ->query(WarrantyClaim::query()->with('creator')->orderBy('entry_date', 'desc'))
             ->columns([
-                Tables\Columns\TextColumn::make('assembly_serial_number')
-                    ->label('SN Perangkat')
+                Tables\Columns\TextColumn::make('ticket_number')
+                    ->label('Tiket')
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
+                Tables\Columns\TextColumn::make('client_name')
+                    ->label('Client')
+                    ->searchable()
+                    ->placeholder('-'),
+                Tables\Columns\TextColumn::make('assembly_serial_number')
+                    ->label('SN')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('device_type')
+                    ->label('Perangkat')
+                    ->formatStateUsing(fn (?string $state) => WarrantyClaimService::DEVICE_TYPES[$state] ?? $state),
+                Tables\Columns\IconColumn::make('is_assembly_linked')
+                    ->label('Link')
+                    ->boolean(),
+                Tables\Columns\TextColumn::make('source')
+                    ->label('Sumber')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state) => $state === 'client_portal' ? 'Portal' : 'Internal')
+                    ->color(fn (?string $state) => $state === 'client_portal' ? 'info' : 'gray'),
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Status')
                     ->colors([
@@ -51,19 +74,9 @@ class MyWarrantyClaim extends Page implements HasTable
                         default => $state,
                     }),
                 Tables\Columns\TextColumn::make('entry_date')
-                    ->label('Tanggal Masuk')
+                    ->label('Masuk')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('completed_at')
-                    ->label('Tanggal Selesai')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('logs_count')
-                    ->label('Jumlah Log')
-                    ->counts('logs')
-                    ->badge()
-                    ->color('info'),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
@@ -73,198 +86,82 @@ class MyWarrantyClaim extends Page implements HasTable
                         'completed' => 'Completed',
                         'cancelled' => 'Cancelled',
                     ]),
+                Tables\Filters\SelectFilter::make('source')
+                    ->options([
+                        'client_portal' => 'Portal Client',
+                        'internal' => 'Internal',
+                    ]),
+                Tables\Filters\TernaryFilter::make('is_assembly_linked')
+                    ->label('Link Assembly'),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
                     ->form([
+                        Forms\Components\TextInput::make('invoice_number')->label('Nomor Invoice'),
+                        Forms\Components\TextInput::make('client_name')->label('Nama Client'),
+                        Forms\Components\TextInput::make('phone_number')->label('Telepon')->tel(),
+                        Forms\Components\Select::make('device_type')
+                            ->label('Perangkat')
+                            ->options(WarrantyClaimService::DEVICE_TYPES),
                         Forms\Components\TextInput::make('assembly_serial_number')
-                            ->label('Serial Number Perangkat')
+                            ->label('Serial Number')
                             ->required()
-                            ->maxLength(255)
-                            ->helperText('Masukkan SN perangkat yang akan digaransi, lalu klik tombol Verifikasi SN')
                             ->suffixAction(
                                 Forms\Components\Actions\Action::make('verify')
                                     ->icon('heroicon-o-check-circle')
-                                    ->label('Verifikasi SN')
-                                    ->action(function (Forms\Get $get) {
+                                    ->label('Cek SN')
+                                    ->action(function (Forms\Get $get, Forms\Set $set) {
                                         $sn = $get('assembly_serial_number');
-                                        if (!$sn) {
-                                            Notification::make()
-                                                ->warning()
-                                                ->title('SN Kosong')
-                                                ->body('Silakan masukkan Serial Number terlebih dahulu.')
-                                                ->send();
+                                        if (! $sn) {
                                             return;
                                         }
-                                        
-                                        $assembly = Assembly::where('serial_number', $sn)->first();
+                                        $assembly = Assembly::where('serial_number', strtoupper(trim($sn)))->first();
                                         if ($assembly) {
-                                            Notification::make()
-                                                ->success()
-                                                ->title('SN Terdeteksi')
-                                                ->body('Serial Number ditemukan di database. Perangkat: ' . ($assembly->product_type ?? 'N/A'))
-                                                ->send();
+                                            $set('device_type', $assembly->product_type);
+                                            Notification::make()->success()->title('SN terhubung')->send();
                                         } else {
-                                            Notification::make()
-                                                ->warning()
-                                                ->title('SN Tidak Ditemukan')
-                                                ->body('Serial number perangkat tidak ditemukan di database. Pastikan SN sudah benar.')
-                                                ->send();
+                                            Notification::make()->warning()->title('SN belum di ERP')->send();
                                         }
                                     })
                             ),
-                        Forms\Components\Textarea::make('notes')
-                            ->label('Catatan')
-                            ->rows(3),
+                        Forms\Components\Textarea::make('complaint')->label('Keluhan')->rows(3),
+                        Forms\Components\Textarea::make('notes')->label('Catatan Internal')->rows(2),
                     ])
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['created_by'] = Auth::id();
                         $data['entry_date'] = now();
-                        $data['status'] = $data['status'] ?? 'pending';
+                        $data['status'] = 'pending';
+                        $data['source'] = 'internal';
+
                         return $data;
                     })
                     ->after(function (WarrantyClaim $record) {
                         WarrantyLog::create([
                             'warranty_claim_id' => $record->id,
-                            'status' => $record->status ?? 'pending',
-                            'notes' => 'Garansi dibuat',
+                            'status' => 'pending',
+                            'action_type' => 'status_update',
+                            'notes' => 'Garansi/service dibuat dari panel karyawan',
                             'changed_by' => Auth::id(),
                         ]);
                     }),
             ])
             ->actions([
-                Tables\Actions\Action::make('viewLogs')
-                    ->label('Lihat Log')
-                    ->icon('heroicon-o-clock')
-                    ->color('info')
-                    ->modalHeading(fn (WarrantyClaim $record) => 'Log Garansi: ' . $record->assembly_serial_number)
-                    ->modalContent(function (WarrantyClaim $record) {
-                        return view('filament.infolists.components.warranty-logs', [
-                            'logs' => $record->logs,
-                        ]);
-                    })
-                    ->modalWidth('4xl')
+                Tables\Actions\Action::make('viewDetail')
+                    ->label('Detail')
+                    ->icon('heroicon-o-eye')
+                    ->modalHeading(fn (WarrantyClaim $record) => 'Tiket '.$record->ticket_number)
+                    ->modalContent(fn (WarrantyClaim $record) => view('filament.employee.components.warranty-claim-detail', [
+                        'record' => $record->load('logs.changedBy'),
+                    ]))
                     ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Tutup'),
+                    ->modalCancelActionLabel('Tutup')
+                    ->modalWidth('4xl'),
                 Tables\Actions\Action::make('addLog')
-                    ->label('Tambah Log')
-                    ->icon('heroicon-o-plus-circle')
+                    ->label('Kerjakan')
+                    ->icon('heroicon-o-wrench-screwdriver')
                     ->color('success')
-                    ->form([
-                        Forms\Components\Select::make('status')
-                            ->label('Status')
-                            ->options([
-                                'pending' => 'Pending',
-                                'in_progress' => 'In Progress',
-                                'completed' => 'Completed',
-                                'cancelled' => 'Cancelled',
-                            ])
-                            ->default(fn (WarrantyClaim $record) => $record->status)
-                            ->required()
-                            ->live(),
-                        Forms\Components\Toggle::make('replace_component')
-                            ->label('Ganti Komponen?')
-                            ->live()
-                            ->default(false),
-                        Forms\Components\Select::make('component_type')
-                            ->label('Jenis Komponen yang Diganti')
-                            ->options([
-                                'chassis' => 'Chassis',
-                                'processor' => 'Processor',
-                                'ram_1' => 'RAM Slot 1',
-                                'ram_2' => 'RAM Slot 2',
-                                'ssd' => 'SSD',
-                            ])
-                            ->visible(fn (Forms\Get $get) => $get('replace_component'))
-                            ->required(fn (Forms\Get $get) => $get('replace_component'))
-                            ->live()
-                            ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get, WarrantyClaim $record) {
-                                $assembly = Assembly::where('serial_number', $record->assembly_serial_number)->first();
-                                if ($assembly && $assembly->sn_details) {
-                                    $currentSn = $assembly->sn_details[$state] ?? null;
-                                    $set('old_component_sn', $currentSn);
-                                }
-                            }),
-                        Forms\Components\TextInput::make('old_component_sn')
-                            ->label('SN Komponen Lama')
-                            ->disabled()
-                            ->visible(fn (Forms\Get $get) => $get('replace_component') && $get('component_type')),
-                        Forms\Components\Select::make('new_component_sn')
-                            ->label('SN Komponen Baru')
-                            ->options(function (Forms\Get $get) {
-                                $componentType = $get('component_type');
-                                if (!$componentType) {
-                                    return [];
-                                }
-                                
-                                $componentNameMap = [
-                                    'chassis' => ['Chassis Macan', 'Chassis Maleo', 'Chassis Komodo'],
-                                    'processor' => ['Processor i7 11700K', 'Processor i7 8700K', 'Processor i7 14700K'],
-                                    'ram_1' => ['RAM DDR4', 'RAM DDR5'],
-                                    'ram_2' => ['RAM DDR4', 'RAM DDR5'],
-                                    'ssd' => ['SSD'],
-                                ];
-                                
-                                $componentNames = $componentNameMap[$componentType] ?? [];
-                                
-                                return Component::whereIn('name', $componentNames)
-                                    ->where('status', 'available')
-                                    ->pluck('sn', 'sn')
-                                    ->toArray();
-                            })
-                            ->searchable()
-                            ->visible(fn (Forms\Get $get) => $get('replace_component') && $get('component_type'))
-                            ->required(fn (Forms\Get $get) => $get('replace_component')),
-                        Forms\Components\Textarea::make('notes')
-                            ->label('Catatan')
-                            ->rows(3)
-                            ->columnSpanFull(),
-                    ])
-                    ->action(function (WarrantyClaim $record, array $data) {
-                        $replaceComponent = $data['replace_component'] ?? false;
-                        $newStatus = $data['status'];
-                        
-                        $record->update([
-                            'status' => $newStatus,
-                            'completed_at' => $newStatus === 'completed' ? now() : null,
-                        ]);
-                        
-                        $logData = [
-                            'warranty_claim_id' => $record->id,
-                            'status' => $newStatus,
-                            'notes' => $data['notes'] ?? null,
-                            'changed_by' => Auth::id(),
-                        ];
-                        
-                        if ($replaceComponent) {
-                            $logData['component_type'] = $data['component_type'];
-                            $logData['old_component_sn'] = $data['old_component_sn'] ?? null;
-                            $logData['new_component_sn'] = $data['new_component_sn'] ?? null;
-                            
-                            $assembly = Assembly::where('serial_number', $record->assembly_serial_number)->first();
-                            if ($assembly) {
-                                $snDetails = $assembly->sn_details ?? [];
-                                $snDetails[$data['component_type']] = $data['new_component_sn'];
-                                $assembly->update(['sn_details' => $snDetails]);
-                            }
-                            
-                            if ($data['old_component_sn']) {
-                                Component::where('sn', $data['old_component_sn'])->update(['status' => 'warranty_claim']);
-                            }
-                            
-                            if ($data['new_component_sn']) {
-                                Component::where('sn', $data['new_component_sn'])->update(['status' => 'used']);
-                            }
-                        }
-                        
-                        WarrantyLog::create($logData);
-                        
-                        Notification::make()
-                            ->success()
-                            ->title('Log berhasil ditambahkan')
-                            ->body('Log garansi telah ditambahkan' . ($replaceComponent ? ' dan komponen telah diganti' : ''))
-                            ->send();
-                    }),
+                    ->form(fn () => $this->warrantyWorkLogForm())
+                    ->action(fn (WarrantyClaim $record, array $data) => $this->processWarrantyWorkLog($record, $data)),
             ]);
     }
 }
