@@ -29,4 +29,9 @@ Route::post('/dono/chat', [DonoAssistantController::class, 'chat'])
     ->middleware('auth')
     ->name('dono.chat');
 
+Route::get('/dono/chat/{jobId}', [DonoAssistantController::class, 'status'])
+    ->middleware('auth')
+    ->whereUuid('jobId')
+    ->name('dono.chat.status');
+
 // (Device Return portal sementara dinonaktifkan)

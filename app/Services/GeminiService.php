@@ -18,12 +18,6 @@ class GeminiService
         $model = config('gemini.model', 'gemini-2.0-flash');
         $this->baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
 
-        // Log for debugging
-        Log::debug('GeminiService initialized', [
-            'model' => $model,
-            'baseUrl' => $this->baseUrl,
-            'hasApiKey' => ! empty($this->apiKey),
-        ]);
     }
 
     /**

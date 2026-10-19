@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\EmployeeRole;
+use App\Support\DonoPromptCache;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +21,12 @@ class Employee extends Model
         'birth_date' => 'date',
         'role' => EmployeeRole::class,
     ];
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => DonoPromptCache::forgetEmployeeNames());
+        static::deleted(fn () => DonoPromptCache::forgetEmployeeNames());
+    }
 
     public function user(): BelongsTo
     {

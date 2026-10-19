@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Employee;
-use App\Services\GeminiService;
+use App\Jobs\ProcessDonoChatJob;
 use App\Support\DonoApplicationCatalog;
-use App\Support\DonoFallbackIntentParser;
-use App\Support\DonoTaskFieldNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class DonoAssistantController extends Controller
 {
@@ -25,69 +24,80 @@ class DonoAssistantController extends Controller
         $memoryKey = 'dono_memory_'.(auth()->id() ?? session()->getId());
         $history = session($memoryKey, []);
 
-        $employeeNames = Employee::query()->pluck('name')->take(200)->values()->all();
-        $assistantPayload = $this->parseIntent($message, $history, $employeeNames, $panel);
+        $jobId = (string) Str::uuid();
 
-        $history[] = ['role' => 'user', 'text' => $message];
-        $history[] = ['role' => 'assistant', 'text' => $assistantPayload['reply'] ?? ''];
-        session([$memoryKey => array_slice($history, -12)]);
+        Cache::put(ProcessDonoChatJob::cacheKeyFor($jobId), [
+            'status' => 'pending',
+            'payload' => null,
+        ], now()->addMinutes(10));
 
-        return response()->json($assistantPayload);
+        ProcessDonoChatJob::dispatch(
+            $jobId,
+            $message,
+            $panel,
+            $history,
+            auth()->id() ? (string) auth()->id() : null,
+        );
+
+        // Simpan user message dulu; balasan assistant dilengkapi saat status=done
+        session([
+            $memoryKey.'_pending_job' => $jobId,
+            $memoryKey.'_pending_message' => $message,
+        ]);
+
+        return response()->json([
+            'job_id' => $jobId,
+            'status' => 'pending',
+        ]);
     }
 
-    /**
-     * @param  array<int, array{role: string, text: string}>  $history
-     * @param  array<int, string>  $employeeNames
-     * @return array{reply: string, intent: string, action: ?array{label: string, url: string}}
-     */
-    private function parseIntent(string $message, array $history, array $employeeNames, string $panel): array
+    public function status(Request $request, string $jobId): JsonResponse
     {
-        $prompt = "Anda adalah asisten internal bernama Dono untuk ERP DigiGate.\n"
-            ."Pengguna saat ini di panel: **{$panel}** (employee = karyawan /employee, admin = panel utama).\n\n"
-            .DonoApplicationCatalog::knowledgeBaseForPrompt()."\n\n"
-            .DonoApplicationCatalog::taskCalendarContextBlock()."\n"
-            .DonoApplicationCatalog::taskFieldRulesForPrompt()."\n\n"
-            .DonoApplicationCatalog::jsonSchemaInstruction()."\n\n"
-            .'Nama karyawan valid (untuk task / assign): '.implode(', ', $employeeNames)."\n"
-            .'Riwayat chat singkat: '.json_encode($history, JSON_UNESCAPED_UNICODE)."\n"
-            .'User message: '.$message;
+        $cached = Cache::get(ProcessDonoChatJob::cacheKeyFor($jobId));
 
-        $gemini = new GeminiService;
-        $result = $gemini->generateJsonFromPrompt($prompt);
-
-        if (! $result) {
-            $result = DonoFallbackIntentParser::parse($message, $panel);
-        }
-
-        if (! $result) {
-            return [
-                'reply' => 'Dono tidak bisa memproses perintah ini (layanan AI belum dikonfigurasi atau sibuk). Tambahkan GEMINI_API_KEY di .env dan pakai model yang valid (mis. gemini-2.0-flash). Atau buka **Financial → Pengeluaran** di sidebar untuk input manual.',
+        if (! is_array($cached)) {
+            return response()->json([
+                'status' => 'missing',
+                'reply' => 'Hasil chat tidak ditemukan atau sudah kedaluwarsa. Kirim ulang pesan.',
                 'intent' => 'unknown',
                 'action' => null,
-            ];
+            ], 404);
         }
 
-        $intent = $result['intent'] ?? 'unknown';
-        $fields = is_array($result['fields'] ?? null) ? $result['fields'] : [];
+        $status = $cached['status'] ?? 'pending';
 
-        if ($intent === 'create_task') {
-            $fields = DonoTaskFieldNormalizer::normalize($fields, $message);
+        if ($status === 'pending') {
+            return response()->json([
+                'status' => 'pending',
+            ]);
         }
 
-        $reply = $result['reply'] ?? 'Siap, saya bantu.';
-
-        if (in_array($intent, ['app_help', 'unknown'], true)) {
-            return [
-                'reply' => $reply,
-                'intent' => $intent,
-                'action' => null,
-            ];
-        }
-
-        return [
-            'reply' => $reply,
-            'intent' => $intent,
-            'action' => DonoApplicationCatalog::buildAction($intent, $fields, $panel),
+        $payload = is_array($cached['payload'] ?? null) ? $cached['payload'] : [
+            'reply' => 'Siap.',
+            'intent' => 'unknown',
+            'action' => null,
         ];
+
+        $memoryKey = 'dono_memory_'.(auth()->id() ?? session()->getId());
+        if (session($memoryKey.'_pending_job') === $jobId) {
+            $history = session($memoryKey, []);
+            $pendingMessage = session($memoryKey.'_pending_message');
+            if (is_string($pendingMessage) && $pendingMessage !== '') {
+                $history[] = ['role' => 'user', 'text' => $pendingMessage];
+            }
+            $history[] = ['role' => 'assistant', 'text' => $payload['reply'] ?? ''];
+            session([
+                $memoryKey => array_slice($history, -12),
+                $memoryKey.'_pending_job' => null,
+                $memoryKey.'_pending_message' => null,
+            ]);
+        }
+
+        return response()->json([
+            'status' => $status === 'failed' ? 'failed' : 'done',
+            'reply' => $payload['reply'] ?? 'Siap.',
+            'intent' => $payload['intent'] ?? 'unknown',
+            'action' => $payload['action'] ?? null,
+        ]);
     }
 }

@@ -157,17 +157,43 @@
         actionEl.appendChild(a);
     };
 
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const pollStatus = async (jobId) => {
+        const maxAttempts = 60;
+        for (let i = 0; i < maxAttempts; i++) {
+            const res = await fetch('/dono/chat/' + encodeURIComponent(jobId), {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
+            if (res.status === 404) {
+                return { reply: 'Hasil chat tidak ditemukan. Kirim ulang pesan.', action: null };
+            }
+            const data = await res.json();
+            if (data.status === 'done' || data.status === 'failed') {
+                return data;
+            }
+            await sleep(500);
+        }
+        return { reply: 'Dono masih memproses terlalu lama. Coba lagi.', action: null };
+    };
+
     const send = async () => {
         const text = (input.value || '').trim();
         if (!text || loading) return;
         loading = true;
         input.value = '';
         addMessage('user', text);
+        addMessage('assistant', 'Dono sedang berpikir...');
+        const thinkingNode = messages.lastChild;
         try {
             const res = await fetch('/dono/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
                 body: JSON.stringify({
@@ -175,10 +201,20 @@
                     panel: window.location.pathname.startsWith('/employee') ? 'employee' : 'admin',
                 }),
             });
-            const data = await res.json();
+            const queued = await res.json();
+            if (!queued.job_id) {
+                throw new Error('missing job_id');
+            }
+            const data = await pollStatus(queued.job_id);
+            if (thinkingNode && thinkingNode.parentNode === messages) {
+                messages.removeChild(thinkingNode);
+            }
             addMessage('assistant', data.reply || 'Siap.');
             setAction(data.action || null);
         } catch (e) {
+            if (thinkingNode && thinkingNode.parentNode === messages) {
+                messages.removeChild(thinkingNode);
+            }
             addMessage('assistant', 'Maaf, Dono sedang error. Coba lagi.');
         } finally {
             loading = false;
