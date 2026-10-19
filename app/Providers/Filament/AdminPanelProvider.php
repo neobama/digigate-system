@@ -23,7 +23,7 @@ class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return $panel
+        $panel = $panel
             ->default()
             ->id('admin')
             ->path('/')
@@ -64,5 +64,12 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ]);
+
+        // Jangan tangkap subdomain publik (repair.digigate.id, dll).
+        if ($domain = config('app.filament_domain')) {
+            $panel = $panel->domain($domain);
+        }
+
+        return $panel;
     }
 }

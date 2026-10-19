@@ -56,6 +56,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Filament panel host (admin + employee). Null = any host (local).
+    | Production: erp.digigate.id so repair.digigate.id stays public.
+    |--------------------------------------------------------------------------
+    */
+
+    'filament_domain' => env('FILAMENT_DOMAIN', env('APP_ENV') === 'production'
+        ? parse_url(env('APP_URL', 'https://erp.digigate.id'), PHP_URL_HOST)
+        : null),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

@@ -23,7 +23,7 @@ class EmployeePanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return $panel
+        $panel = $panel
             ->id('employee')
             ->path('employee')
             ->login(\App\Filament\Employee\Pages\EmployeeLogin::class)
@@ -56,6 +56,12 @@ class EmployeePanelProvider extends PanelProvider
             ])
             ->authGuard('web')
             ->authPasswordBroker('users');
+
+        if ($domain = config('app.filament_domain')) {
+            $panel = $panel->domain($domain);
+        }
+
+        return $panel;
     }
 }
 
