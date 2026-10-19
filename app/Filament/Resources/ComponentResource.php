@@ -60,11 +60,11 @@ class ComponentResource extends Resource
                     ->options([
                         'available' => 'Tersedia',
                         'used' => 'Terpakai',
-                        'warranty_claim' => 'Klaim Garansi',
                         'damaged' => 'Rusak',
                     ])
                     ->default('available')
-                    ->required(),
+                    ->required()
+                    ->helperText('Part diganti lewat garansi otomatis jadi Rusak (damaged).'),
             ])->columns(2)
         ]);
     }
@@ -90,7 +90,7 @@ class ComponentResource extends Resource
                 ->formatStateUsing(fn ($state) => match ($state) {
                     'available' => 'Tersedia',
                     'used' => 'Terpakai',
-                    'warranty_claim' => 'Klaim Garansi',
+                    'warranty_claim' => 'Rusak (legacy)',
                     'damaged' => 'Rusak',
                     default => $state,
                 }),
@@ -100,8 +100,8 @@ class ComponentResource extends Resource
                 ->options([
                     'available' => 'Tersedia',
                     'used' => 'Terpakai',
-                    'warranty_claim' => 'Klaim Garansi',
                     'damaged' => 'Rusak',
+                    'warranty_claim' => 'Rusak (legacy)',
                 ])
         ])
         ->headerActions([
@@ -144,7 +144,7 @@ class ComponentResource extends Resource
                             ->formatStateUsing(fn (string $state): string => match ($state) {
                                 'available' => 'Tersedia',
                                 'used' => 'Terpakai',
-                                'warranty_claim' => 'Klaim Garansi',
+                                'warranty_claim' => 'Rusak (legacy)',
                                 'damaged' => 'Rusak',
                                 default => $state,
                             }),

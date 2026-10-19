@@ -69,7 +69,7 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                     ->options([
                         'available' => 'Tersedia',
                         'used' => 'Terpakai',
-                        'warranty_claim' => 'Klaim Garansi',
+                        'warranty_claim' => 'Rusak (legacy)',
                                         'damaged' => 'Rusak',
                     ]),
                 Tables\Filters\SelectFilter::make('name')
@@ -266,7 +266,6 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                                     ->options([
                                         'available' => 'Tersedia',
                                         'used' => 'Terpakai',
-                                        'warranty_claim' => 'Klaim Garansi',
                                         'damaged' => 'Rusak',
                                     ])
                                     ->default('available')
@@ -373,8 +372,7 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                             ->options([
                                 'available' => 'Tersedia',
                                 'used' => 'Terpakai',
-                                'warranty_claim' => 'Klaim Garansi',
-                                        'damaged' => 'Rusak',
+                                'damaged' => 'Rusak',
                             ])
                             ->default('available')
                             ->required(),
@@ -434,8 +432,7 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                             ->options([
                                 'available' => 'Tersedia',
                                 'used' => 'Terpakai',
-                                'warranty_claim' => 'Klaim Garansi',
-                                        'damaged' => 'Rusak',
+                                'damaged' => 'Rusak',
                             ])
                             ->required(),
                     ])

@@ -9,6 +9,13 @@ use Illuminate\Database\Eloquent\Model;
 class Assembly extends Model
 {
     use HasUuids, LogsActivity;
+
+    /**
+     * When true, AssemblyObserver skips auto component status sync from sn_details.
+     * Used by warranty replace which sets old part to damaged (not available).
+     */
+    public static bool $skipComponentStatusSync = false;
+
     protected $fillable = ['invoice_id', 'product_type', 'serial_number', 'sn_details', 'assembly_date'];
 
     protected $casts = [

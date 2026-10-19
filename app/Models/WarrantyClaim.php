@@ -63,11 +63,19 @@ class WarrantyClaim extends Model
         });
 
         static::updating(function (WarrantyClaim $claim) {
-            if ($claim->isDirty('assembly_serial_number') && filled($claim->assembly_serial_number)) {
-                $claim->assembly_serial_number = strtoupper(trim($claim->assembly_serial_number));
-                $link = WarrantyClaimService::resolveAssemblyLink($claim->assembly_serial_number);
-                $claim->is_assembly_linked = $link['is_assembly_linked'];
+            if (! $claim->isDirty('assembly_serial_number')) {
+                return;
             }
+
+            if (blank($claim->assembly_serial_number)) {
+                $claim->is_assembly_linked = false;
+
+                return;
+            }
+
+            $claim->assembly_serial_number = strtoupper(trim($claim->assembly_serial_number));
+            $link = WarrantyClaimService::resolveAssemblyLink($claim->assembly_serial_number);
+            $claim->is_assembly_linked = $link['is_assembly_linked'];
         });
     }
 

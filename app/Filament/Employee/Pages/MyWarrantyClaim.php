@@ -179,6 +179,13 @@ class MyWarrantyClaim extends Page implements HasTable
                     ->color('success')
                     ->form(fn () => $this->warrantyWorkLogForm())
                     ->action(fn (WarrantyClaim $record, array $data) => $this->processWarrantyWorkLog($record, $data)),
+                Tables\Actions\Action::make('relinkAssembly')
+                    ->label('Refresh Link')
+                    ->icon('heroicon-o-link')
+                    ->color('gray')
+                    ->visible(fn (WarrantyClaim $record): bool => filled($record->assembly_serial_number) && ! $record->is_assembly_linked)
+                    ->action(fn (WarrantyClaim $record) => WarrantyClaimService::refreshAssemblyLink($record))
+                    ->successNotificationTitle('Link assembly diperbarui'),
             ]);
     }
 }

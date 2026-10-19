@@ -5,17 +5,17 @@ namespace App\Filament\Resources\WarrantyClaimResource\Pages;
 use App\Filament\Concerns\HandlesWarrantyWorkLogs;
 use App\Filament\Resources\WarrantyClaimResource;
 use App\Models\WarrantyClaim;
-use App\Models\WarrantyLog;
 use App\Services\WarrantyClaimService;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Support\Facades\Auth;
 
 class EditWarrantyClaim extends EditRecord
 {
     use HandlesWarrantyWorkLogs;
 
     protected static string $resource = WarrantyClaimResource::class;
+
+    protected ?string $statusBeforeSave = null;
 
     protected function getHeaderActions(): array
     {
@@ -31,13 +31,7 @@ class EditWarrantyClaim extends EditRecord
                 ->label('Refresh Link Assembly')
                 ->icon('heroicon-o-link')
                 ->color('gray')
-                ->action(function (WarrantyClaim $record) {
-                    $link = WarrantyClaimService::resolveAssemblyLink($record->assembly_serial_number);
-                    $record->update([
-                        'is_assembly_linked' => $link['is_assembly_linked'],
-                        'device_type' => $record->device_type ?: $link['device_type'],
-                    ]);
-                })
+                ->action(fn (WarrantyClaim $record) => WarrantyClaimService::refreshAssemblyLink($record))
                 ->successNotificationTitle('Link assembly diperbarui'),
         ];
     }
@@ -53,19 +47,23 @@ class EditWarrantyClaim extends EditRecord
         return $data;
     }
 
+    protected function beforeSave(): void
+    {
+        $this->statusBeforeSave = $this->record->getOriginal('status') ?? $this->record->status;
+    }
+
     protected function afterSave(): void
     {
-        $oldStatus = $this->record->getOriginal('status');
-        $newStatus = $this->record->status;
-
-        if ($oldStatus !== $newStatus) {
-            WarrantyLog::create([
-                'warranty_claim_id' => $this->record->id,
-                'status' => $newStatus,
-                'action_type' => 'status_update',
-                'notes' => 'Status diubah dari '.$oldStatus.' ke '.$newStatus,
-                'changed_by' => Auth::id(),
-            ]);
+        if ($this->statusBeforeSave === null) {
+            return;
         }
+
+        WarrantyClaimService::logStatusChange(
+            $this->record,
+            $this->statusBeforeSave,
+            (string) $this->record->status,
+        );
+
+        $this->statusBeforeSave = null;
     }
 }

@@ -288,7 +288,9 @@ class WarrantyClaimResource extends Resource
                         Infolists\Components\ViewEntry::make('logs')
                             ->label('')
                             ->view('filament.infolists.components.warranty-logs')
-                            ->viewData(fn (WarrantyClaim $record) => ['logs' => $record->logs])
+                            ->viewData(fn (WarrantyClaim $record) => [
+                                'logs' => $record->logs()->with('changedBy')->orderBy('created_at')->get(),
+                            ])
                             ->columnSpanFull(),
                     ]),
             ]);

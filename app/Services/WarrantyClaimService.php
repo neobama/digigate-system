@@ -37,15 +37,57 @@ class WarrantyClaimService
 
     public static function generateTicketNumber(): string
     {
-        $prefix = 'GS-'.now()->format('Ymd').'-';
-        $latest = WarrantyClaim::query()
-            ->where('ticket_number', 'like', $prefix.'%')
-            ->orderByDesc('ticket_number')
-            ->value('ticket_number');
+        return DB::transaction(function () {
+            $prefix = 'GS-'.now()->format('Ymd').'-';
 
-        $sequence = $latest ? ((int) substr($latest, -4)) + 1 : 1;
+            $latest = WarrantyClaim::query()
+                ->where('ticket_number', 'like', $prefix.'%')
+                ->lockForUpdate()
+                ->orderByDesc('ticket_number')
+                ->value('ticket_number');
 
-        return $prefix.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
+            $sequence = $latest ? ((int) substr($latest, -4)) + 1 : 1;
+
+            return $prefix.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
+        });
+    }
+
+    /**
+     * Record a status-only change with WarrantyLog (used by Filament form saves).
+     */
+    public static function logStatusChange(WarrantyClaim $claim, string $oldStatus, string $newStatus, ?string $notes = null): ?WarrantyLog
+    {
+        if ($oldStatus === $newStatus) {
+            return null;
+        }
+
+        return WarrantyLog::create([
+            'warranty_claim_id' => $claim->id,
+            'status' => $newStatus,
+            'action_type' => 'status_update',
+            'notes' => $notes ?: 'Status diubah dari '.$oldStatus.' ke '.$newStatus,
+            'changed_by' => Auth::id(),
+        ]);
+    }
+
+    public static function refreshAssemblyLink(WarrantyClaim $claim): WarrantyClaim
+    {
+        $serial = trim((string) $claim->assembly_serial_number);
+        if ($serial === '') {
+            $claim->update([
+                'is_assembly_linked' => false,
+            ]);
+
+            return $claim->fresh();
+        }
+
+        $link = static::resolveAssemblyLink($serial);
+        $claim->update([
+            'is_assembly_linked' => $link['is_assembly_linked'],
+            'device_type' => $claim->device_type ?: $link['device_type'],
+        ]);
+
+        return $claim->fresh();
     }
 
     public static function resolveAssemblyLink(string $serialNumber): array
@@ -212,7 +254,14 @@ class WarrantyClaimService
 
                 $snDetails = $assembly->sn_details ?? [];
                 $snDetails[$data['component_type']] = $newSn;
-                $assembly->update(['sn_details' => $snDetails]);
+
+                // Observer would mark removed SN as available; warranty wants damaged instead.
+                Assembly::$skipComponentStatusSync = true;
+                try {
+                    $assembly->update(['sn_details' => $snDetails]);
+                } finally {
+                    Assembly::$skipComponentStatusSync = false;
+                }
 
                 if ($oldSn) {
                     Component::where('sn', $oldSn)->update(['status' => 'damaged']);
