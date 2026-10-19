@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ReimbursementResource\Pages;
+use App\Filament\Support\PaymentRequestApprovalActions;
 use App\Models\Reimbursement;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -156,39 +157,7 @@ class ReimbursementResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('approve')
-                    ->label('Approve')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->visible(fn (?Reimbursement $record) => $record && $record->status === 'pending')
-                    ->action(function (Reimbursement $record) {
-                        $record->update(['status' => 'approved']);
-                    })
-                    ->successNotificationTitle('Reimbursement approved')
-                    ->refreshAfter(),
-                Tables\Actions\Action::make('reject')
-                    ->label('Reject')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->visible(fn (?Reimbursement $record) => $record && $record->status === 'pending')
-                    ->action(function (Reimbursement $record) {
-                        $record->update(['status' => 'rejected']);
-                    })
-                    ->successNotificationTitle('Reimbursement rejected')
-                    ->refreshAfter(),
-                Tables\Actions\Action::make('markAsPaid')
-                    ->label('Set Paid')
-                    ->icon('heroicon-o-banknotes')
-                    ->color('info')
-                    ->visible(fn (?Reimbursement $record) => $record && $record->status === 'approved')
-                    ->action(function (Reimbursement $record) {
-                        $record->update([
-                            'status' => 'paid',
-                            'paid_at' => now(),
-                        ]);
-                    })
-                    ->successNotificationTitle('Reimbursement marked as paid')
-                    ->refreshAfter(),
+                ...PaymentRequestApprovalActions::make('Reimbursement'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

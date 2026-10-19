@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\CashbonResource\Pages;
+use App\Filament\Support\PaymentRequestApprovalActions;
 use App\Models\Cashbon;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -178,39 +179,10 @@ class CashbonResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('approve')
-                    ->label('Approve')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->visible(fn (Cashbon $record) => $record->status === 'pending' && ! $record->is_term_loan)
-                    ->action(function (Cashbon $record) {
-                        $record->update(['status' => 'approved']);
-                    })
-                    ->successNotificationTitle('Cashbon approved')
-                    ->refreshAfter(),
-                Tables\Actions\Action::make('reject')
-                    ->label('Reject')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->visible(fn (Cashbon $record) => $record->status === 'pending' && ! $record->is_term_loan)
-                    ->action(function (Cashbon $record) {
-                        $record->update(['status' => 'rejected']);
-                    })
-                    ->successNotificationTitle('Cashbon rejected')
-                    ->refreshAfter(),
-                Tables\Actions\Action::make('markAsPaid')
-                    ->label('Set Paid')
-                    ->icon('heroicon-o-banknotes')
-                    ->color('info')
-                    ->visible(fn (Cashbon $record) => $record->status === 'approved' && ! $record->is_term_loan)
-                    ->action(function (Cashbon $record) {
-                        $record->update([
-                            'status' => 'paid',
-                            'paid_at' => now(),
-                        ]);
-                    })
-                    ->successNotificationTitle('Cashbon marked as paid')
-                    ->refreshAfter(),
+                ...PaymentRequestApprovalActions::make(
+                    'Cashbon',
+                    fn (Cashbon $record): bool => ! $record->is_term_loan,
+                ),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

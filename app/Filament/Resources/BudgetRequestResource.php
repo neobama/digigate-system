@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\BudgetRequestResource\Pages;
+use App\Filament\Support\PaymentRequestApprovalActions;
 use App\Models\BudgetRequest;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -183,39 +184,7 @@ class BudgetRequestResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('approve')
-                    ->label('Approve')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->visible(fn (?BudgetRequest $record) => $record && $record->status === 'pending')
-                    ->action(function (BudgetRequest $record) {
-                        $record->update(['status' => 'approved']);
-                    })
-                    ->successNotificationTitle('Request anggaran approved')
-                    ->refreshAfter(),
-                Tables\Actions\Action::make('reject')
-                    ->label('Reject')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->visible(fn (?BudgetRequest $record) => $record && $record->status === 'pending')
-                    ->action(function (BudgetRequest $record) {
-                        $record->update(['status' => 'rejected']);
-                    })
-                    ->successNotificationTitle('Request anggaran rejected')
-                    ->refreshAfter(),
-                Tables\Actions\Action::make('markAsPaid')
-                    ->label('Set Paid')
-                    ->icon('heroicon-o-banknotes')
-                    ->color('info')
-                    ->visible(fn (?BudgetRequest $record) => $record && $record->status === 'approved')
-                    ->action(function (BudgetRequest $record) {
-                        $record->update([
-                            'status' => 'paid',
-                            'paid_at' => now(),
-                        ]);
-                    })
-                    ->successNotificationTitle('Request anggaran marked as paid')
-                    ->refreshAfter(),
+                ...PaymentRequestApprovalActions::make('Request anggaran'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
