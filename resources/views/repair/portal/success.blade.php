@@ -55,14 +55,6 @@
                 <p class="mt-1 text-xl font-bold text-slate-800">{{ $ticketNumber }}</p>
             </div>
 
-            <p class="mt-4 text-sm text-slate-500">
-                @if ($isAssemblyLinked)
-                    Serial number terhubung otomatis ke data perangkat di sistem.
-                @else
-                    Serial number belum terdeteksi di sistem; tim akan verifikasi secara manual.
-                @endif
-            </p>
-
             <a href="{{ route('repair.portal.create') }}"
                 class="mt-8 inline-flex rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2">
                 Kirim Pengajuan Lain

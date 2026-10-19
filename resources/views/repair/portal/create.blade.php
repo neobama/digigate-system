@@ -104,9 +104,6 @@
                 <input type="text" name="assembly_serial_number" value="{{ old('assembly_serial_number') }}" required
                     class="w-full rounded-lg border-slate-300 px-3 py-2 uppercase shadow-sm focus:border-brand-400 focus:ring-brand-400"
                     placeholder="Contoh: DG202610001">
-                <p class="mt-1 text-xs text-slate-500">
-                    Jika SN ada di sistem DigiGate, akan otomatis terhubung ke data assembly.
-                </p>
             </div>
 
             <div>
