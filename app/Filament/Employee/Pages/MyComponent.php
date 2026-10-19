@@ -56,6 +56,13 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                         'warning' => 'warranty_claim',
                         'gray' => 'damaged',
                     ])
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'available' => 'Tersedia',
+                        'used' => 'Terpakai',
+                        'warranty_claim' => 'Rusak (legacy)',
+                        'damaged' => 'Rusak',
+                        default => $state,
+                    })
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
@@ -443,7 +450,21 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                             ->body('Data komponen telah diperbarui.')
                     ),
             ])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('purchase_date', 'desc');
+    }
+
+    protected function applySortingToTableQuery(Builder $query): Builder
+    {
+        // Selalu prioritaskan stok tersedia di atas.
+        $query->orderByRaw("CASE WHEN status = 'available' THEN 0 ELSE 1 END");
+
+        if (filled($this->getTableSortColumn())) {
+            return parent::applySortingToTableQuery($query);
+        }
+
+        return $query
+            ->orderByDesc('purchase_date')
+            ->orderByDesc('created_at');
     }
 }
 

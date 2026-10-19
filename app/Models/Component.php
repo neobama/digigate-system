@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\LogsActivity;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
@@ -15,6 +16,15 @@ class Component extends Model
     public function scopeAvailable($query)
     {
         return $query->where('status', 'available');
+    }
+
+    /** Default list: tersedia dulu, lalu tanggal pembelian terbaru. */
+    public function scopeOrderedForList(Builder $query): Builder
+    {
+        return $query
+            ->orderByRaw("CASE WHEN status = 'available' THEN 0 ELSE 1 END")
+            ->orderByDesc('purchase_date')
+            ->orderByDesc('created_at');
     }
 
     /**

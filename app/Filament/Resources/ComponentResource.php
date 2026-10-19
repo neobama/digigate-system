@@ -73,13 +73,17 @@ class ComponentResource extends Resource
     {
         return $table
         ->columns([
-            Tables\Columns\TextColumn::make('name')->searchable(),
-            Tables\Columns\TextColumn::make('sn')->label('Serial Number')->searchable(),
-            Tables\Columns\TextColumn::make('supplier')->sortable(),
+            Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
+            Tables\Columns\TextColumn::make('sn')->label('Serial Number')->searchable()->sortable(),
+            Tables\Columns\TextColumn::make('supplier')->searchable()->sortable(),
             Tables\Columns\TextColumn::make('invoice_number')
                 ->label('Nomor Invoice')
                 ->searchable()
                 ->toggleable(),
+            Tables\Columns\TextColumn::make('purchase_date')
+                ->label('Tanggal Pembelian')
+                ->date('d/m/Y')
+                ->sortable(),
             Tables\Columns\BadgeColumn::make('status')
                 ->colors([
                     'success' => 'available',
@@ -93,7 +97,8 @@ class ComponentResource extends Resource
                     'warranty_claim' => 'Rusak (legacy)',
                     'damaged' => 'Rusak',
                     default => $state,
-                }),
+                })
+                ->sortable(),
         ])
         ->filters([
             Tables\Filters\SelectFilter::make('status')
@@ -104,6 +109,7 @@ class ComponentResource extends Resource
                     'warranty_claim' => 'Rusak (legacy)',
                 ])
         ])
+        ->defaultSort('purchase_date', 'desc')
         ->headerActions([
             // Tambahkan tombol export di sini (memerlukan pxlrbt/filament-excel)
             \pxlrbt\FilamentExcel\Actions\Tables\ExportAction::make()
