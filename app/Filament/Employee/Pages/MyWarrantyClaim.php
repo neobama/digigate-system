@@ -50,6 +50,15 @@ class MyWarrantyClaim extends Page implements HasTable
                 Tables\Columns\TextColumn::make('device_type')
                     ->label('Perangkat')
                     ->formatStateUsing(fn (?string $state) => WarrantyClaimService::DEVICE_TYPES[$state] ?? $state),
+                Tables\Columns\TextColumn::make('claim_category')
+                    ->label('Kategori')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state) => WarrantyClaimService::CLAIM_CATEGORIES[$state] ?? ($state ?: '-'))
+                    ->color(fn (?string $state) => match ($state) {
+                        'warranty' => 'success',
+                        'repair' => 'warning',
+                        default => 'gray',
+                    }),
                 Tables\Columns\IconColumn::make('is_assembly_linked')
                     ->label('Link')
                     ->boolean(),
@@ -91,6 +100,9 @@ class MyWarrantyClaim extends Page implements HasTable
                         'client_portal' => 'Portal Client',
                         'internal' => 'Internal',
                     ]),
+                Tables\Filters\SelectFilter::make('claim_category')
+                    ->label('Kategori')
+                    ->options(WarrantyClaimService::CLAIM_CATEGORIES),
                 Tables\Filters\TernaryFilter::make('is_assembly_linked')
                     ->label('Link Assembly'),
             ])
@@ -98,6 +110,11 @@ class MyWarrantyClaim extends Page implements HasTable
                 Tables\Actions\CreateAction::make()
                     ->form([
                         Forms\Components\TextInput::make('invoice_number')->label('Nomor Invoice'),
+                        Forms\Components\DatePicker::make('invoice_date')
+                            ->label('Tanggal Invoice')
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->maxDate(now()),
                         Forms\Components\TextInput::make('client_name')->label('Nama Client'),
                         Forms\Components\TextInput::make('phone_number')->label('Telepon')->tel(),
                         Forms\Components\Select::make('device_type')

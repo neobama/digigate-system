@@ -17,6 +17,14 @@
             <p class="font-medium">{{ $record->invoice_number ?: '-' }}</p>
         </div>
         <div>
+            <p class="text-gray-500">Tanggal Invoice</p>
+            <p class="font-medium">{{ $record->invoice_date?->format('d/m/Y') ?: '-' }}</p>
+        </div>
+        <div>
+            <p class="text-gray-500">Kategori</p>
+            <p class="font-medium">{{ $record->claimCategoryLabel() }}</p>
+        </div>
+        <div>
             <p class="text-gray-500">Perangkat</p>
             <p class="font-medium">{{ WarrantyClaimService::DEVICE_TYPES[$record->device_type] ?? ($record->device_type ?: '-') }}</p>
         </div>

@@ -36,6 +36,24 @@ class WarrantyClaimResource extends Resource
                         Forms\Components\TextInput::make('invoice_number')
                             ->label('Nomor Invoice')
                             ->maxLength(100),
+                        Forms\Components\DatePicker::make('invoice_date')
+                            ->label('Tanggal Invoice')
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->maxDate(now())
+                            ->helperText('Kategori garansi/repair dihitung otomatis (masa garansi 1 tahun).'),
+                        Forms\Components\Placeholder::make('claim_category_preview')
+                            ->label('Kategori')
+                            ->content(function (Forms\Get $get, ?WarrantyClaim $record): string {
+                                $date = $get('invoice_date') ?: $record?->invoice_date;
+                                if (! $date) {
+                                    return '-';
+                                }
+
+                                $category = WarrantyClaimService::resolveClaimCategory($date);
+
+                                return WarrantyClaimService::CLAIM_CATEGORIES[$category] ?? $category;
+                            }),
                         Forms\Components\TextInput::make('client_name')
                             ->label('Nama Perusahaan / Perorangan')
                             ->maxLength(255),
@@ -134,6 +152,19 @@ class WarrantyClaimResource extends Resource
                     ->label('Perangkat')
                     ->formatStateUsing(fn (?string $state) => WarrantyClaimService::DEVICE_TYPES[$state] ?? $state)
                     ->toggleable(),
+                Tables\Columns\TextColumn::make('claim_category')
+                    ->label('Kategori')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state) => WarrantyClaimService::CLAIM_CATEGORIES[$state] ?? ($state ?: '-'))
+                    ->color(fn (?string $state) => match ($state) {
+                        'warranty' => 'success',
+                        'repair' => 'warning',
+                        default => 'gray',
+                    }),
+                Tables\Columns\TextColumn::make('invoice_date')
+                    ->label('Tgl Invoice')
+                    ->date('d/m/Y')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\IconColumn::make('is_assembly_linked')
                     ->label('Link Assembly')
                     ->boolean(),
@@ -179,6 +210,9 @@ class WarrantyClaimResource extends Resource
                         'client_portal' => 'Portal Client',
                         'internal' => 'Internal',
                     ]),
+                Tables\Filters\SelectFilter::make('claim_category')
+                    ->label('Kategori')
+                    ->options(WarrantyClaimService::CLAIM_CATEGORIES),
                 Tables\Filters\TernaryFilter::make('is_assembly_linked')
                     ->label('Link Assembly')
                     ->trueLabel('Sudah terhubung')
@@ -203,6 +237,16 @@ class WarrantyClaimResource extends Resource
                     ->schema([
                         Infolists\Components\TextEntry::make('ticket_number')->label('Nomor Tiket'),
                         Infolists\Components\TextEntry::make('invoice_number')->label('Invoice')->placeholder('-'),
+                        Infolists\Components\TextEntry::make('invoice_date')->label('Tanggal Invoice')->date('d/m/Y')->placeholder('-'),
+                        Infolists\Components\TextEntry::make('claim_category')
+                            ->label('Kategori')
+                            ->badge()
+                            ->formatStateUsing(fn (?string $state) => WarrantyClaimService::CLAIM_CATEGORIES[$state] ?? ($state ?: '-'))
+                            ->color(fn (?string $state) => match ($state) {
+                                'warranty' => 'success',
+                                'repair' => 'warning',
+                                default => 'gray',
+                            }),
                         Infolists\Components\TextEntry::make('client_name')->label('Client')->placeholder('-'),
                         Infolists\Components\TextEntry::make('phone_number')->label('Telepon')->placeholder('-'),
                         Infolists\Components\TextEntry::make('device_type')

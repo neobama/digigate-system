@@ -6,12 +6,21 @@ use App\Models\Assembly;
 use App\Models\Component;
 use App\Models\WarrantyClaim;
 use App\Models\WarrantyLog;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class WarrantyClaimService
 {
+    public const WARRANTY_YEARS = 1;
+
+    public const CLAIM_CATEGORIES = [
+        'warranty' => 'Garansi',
+        'repair' => 'Repair',
+    ];
+
     public const DEVICE_TYPES = [
         'Maleo' => 'DigiGate Maleo',
         'Macan' => 'DigiGate Macan',
@@ -52,15 +61,32 @@ class WarrantyClaimService
         ];
     }
 
+    public static function warrantyExpiresAt(CarbonInterface|string $invoiceDate): Carbon
+    {
+        return Carbon::parse($invoiceDate)->startOfDay()->addYears(static::WARRANTY_YEARS);
+    }
+
+    public static function resolveClaimCategory(CarbonInterface|string $invoiceDate, ?CarbonInterface $asOf = null): string
+    {
+        $asOf = ($asOf ? Carbon::parse($asOf) : now())->startOfDay();
+
+        return $asOf->greaterThan(static::warrantyExpiresAt($invoiceDate))
+            ? 'repair'
+            : 'warranty';
+    }
+
     public static function createFromClientPortal(array $data): WarrantyClaim
     {
         $serialNumber = strtoupper(trim($data['assembly_serial_number']));
         $link = static::resolveAssemblyLink($serialNumber);
+        $category = static::resolveClaimCategory($data['invoice_date']);
 
-        return DB::transaction(function () use ($data, $serialNumber, $link) {
+        return DB::transaction(function () use ($data, $serialNumber, $link, $category) {
             $claim = WarrantyClaim::create([
                 'ticket_number' => static::generateTicketNumber(),
                 'invoice_number' => $data['invoice_number'],
+                'invoice_date' => $data['invoice_date'],
+                'claim_category' => $category,
                 'client_name' => $data['client_name'],
                 'phone_number' => $data['phone_number'],
                 'device_type' => $data['device_type'],
@@ -74,11 +100,12 @@ class WarrantyClaimService
                 'created_by' => null,
             ]);
 
-            $notes = 'Pengajuan dari portal client repair.digigate.id';
+            $notes = 'Pengajuan dari portal client repair.digigate.id — kategori: '
+                .(static::CLAIM_CATEGORIES[$category] ?? $category).'.';
             if ($link['is_assembly_linked']) {
-                $notes .= ' — SN terhubung otomatis ke assembly.';
+                $notes .= ' SN terhubung otomatis ke assembly.';
             } else {
-                $notes .= ' — SN belum ditemukan di ERP, perlu link manual.';
+                $notes .= ' SN belum ditemukan di ERP, perlu link manual.';
             }
 
             WarrantyLog::create([

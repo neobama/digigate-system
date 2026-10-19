@@ -68,11 +68,27 @@
         <form method="POST" action="{{ route('repair.portal.store') }}" class="space-y-5 rounded-2xl bg-white/95 p-6 shadow-sm ring-1 ring-brand-200/70 backdrop-blur sm:p-8">
             @csrf
 
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-slate-700">Nomor Invoice *</label>
-                <input type="text" name="invoice_number" value="{{ old('invoice_number') }}" required
-                    class="w-full rounded-lg border-slate-300 px-3 py-2 shadow-sm focus:border-brand-400 focus:ring-brand-400"
-                    placeholder="Contoh: INV/2026/001">
+            <div class="grid gap-5 sm:grid-cols-2">
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-700">Nomor Invoice *</label>
+                    <input type="text" name="invoice_number" value="{{ old('invoice_number') }}" required
+                        class="w-full rounded-lg border-slate-300 px-3 py-2 shadow-sm focus:border-brand-400 focus:ring-brand-400"
+                        placeholder="Contoh: INV/2026/001">
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-700">Tanggal Invoice *</label>
+                    <input type="date" name="invoice_date" id="invoice_date" value="{{ old('invoice_date') }}" required
+                        max="{{ now()->toDateString() }}"
+                        class="w-full rounded-lg border-slate-300 px-3 py-2 shadow-sm focus:border-brand-400 focus:ring-brand-400">
+                </div>
+            </div>
+
+            <div id="warranty-notice" class="hidden rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status">
+                <p class="font-semibold">Perangkat sudah lewat masa garansi (1 tahun).</p>
+                <p class="mt-1">
+                    Pengajuan akan diproses sebagai <strong>repair berbayar</strong>.
+                    Informasi biaya repair akan dikirim ke nomor telepon yang Anda lampirkan.
+                </p>
             </div>
 
             <div>
@@ -83,7 +99,7 @@
 
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-slate-700">Nomor Telepon yang Bisa Dihubungi *</label>
-                <input type="text" name="phone_number" value="{{ old('phone_number') }}" required
+                <input type="text" name="phone_number" id="phone_number" value="{{ old('phone_number') }}" required
                     class="w-full rounded-lg border-slate-300 px-3 py-2 shadow-sm focus:border-brand-400 focus:ring-brand-400"
                     placeholder="08xxxxxxxxxx">
             </div>
@@ -119,5 +135,32 @@
             </button>
         </form>
     </div>
+
+    <script>
+        (function () {
+            const input = document.getElementById('invoice_date');
+            const notice = document.getElementById('warranty-notice');
+            if (!input || !notice) return;
+
+            function isOutOfWarranty(dateValue) {
+                if (!dateValue) return false;
+                const invoice = new Date(dateValue + 'T00:00:00');
+                if (Number.isNaN(invoice.getTime())) return false;
+                const expires = new Date(invoice);
+                expires.setFullYear(expires.getFullYear() + 1);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return today > expires;
+            }
+
+            function refreshNotice() {
+                notice.classList.toggle('hidden', !isOutOfWarranty(input.value));
+            }
+
+            input.addEventListener('change', refreshNotice);
+            input.addEventListener('input', refreshNotice);
+            refreshNotice();
+        })();
+    </script>
 </body>
 </html>

@@ -15,6 +15,8 @@ class WarrantyClaim extends Model
     protected $fillable = [
         'ticket_number',
         'invoice_number',
+        'invoice_date',
+        'claim_category',
         'client_name',
         'phone_number',
         'device_type',
@@ -30,6 +32,7 @@ class WarrantyClaim extends Model
     ];
 
     protected $casts = [
+        'invoice_date' => 'date',
         'entry_date' => 'datetime',
         'completed_at' => 'datetime',
         'is_assembly_linked' => 'boolean',
@@ -37,6 +40,12 @@ class WarrantyClaim extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (WarrantyClaim $claim) {
+            if (filled($claim->invoice_date)) {
+                $claim->claim_category = WarrantyClaimService::resolveClaimCategory($claim->invoice_date);
+            }
+        });
+
         static::creating(function (WarrantyClaim $claim) {
             if (blank($claim->ticket_number)) {
                 $claim->ticket_number = WarrantyClaimService::generateTicketNumber();
@@ -100,5 +109,15 @@ class WarrantyClaim extends Model
             'client_portal' => 'Portal Client',
             default => 'Internal',
         };
+    }
+
+    public function claimCategoryLabel(): string
+    {
+        return WarrantyClaimService::CLAIM_CATEGORIES[$this->claim_category] ?? ($this->claim_category ?: '-');
+    }
+
+    public function isOutOfWarranty(): bool
+    {
+        return $this->claim_category === 'repair';
     }
 }
