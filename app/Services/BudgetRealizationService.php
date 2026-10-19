@@ -21,10 +21,6 @@ class BudgetRealizationService
             throw new \InvalidArgumentException('Realisasi untuk request ini sudah dikirim.');
         }
 
-        if (Expense::query()->where('budget_request_id', $budgetRequest->id)->exists()) {
-            throw new \InvalidArgumentException('Pengeluaran untuk anggaran ini sudah tercatat di sistem.');
-        }
-
         $proofs = self::normalizeProofPaths($data['realization_proof_images'] ?? null);
 
         if ($proofs === []) {
@@ -59,15 +55,20 @@ class BudgetRealizationService
                 'realization_submitted_at' => now(),
             ]);
 
-            return Expense::create([
-                'budget_request_id' => $budgetRequest->id,
+            $expense = app(ExpenseRecognitionService::class)->ensureForBudgetRequest($budgetRequest->fresh());
+
+            if (! $expense) {
+                throw new \RuntimeException('Gagal mencatat pengeluaran untuk anggaran ini.');
+            }
+
+            $expense->update([
                 'description' => $desc,
                 'expense_date' => $expenseDate,
                 'amount' => $amount,
-                'fund_source' => 'bank_perusahaan',
                 'proof_of_payment' => $proofs[0],
-                'vendor_invoice_number' => null,
             ]);
+
+            return $expense->fresh();
         });
     }
 

@@ -2,12 +2,9 @@
 
 namespace App\Exports;
 
-use App\Models\BudgetRequest;
-use App\Models\Cashbon;
 use App\Models\Expense;
 use App\Models\Income;
 use App\Models\Invoice;
-use App\Models\Reimbursement;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -71,46 +68,25 @@ class FinancialReportExport implements FromCollection, WithHeadings, WithMapping
             ]);
         }
 
-        // Expenses from Reimbursements
-        // Only get reimbursements that still exist and have valid employee relationship
-        $reimbursements = Reimbursement::with('employee')
-            ->where('status', 'paid')
-            ->whereMonth('expense_date', $this->month)
-            ->whereYear('expense_date', $this->year)
-            ->whereHas('employee') // Only include reimbursements with valid employee
-            ->get();
-
-        foreach ($reimbursements as $reimbursement) {
-            // Double check: only add if employee still exists
-            if ($reimbursement->employee) {
-                $data->push([
-                    'type' => 'Pengeluaran',
-                    'category' => 'Reimbursement',
-                    'date' => \Carbon\Carbon::parse($reimbursement->expense_date),
-                    'description' => $reimbursement->purpose . ' - ' . $reimbursement->employee->name,
-                    'amount' => $reimbursement->amount,
-                    'debit' => 0,
-                    'credit' => $reimbursement->amount,
-                ]);
-            }
-        }
-
-        // Manual Expenses (termasuk Budget Request dan Cashbon yang sudah jadi Expense)
-        $expenses = Expense::with('budgetRequest.employee', 'cashbon.employee')
+        // Expenses (single source: cashbon, budget, reimbursement, salary, manual)
+        $expenses = Expense::with('budgetRequest.employee', 'cashbon.employee', 'reimbursement.employee')
             ->whereMonth('expense_date', $this->month)
             ->whereYear('expense_date', $this->year)
             ->get();
 
         foreach ($expenses as $expense) {
-            // Determine category based on source
             if ($expense->budget_request_id) {
                 $category = 'Request Anggaran';
             } elseif ($expense->cashbon_id) {
                 $category = 'Cashbon';
+            } elseif ($expense->reimbursement_id) {
+                $category = 'Reimbursement';
+            } elseif ($expense->account_code === 'GAJI') {
+                $category = 'Gaji';
             } else {
                 $category = 'Manual';
             }
-            
+
             $data->push([
                 'type' => 'Pengeluaran',
                 'category' => $category,

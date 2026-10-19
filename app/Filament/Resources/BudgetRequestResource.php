@@ -292,7 +292,7 @@ class BudgetRequestResource extends Resource
                     ])
                     ->visible(fn (BudgetRequest $record) => ! empty($record->proof_of_payment)),
                 Infolists\Components\Section::make('Realisasi karyawan')
-                    ->description('Pengeluaran di laporan keuangan dibuat dari data ini setelah karyawan mengirim realisasi.')
+                    ->description('Pengeluaran sudah tercatat saat Paid. Data realisasi memperbarui nominal aktual dan bukti di laporan.')
                     ->schema([
                         Infolists\Components\TextEntry::make('realized_amount')
                             ->label('Nominal realisasi')

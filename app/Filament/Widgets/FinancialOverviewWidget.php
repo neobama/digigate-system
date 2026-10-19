@@ -2,12 +2,9 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\BudgetRequest;
-use App\Models\Cashbon;
 use App\Models\Expense;
 use App\Models\Income;
 use App\Models\Invoice;
-use App\Models\Reimbursement;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -36,21 +33,11 @@ class FinancialOverviewWidget extends BaseWidget
         // Total Pemasukan
         $totalIncome = $invoiceIncome + $manualIncome;
 
-        // Pengeluaran dari Reimbursement Paid
-        // Only count reimbursements with valid employee relationship
-        $reimbursementExpense = Reimbursement::where('status', 'paid')
-            ->whereMonth('expense_date', $month)
-            ->whereYear('expense_date', $year)
-            ->whereHas('employee') // Only include reimbursements with valid employee
-            ->sum('amount');
-
-        // Pengeluaran Manual (termasuk Budget Request dan Cashbon yang sudah jadi Expense)
-        $manualExpense = Expense::whereMonth('expense_date', $month)
+        // Pengeluaran: single source of truth = expenses
+        // (cashbon, budget, reimbursement, salary, manual)
+        $totalExpense = Expense::whereMonth('expense_date', $month)
             ->whereYear('expense_date', $year)
             ->sum('amount');
-
-        // Total Pengeluaran
-        $totalExpense = $reimbursementExpense + $manualExpense;
 
         // Laba/Rugi
         $profit = $totalIncome - $totalExpense;
@@ -60,11 +47,11 @@ class FinancialOverviewWidget extends BaseWidget
                 ->description('Invoice: ' . number_format($invoiceIncome, 0, ',', '.') . ' | Manual: ' . number_format($manualIncome, 0, ',', '.'))
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('success'),
-            
+
             Stat::make('Total Pengeluaran Bulan Ini', 'Rp ' . number_format($totalExpense, 0, ',', '.'))
                 ->descriptionIcon('heroicon-m-arrow-trending-down')
                 ->color('danger'),
-            
+
             Stat::make('Laba/Rugi Bulan Ini', 'Rp ' . number_format($profit, 0, ',', '.'))
                 ->description($profit >= 0 ? 'Laba' : 'Rugi')
                 ->descriptionIcon($profit >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
@@ -72,4 +59,3 @@ class FinancialOverviewWidget extends BaseWidget
         ];
     }
 }
-

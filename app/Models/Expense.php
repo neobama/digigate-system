@@ -13,6 +13,7 @@ class Expense extends Model
     protected $fillable = [
         'budget_request_id',
         'cashbon_id',
+        'reimbursement_id',
         'vendor_invoice_number',
         'description',
         'account_code',
@@ -35,6 +36,11 @@ class Expense extends Model
     public function cashbon()
     {
         return $this->belongsTo(Cashbon::class);
+    }
+
+    public function reimbursement()
+    {
+        return $this->belongsTo(Reimbursement::class);
     }
 }
 

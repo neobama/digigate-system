@@ -5,8 +5,8 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\SalaryPaymentResource\Pages;
 use App\Models\Cashbon;
 use App\Models\Employee;
-use App\Models\Expense;
 use App\Models\SalaryPayment;
+use App\Services\ExpenseRecognitionService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -231,26 +231,12 @@ class SalaryPaymentResource extends Resource
                             return;
                         }
 
-                        $expense = Expense::create([
-                            'description' => sprintf(
-                                'Pembayaran gaji %s periode %02d/%s',
-                                $record->employee?->name ?? 'Karyawan',
-                                $record->month,
-                                $record->year
-                            ),
-                            'fund_source' => $record->fund_source,
-                            'expense_date' => now()->toDateString(),
-                            'amount' => $record->net_salary,
-                            'vendor_invoice_number' => null,
-                            'account_code' => 'GAJI',
-                            'proof_of_payment' => null,
-                        ]);
-
                         $record->update([
                             'status' => 'paid',
                             'paid_at' => now(),
-                            'expense_id' => $expense->id,
                         ]);
+
+                        app(ExpenseRecognitionService::class)->ensureForSalaryPayment($record);
 
                         Notification::make()
                             ->title('Gaji ditandai sudah dibayar')

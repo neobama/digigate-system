@@ -4,9 +4,14 @@ namespace App\Observers;
 
 use App\Models\BudgetRequest;
 use App\Services\ActivityLogService;
+use App\Services\ExpenseRecognitionService;
 
 class BudgetRequestObserver
 {
+    public function __construct(
+        private ExpenseRecognitionService $expenseRecognition,
+    ) {}
+
     public function created(BudgetRequest $budgetRequest): void
     {
         try {
@@ -16,6 +21,10 @@ class BudgetRequestObserver
                 'budget_request_id' => $budgetRequest->id,
                 'error' => $e->getMessage(),
             ]);
+        }
+
+        if ($budgetRequest->status === 'paid') {
+            $this->expenseRecognition->ensureForBudgetRequest($budgetRequest);
         }
     }
 
@@ -38,6 +47,10 @@ class BudgetRequestObserver
                 'budget_request_id' => $budgetRequest->id,
                 'error' => $e->getMessage(),
             ]);
+        }
+
+        if ($budgetRequest->status === 'paid') {
+            $this->expenseRecognition->ensureForBudgetRequest($budgetRequest);
         }
     }
 

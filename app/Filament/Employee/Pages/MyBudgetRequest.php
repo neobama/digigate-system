@@ -165,7 +165,7 @@ class MyBudgetRequest extends Page implements Tables\Contracts\HasTable
                     ->icon('heroicon-o-document-plus')
                     ->color('warning')
                     ->modalHeading('Realisasi anggaran')
-                    ->modalDescription('Setelah dana dipakai, isi nominal aktual dan unggah bukti pembelian. Baru setelah ini pengeluaran masuk ke laporan keuangan.')
+                    ->modalDescription('Pengeluaran sudah tercatat saat status Paid. Setelah dana dipakai, isi nominal aktual dan unggah bukti pembelian untuk memperbarui catatan pengeluaran.')
                     ->visible(fn (BudgetRequest $record): bool => $record->needsRealization())
                     ->form([
                         Forms\Components\TextInput::make('realized_amount')
@@ -257,7 +257,7 @@ class MyBudgetRequest extends Page implements Tables\Contracts\HasTable
                                     }),
                             ])->columns(2),
                         Forms\Components\Section::make('Realisasi & bukti')
-                            ->description('Tercatat setelah Anda mengirim realisasi.')
+                            ->description('Pengeluaran sudah masuk laporan saat Paid; realisasi memperbarui nominal aktual dan bukti.')
                             ->schema([
                                 Forms\Components\Placeholder::make('realized_amount_ph')
                                     ->label('Nominal realisasi')
