@@ -20,7 +20,7 @@ class UnassembledInvoicesWidget extends BaseWidget
             ->description('Daftar invoice yang sudah dibayar dan siap untuk dirakit')
             ->query(
                 Invoice::query()
-                    ->where('status', 'paid')
+                    ->whereIn('status', ['paid', 'delivered'])
                     ->whereIn('id', Invoice::idsWithAssemblySlotsRemaining())
                     ->withCount('assemblies')
                     ->orderBy('invoice_date', 'desc')

@@ -15,18 +15,11 @@ class CashbonObserver
     public function created(Cashbon $cashbon): void
     {
         ActivityLogService::logCreate($cashbon);
-
-        if ($cashbon->status === 'paid') {
-            $this->expenseRecognition->ensureForCashbon($cashbon);
-        }
+        $this->expenseRecognition->ensureForCashbon($cashbon);
     }
 
     public function updated(Cashbon $cashbon): void
     {
-        if (! $cashbon->wasChanged('status')) {
-            return;
-        }
-
         $oldValues = $cashbon->getOriginal();
         $newValues = $cashbon->getChanges();
         unset($oldValues['updated_at'], $newValues['updated_at']);
@@ -35,7 +28,7 @@ class CashbonObserver
             ActivityLogService::logUpdate($cashbon, $oldValues, $newValues);
         }
 
-        if ($cashbon->status === 'paid') {
+        if ($cashbon->wasChanged(['status', 'amount', 'reason', 'paid_at', 'installment_months', 'is_term_loan'])) {
             $this->expenseRecognition->ensureForCashbon($cashbon);
         }
     }
@@ -43,5 +36,6 @@ class CashbonObserver
     public function deleted(Cashbon $cashbon): void
     {
         ActivityLogService::logDelete($cashbon);
+        // expenses.cashbon_id cascades on delete
     }
 }

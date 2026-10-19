@@ -42,5 +42,31 @@ class Expense extends Model
     {
         return $this->belongsTo(Reimbursement::class);
     }
+
+    public function isLinkedToSource(): bool
+    {
+        return filled($this->cashbon_id)
+            || filled($this->budget_request_id)
+            || filled($this->reimbursement_id)
+            || $this->account_code === 'GAJI';
+    }
+
+    public function sourceLabel(): string
+    {
+        if ($this->cashbon_id) {
+            return 'Cashbon';
+        }
+        if ($this->budget_request_id) {
+            return 'Request Anggaran';
+        }
+        if ($this->reimbursement_id) {
+            return 'Reimbursement';
+        }
+        if ($this->account_code === 'GAJI') {
+            return 'Gaji';
+        }
+
+        return 'Manual';
+    }
 }
 

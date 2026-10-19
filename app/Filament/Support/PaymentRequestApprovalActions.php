@@ -49,6 +49,9 @@ final class PaymentRequestApprovalActions
                 ->icon('heroicon-o-banknotes')
                 ->color('info')
                 ->visible(fn (?Model $record) => $canAct($record, 'approved'))
+                ->requiresConfirmation()
+                ->modalHeading("Set Paid — {$subject}")
+                ->modalDescription('Status akan jadi Paid dan pengeluaran otomatis tercatat di laporan keuangan.')
                 ->action(function (Model $record): void {
                     $record->update([
                         'status' => 'paid',

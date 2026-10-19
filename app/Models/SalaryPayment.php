@@ -52,5 +52,14 @@ class SalaryPayment extends Model
     {
         return $this->hasMany(SalaryPaymentAdjustment::class);
     }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (SalaryPayment $payment): void {
+            if ($payment->expense_id) {
+                Expense::query()->where('id', $payment->expense_id)->delete();
+            }
+        });
+    }
 }
 

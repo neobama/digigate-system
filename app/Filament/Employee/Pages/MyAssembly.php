@@ -58,10 +58,10 @@ class MyAssembly extends Page implements Tables\Contracts\HasTable
                                 name: 'invoice',
                                 titleAttribute: 'invoice_number',
                                 modifyQueryUsing: fn (Builder $query) => $query
-                                    ->where('status', 'paid')
+                                    ->whereIn('status', ['paid', 'delivered'])
                                     ->withCount('assemblies')
                             )
-                            ->label('Pilih Invoice (Paid)')
+                            ->label('Pilih Invoice (Paid / Delivered)')
                             ->preload()
                             ->searchable()
                             ->required()

@@ -55,7 +55,14 @@ class BudgetRealizationService
                 'realization_submitted_at' => now(),
             ]);
 
-            $expense = app(ExpenseRecognitionService::class)->ensureForBudgetRequest($budgetRequest->fresh());
+            // Observer syncs expense from budget; then apply realization-specific date/desc/proof.
+            $expense = Expense::query()
+                ->where('budget_request_id', $budgetRequest->id)
+                ->first();
+
+            if (! $expense) {
+                $expense = app(ExpenseRecognitionService::class)->ensureForBudgetRequest($budgetRequest->fresh());
+            }
 
             if (! $expense) {
                 throw new \RuntimeException('Gagal mencatat pengeluaran untuk anggaran ini.');

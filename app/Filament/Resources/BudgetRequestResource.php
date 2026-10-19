@@ -76,8 +76,9 @@ class BudgetRequestResource extends Resource
                                 'rejected' => 'Rejected',
                                 'paid' => 'Paid',
                             ])
-                            ->default('pending')
-                            ->required()
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->helperText('Ubah status lewat tombol Approve / Reject / Set Paid di tabel.')
                             ->visibleOn('edit'),
                         Forms\Components\FileUpload::make('proof_of_payment')
                             ->label('Bukti Pembayaran')

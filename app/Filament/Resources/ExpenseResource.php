@@ -3,7 +3,6 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ExpenseResource\Pages;
-use App\Filament\Resources\ExpenseResource\RelationManagers;
 use App\Models\Expense;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -11,14 +10,15 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ExpenseResource extends Resource
 {
     protected static ?string $model = Expense::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-arrow-trending-down';
+
     protected static ?string $navigationGroup = 'Financial';
+
     protected static ?string $navigationLabel = 'Pengeluaran';
 
     public static function form(Form $form): Form
@@ -69,7 +69,7 @@ class ExpenseResource extends Resource
                             ->acceptedFileTypes(['image/*'])
                             ->helperText('Opsional')
                             ->columnSpanFull(),
-                    ])->columns(2)
+                    ])->columns(2),
             ]);
     }
 
@@ -85,6 +85,11 @@ class ExpenseResource extends Resource
                     ->label('Deskripsi')
                     ->limit(50)
                     ->searchable(),
+                Tables\Columns\TextColumn::make('source')
+                    ->label('Sumber')
+                    ->badge()
+                    ->getStateUsing(fn (Expense $record): string => $record->sourceLabel())
+                    ->color(fn (string $state): string => $state === 'Manual' ? 'gray' : 'warning'),
                 Tables\Columns\TextColumn::make('account_code')
                     ->label('Kode Akun')
                     ->searchable(),
@@ -104,6 +109,29 @@ class ExpenseResource extends Resource
                     ->searchable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('source')
+                    ->label('Sumber')
+                    ->options([
+                        'cashbon' => 'Cashbon',
+                        'budget' => 'Request Anggaran',
+                        'reimbursement' => 'Reimbursement',
+                        'salary' => 'Gaji',
+                        'manual' => 'Manual',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return match ($data['value'] ?? null) {
+                            'cashbon' => $query->whereNotNull('cashbon_id'),
+                            'budget' => $query->whereNotNull('budget_request_id'),
+                            'reimbursement' => $query->whereNotNull('reimbursement_id'),
+                            'salary' => $query->where('account_code', 'GAJI'),
+                            'manual' => $query
+                                ->whereNull('cashbon_id')
+                                ->whereNull('budget_request_id')
+                                ->whereNull('reimbursement_id')
+                                ->where(fn (Builder $q) => $q->whereNull('account_code')->orWhere('account_code', '!=', 'GAJI')),
+                            default => $query,
+                        };
+                    }),
                 Tables\Filters\SelectFilter::make('fund_source')
                     ->label('Sumber Dana')
                     ->options([
@@ -131,21 +159,24 @@ class ExpenseResource extends Resource
             ])
             ->defaultSort('expense_date', 'desc')
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->visible(fn (Expense $record): bool => ! $record->isLinkedToSource()),
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn (Expense $record): bool => ! $record->isLinkedToSource()),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->action(function ($records) {
+                            $records->filter(fn (Expense $r) => ! $r->isLinkedToSource())->each->delete();
+                        }),
                 ]),
             ]);
     }
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array

@@ -23,17 +23,11 @@ class BudgetRequestObserver
             ]);
         }
 
-        if ($budgetRequest->status === 'paid') {
-            $this->expenseRecognition->ensureForBudgetRequest($budgetRequest);
-        }
+        $this->expenseRecognition->ensureForBudgetRequest($budgetRequest);
     }
 
     public function updated(BudgetRequest $budgetRequest): void
     {
-        if (! $budgetRequest->wasChanged('status')) {
-            return;
-        }
-
         try {
             $oldValues = $budgetRequest->getOriginal();
             $newValues = $budgetRequest->getChanges();
@@ -49,7 +43,16 @@ class BudgetRequestObserver
             ]);
         }
 
-        if ($budgetRequest->status === 'paid') {
+        if ($budgetRequest->wasChanged([
+            'status',
+            'amount',
+            'budget_name',
+            'paid_at',
+            'realized_amount',
+            'realization_notes',
+            'realization_submitted_at',
+            'realization_proof_images',
+        ])) {
             $this->expenseRecognition->ensureForBudgetRequest($budgetRequest);
         }
     }
@@ -64,5 +67,6 @@ class BudgetRequestObserver
                 'error' => $e->getMessage(),
             ]);
         }
+        // expenses.budget_request_id cascades on delete
     }
 }

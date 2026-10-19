@@ -12,15 +12,20 @@ use Illuminate\Support\Facades\Log;
 
 class ExpenseRecognitionService
 {
+    /**
+     * Ensure a paid cashbon has exactly one linked Expense.
+     * If cashbon leaves paid, remove the linked Expense.
+     */
     public function ensureForCashbon(Cashbon $cashbon): ?Expense
     {
-        if ($cashbon->status !== 'paid') {
-            return null;
-        }
-
         $existing = Expense::query()->where('cashbon_id', $cashbon->id)->first();
-        if ($existing) {
-            return $existing;
+
+        if ($cashbon->status !== 'paid') {
+            if ($existing) {
+                $existing->delete();
+            }
+
+            return null;
         }
 
         $cashbon->loadMissing('employee');
@@ -29,25 +34,39 @@ class ExpenseRecognitionService
             return null;
         }
 
+        $description = $cashbon->reason.' - '.$employee->name;
+        if ($cashbon->is_term_loan) {
+            $description = 'Pinjaman term: '.$description;
+        }
+        if ($cashbon->installment_months) {
+            $description .= ' (Cicilan: '.$cashbon->installment_months.' bulan)';
+        }
+
+        $expenseDate = $cashbon->paid_at
+            ? $cashbon->paid_at->toDateString()
+            : ($cashbon->request_date?->toDateString() ?? now()->toDateString());
+
+        $payload = [
+            'description' => $description,
+            'expense_date' => $expenseDate,
+            'amount' => $cashbon->amount,
+            'fund_source' => 'bank_perusahaan',
+            'vendor_invoice_number' => null,
+        ];
+
         try {
-            $description = $cashbon->reason.' - '.$employee->name;
-            if ($cashbon->is_term_loan) {
-                $description = 'Pinjaman term: '.$description;
-            }
-            if ($cashbon->installment_months) {
-                $description .= ' (Cicilan: '.$cashbon->installment_months.' bulan)';
+            if ($existing) {
+                $existing->update($payload);
+
+                return $existing->fresh();
             }
 
             return Expense::create([
                 'cashbon_id' => $cashbon->id,
-                'description' => $description,
-                'expense_date' => $cashbon->request_date,
-                'amount' => $cashbon->amount,
-                'fund_source' => 'bank_perusahaan',
-                'vendor_invoice_number' => null,
+                ...$payload,
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to create expense for cashbon', [
+            Log::error('Failed to sync expense for cashbon', [
                 'cashbon_id' => $cashbon->id,
                 'error' => $e->getMessage(),
             ]);
@@ -56,15 +75,20 @@ class ExpenseRecognitionService
         }
     }
 
+    /**
+     * Ensure a paid budget request has exactly one linked Expense.
+     * If budget leaves paid, remove the linked Expense.
+     */
     public function ensureForBudgetRequest(BudgetRequest $budgetRequest): ?Expense
     {
-        if ($budgetRequest->status !== 'paid') {
-            return null;
-        }
-
         $existing = Expense::query()->where('budget_request_id', $budgetRequest->id)->first();
-        if ($existing) {
-            return $existing;
+
+        if ($budgetRequest->status !== 'paid') {
+            if ($existing) {
+                $existing->delete();
+            }
+
+            return null;
         }
 
         $budgetRequest->loadMissing('employee');
@@ -92,18 +116,37 @@ class ExpenseRecognitionService
             $proof = $budgetRequest->realization_proof_images[0];
         }
 
+        $payload = [
+            'description' => $description,
+            'expense_date' => $expenseDate,
+            'amount' => $amount,
+            'fund_source' => 'bank_perusahaan',
+            'proof_of_payment' => $proof,
+            'vendor_invoice_number' => null,
+        ];
+
         try {
+            if ($existing) {
+                // Keep realization expense_date / proof if already realized and caller overrides via BudgetRealizationService
+                $update = $payload;
+                if ($budgetRequest->realization_submitted_at !== null && $existing->expense_date) {
+                    unset($update['expense_date']);
+                }
+                if ($budgetRequest->realization_submitted_at !== null && $existing->proof_of_payment && ! $proof) {
+                    unset($update['proof_of_payment']);
+                }
+
+                $existing->update($update);
+
+                return $existing->fresh();
+            }
+
             return Expense::create([
                 'budget_request_id' => $budgetRequest->id,
-                'description' => $description,
-                'expense_date' => $expenseDate,
-                'amount' => $amount,
-                'fund_source' => 'bank_perusahaan',
-                'proof_of_payment' => $proof,
-                'vendor_invoice_number' => null,
+                ...$payload,
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to create expense for budget request', [
+            Log::error('Failed to sync expense for budget request', [
                 'budget_request_id' => $budgetRequest->id,
                 'error' => $e->getMessage(),
             ]);
@@ -112,15 +155,20 @@ class ExpenseRecognitionService
         }
     }
 
+    /**
+     * Ensure a paid reimbursement has exactly one linked Expense.
+     * If reimbursement leaves paid, remove the linked Expense.
+     */
     public function ensureForReimbursement(Reimbursement $reimbursement): ?Expense
     {
-        if ($reimbursement->status !== 'paid') {
-            return null;
-        }
-
         $existing = Expense::query()->where('reimbursement_id', $reimbursement->id)->first();
-        if ($existing) {
-            return $existing;
+
+        if ($reimbursement->status !== 'paid') {
+            if ($existing) {
+                $existing->delete();
+            }
+
+            return null;
         }
 
         $reimbursement->loadMissing('employee');
@@ -129,18 +177,28 @@ class ExpenseRecognitionService
             return null;
         }
 
+        $payload = [
+            'description' => $reimbursement->purpose.' - '.$employee->name,
+            'expense_date' => $reimbursement->expense_date,
+            'amount' => $reimbursement->amount,
+            'fund_source' => 'bank_perusahaan',
+            'proof_of_payment' => $reimbursement->proof_of_payment,
+            'vendor_invoice_number' => null,
+        ];
+
         try {
+            if ($existing) {
+                $existing->update($payload);
+
+                return $existing->fresh();
+            }
+
             return Expense::create([
                 'reimbursement_id' => $reimbursement->id,
-                'description' => $reimbursement->purpose.' - '.$employee->name,
-                'expense_date' => $reimbursement->expense_date,
-                'amount' => $reimbursement->amount,
-                'fund_source' => 'bank_perusahaan',
-                'proof_of_payment' => $reimbursement->proof_of_payment,
-                'vendor_invoice_number' => null,
+                ...$payload,
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to create expense for reimbursement', [
+            Log::error('Failed to sync expense for reimbursement', [
                 'reimbursement_id' => $reimbursement->id,
                 'error' => $e->getMessage(),
             ]);
@@ -151,10 +209,29 @@ class ExpenseRecognitionService
 
     public function ensureForSalaryPayment(SalaryPayment $salaryPayment): ?Expense
     {
+        if ($salaryPayment->status !== 'paid') {
+            $this->clearSalaryExpense($salaryPayment);
+
+            return null;
+        }
+
         if ($salaryPayment->expense_id) {
             $linked = Expense::query()->find($salaryPayment->expense_id);
             if ($linked) {
-                return $linked;
+                $salaryPayment->loadMissing('employee');
+                $linked->update([
+                    'description' => sprintf(
+                        'Pembayaran gaji %s periode %02d/%s',
+                        $salaryPayment->employee?->name ?? 'Karyawan',
+                        $salaryPayment->month,
+                        $salaryPayment->year
+                    ),
+                    'fund_source' => $salaryPayment->fund_source,
+                    'amount' => $salaryPayment->net_salary,
+                    'account_code' => 'GAJI',
+                ]);
+
+                return $linked->fresh();
             }
         }
 
@@ -178,7 +255,9 @@ class ExpenseRecognitionService
                     $salaryPayment->year
                 ),
                 'fund_source' => $salaryPayment->fund_source,
-                'expense_date' => now()->toDateString(),
+                'expense_date' => $salaryPayment->paid_at
+                    ? $salaryPayment->paid_at->toDateString()
+                    : now()->toDateString(),
                 'amount' => $salaryPayment->net_salary,
                 'vendor_invoice_number' => null,
                 'account_code' => 'GAJI',
@@ -191,5 +270,17 @@ class ExpenseRecognitionService
 
             return $expense;
         });
+    }
+
+    public function clearSalaryExpense(SalaryPayment $salaryPayment): void
+    {
+        if (! $salaryPayment->expense_id) {
+            return;
+        }
+
+        $expenseId = $salaryPayment->expense_id;
+
+        $salaryPayment->update(['expense_id' => null]);
+        Expense::query()->where('id', $expenseId)->delete();
     }
 }

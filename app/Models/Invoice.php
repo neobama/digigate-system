@@ -91,7 +91,7 @@ class Invoice extends Model
     public static function idsWithAssemblySlotsRemaining(): array
     {
         return static::query()
-            ->where('status', 'paid')
+            ->whereIn('status', ['paid', 'delivered'])
             ->withCount('assemblies')
             ->orderByDesc('invoice_date')
             ->get()

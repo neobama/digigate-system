@@ -15,10 +15,7 @@ class ReimbursementObserver
     public function created(Reimbursement $reimbursement): void
     {
         ActivityLogService::logCreate($reimbursement);
-
-        if ($reimbursement->status === 'paid') {
-            $this->expenseRecognition->ensureForReimbursement($reimbursement);
-        }
+        $this->expenseRecognition->ensureForReimbursement($reimbursement);
     }
 
     public function updated(Reimbursement $reimbursement): void
@@ -31,7 +28,7 @@ class ReimbursementObserver
             ActivityLogService::logUpdate($reimbursement, $oldValues, $newValues);
         }
 
-        if ($reimbursement->wasChanged('status') && $reimbursement->status === 'paid') {
+        if ($reimbursement->wasChanged(['status', 'amount', 'purpose', 'expense_date', 'proof_of_payment', 'paid_at'])) {
             $this->expenseRecognition->ensureForReimbursement($reimbursement);
         }
     }
@@ -39,5 +36,6 @@ class ReimbursementObserver
     public function deleted(Reimbursement $reimbursement): void
     {
         ActivityLogService::logDelete($reimbursement);
+        // expenses.reimbursement_id cascades on delete
     }
 }

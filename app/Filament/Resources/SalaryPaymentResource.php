@@ -251,7 +251,12 @@ class SalaryPaymentResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->action(function ($records) {
+                            $records
+                                ->filter(fn (SalaryPayment $r) => $r->status === 'draft')
+                                ->each->delete();
+                        }),
                 ]),
             ]);
     }

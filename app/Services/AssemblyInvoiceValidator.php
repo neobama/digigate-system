@@ -13,9 +13,9 @@ class AssemblyInvoiceValidator
             ->withCount('assemblies')
             ->findOrFail($invoiceId);
 
-        if ($invoice->status !== 'paid') {
+        if (! in_array($invoice->status, ['paid', 'delivered'], true)) {
             throw ValidationException::withMessages([
-                'invoice_id' => 'Invoice harus berstatus Paid sebelum dirakit.',
+                'invoice_id' => 'Invoice harus berstatus Paid atau Delivered sebelum dirakit.',
             ]);
         }
 

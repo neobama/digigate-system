@@ -63,10 +63,10 @@ DigiGate adalah ERP internal. Ada dua panel:
 
 Ringkas modul:
 - Kalender Pekerjaan / Task: assign pekerjaan ke karyawan, status, upload bukti per karyawan (pivot). Admin: buat/mengelola semua task. Karyawan: lihat task yang di-assign ke mereka, upload bukti, ubah status sesuai alur.
-- Cashbon: pinjaman/uang muka; ada jatah bulanan per karyawan (di employee: Request Cashbon Baru dari halaman Cashbon).
-- Budget Request: pengajuan anggaran; saat admin set Paid, pengeluaran otomatis tercatat di laporan. Karyawan wajib input realisasi (nominal aktual + bukti) untuk memperbarui nominal/bukti pengeluaran tersebut.
-- Reimbursement: klaim penggantian biaya (ada upload bon di alur admin).
-- Keuangan (admin): Pemasukan (Income), Pengeluaran (Expense), Laporan Keuangan. Invoice paid/delivered otomatis jadi Pemasukan — P&L hanya dari Income + Expense (jangan hitung invoice dua kali).
+- Cashbon: pinjaman/uang muka; ada jatah bulanan per karyawan (di employee: Request Cashbon Baru dari halaman Cashbon). Status hanya lewat Approve/Reject/Set Paid (bukan form). Saat Paid, expense otomatis; un-pay menghapus expense.
+- Budget Request: pengajuan anggaran; saat admin set Paid, pengeluaran otomatis tercatat di laporan. Karyawan wajib input realisasi (nominal aktual + bukti) untuk memperbarui nominal/bukti pengeluaran tersebut. Status hanya lewat tombol approval.
+- Reimbursement: klaim penggantian biaya (ada upload bon di alur admin). Status hanya lewat tombol approval; Paid → expense otomatis.
+- Keuangan (admin): Pemasukan (Income), Pengeluaran (Expense), Laporan Keuangan. Invoice paid/delivered → Income; cashbon/budget/reimbursement/gaji paid → Expense. Baris linked tidak boleh diedit manual — ubah dokumen sumber. P&L hanya Income + Expense.
 - Penjualan/operasional (admin): Invoice, Dokumen.
 - Inventori/produksi (admin): Komponen, Assembly; Warranty Claim untuk garansi.
 - HR (admin): Data Karyawan, Pembayaran Gaji (Salary Payment).
