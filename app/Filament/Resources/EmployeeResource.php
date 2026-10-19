@@ -49,10 +49,10 @@ class EmployeeResource extends Resource
                         ->required()
                         ->helperText('Finance: akses pemasukan, pengeluaran, invoice + fitur karyawan biasa'),
                     Forms\Components\TextInput::make('phone_number')
-                        ->label('Nomor WhatsApp')
+                        ->label('Nomor HP')
                         ->tel()
                         ->placeholder('081234567890')
-                        ->helperText('Format: 081234567890 (untuk notifikasi WhatsApp)')
+                        ->helperText('Format: 081234567890 (disimpan untuk notifikasi Telegram nanti)')
                         ->maxLength(20),
                     Forms\Components\TextInput::make('base_salary')
                         ->label('Gaji')
@@ -132,7 +132,7 @@ class EmployeeResource extends Resource
                     ->color(fn ($state) => $state === \App\Enums\EmployeeRole::Finance ? 'success' : 'gray')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('phone_number')
-                    ->label('Nomor WhatsApp')
+                    ->label('Nomor HP')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('base_salary')

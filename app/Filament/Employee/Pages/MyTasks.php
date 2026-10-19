@@ -542,31 +542,6 @@ class MyTasks extends Page implements HasForms
         $employeeIds = array_unique($this->newTaskEmployees);
         $task->employees()->attach($employeeIds);
 
-        // Send WhatsApp notifications to all assigned employees
-        $whatsapp = app(\App\Services\WhatsAppService::class);
-        $assignedEmployees = \App\Models\Employee::whereIn('id', $employeeIds)->get();
-
-        foreach ($assignedEmployees as $assignedEmployee) {
-            if (! empty($assignedEmployee->phone_number)) {
-                $message = "📋 *Task Baru Ditetapkan*\n\n";
-                $message .= "Judul: {$task->title}\n";
-
-                if ($task->description) {
-                    $message .= "Deskripsi: {$task->description}\n";
-                }
-
-                $message .= 'Tanggal: '.$task->start_date->format('d/m/Y');
-
-                if ($task->start_date->format('Y-m-d') !== $task->end_date->format('Y-m-d')) {
-                    $message .= ' - '.$task->end_date->format('d/m/Y');
-                }
-
-                $message .= "\nStatus: ".ucfirst($task->status);
-
-                $whatsapp->sendMessage($assignedEmployee->phone_number, $message);
-            }
-        }
-
         $this->reset(['newTaskTitle', 'newTaskDescription', 'newTaskStartDate', 'newTaskEndDate', 'newTaskStartTime', 'newTaskEndTime', 'newTaskEmployees', 'showCreateModal']);
         $this->loadTasks();
 
@@ -662,31 +637,6 @@ class MyTasks extends Page implements HasForms
 
         // Reload task with employees
         $this->selectedTask->load('employees');
-
-        // Send WhatsApp notifications to newly added employees
-        $whatsapp = app(\App\Services\WhatsAppService::class);
-        $newEmployees = \App\Models\Employee::whereIn('id', $newEmployeeIds)->get();
-
-        foreach ($newEmployees as $employee) {
-            if (! empty($employee->phone_number)) {
-                $message = "📋 *Task Baru Ditetapkan*\n\n";
-                $message .= "Judul: {$this->selectedTask->title}\n";
-
-                if ($this->selectedTask->description) {
-                    $message .= "Deskripsi: {$this->selectedTask->description}\n";
-                }
-
-                $message .= 'Tanggal: '.$this->selectedTask->start_date->format('d/m/Y');
-
-                if ($this->selectedTask->start_date->format('Y-m-d') !== $this->selectedTask->end_date->format('Y-m-d')) {
-                    $message .= ' - '.$this->selectedTask->end_date->format('d/m/Y');
-                }
-
-                $message .= "\nStatus: ".ucfirst($this->selectedTask->status);
-
-                $whatsapp->sendMessage($employee->phone_number, $message);
-            }
-        }
 
         $this->loadTasks();
         $this->selectedEmployees = [];

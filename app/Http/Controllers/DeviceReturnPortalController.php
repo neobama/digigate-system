@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\DeviceReturn;
-use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -71,18 +70,6 @@ class DeviceReturnPortalController extends Controller
             'logged_by' => null,
             'logged_at' => now(),
         ]);
-
-        // Send WhatsApp notification
-        $whatsappService = new WhatsAppService();
-        $message = "✅ *Retur Perangkat Berhasil Dibuat*\n\n";
-        $message .= "Nomor Resi: *{$deviceReturn->tracking_number}*\n";
-        $message .= "Jenis Perangkat: {$deviceReturn->device_type}\n";
-        $message .= "Serial Number: {$deviceReturn->serial_number}\n";
-        $message .= "Invoice: {$deviceReturn->invoice_number}\n\n";
-        $message .= "Gunakan nomor resi di atas untuk tracking retur Anda.\n";
-        $message .= "Portal: https://retur.digigate.id/tracking";
-
-        $whatsappService->sendMessage($deviceReturn->phone_number, $message);
 
         return redirect()->route('device-returns.portal.tracking', ['tracking_number' => $deviceReturn->tracking_number])
             ->with('success', 'Retur perangkat berhasil dibuat! Nomor resi: ' . $deviceReturn->tracking_number);

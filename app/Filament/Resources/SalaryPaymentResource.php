@@ -7,7 +7,6 @@ use App\Models\Cashbon;
 use App\Models\Employee;
 use App\Models\Expense;
 use App\Models\SalaryPayment;
-use App\Services\WhatsAppService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -252,26 +251,6 @@ class SalaryPaymentResource extends Resource
                             'paid_at' => now(),
                             'expense_id' => $expense->id,
                         ]);
-
-                        $employee = $record->employee;
-                        if ($employee?->phone_number) {
-                            $period = \Carbon\Carbon::create($record->year, $record->month, 1)->translatedFormat('F Y');
-                            $message = "Halo {$employee->name},\n";
-                            $message .= "Gaji periode {$period} sudah dibayarkan.\n";
-                            $message .= 'Slip gaji: '.route('salary-payments.slip', [
-                                'salaryPayment' => $record->id,
-                            ]);
-
-                            try {
-                                app(WhatsAppService::class)->sendMessage($employee->phone_number, $message);
-                            } catch (\Throwable $exception) {
-                                \Log::error('Gagal mengirim notifikasi pembayaran gaji ke WhatsApp karyawan', [
-                                    'salary_payment_id' => $record->id,
-                                    'employee_id' => $employee->id,
-                                    'error' => $exception->getMessage(),
-                                ]);
-                            }
-                        }
 
                         Notification::make()
                             ->title('Gaji ditandai sudah dibayar')
