@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Invoice extends Model
 {
     use HasUuids;
+
     protected $fillable = ['invoice_number', 'client_name', 'po_number', 'invoice_date', 'paid_date', 'total_amount', 'items', 'shipping_cost', 'discount', 'status'];
 
     protected $casts = [
@@ -49,6 +51,11 @@ class Invoice extends Model
     public function assemblies()
     {
         return $this->hasMany(Assembly::class);
+    }
+
+    public function income(): HasOne
+    {
+        return $this->hasOne(Income::class);
     }
 
     public function expectedAssemblyCount(): int

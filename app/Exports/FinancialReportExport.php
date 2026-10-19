@@ -4,7 +4,6 @@ namespace App\Exports;
 
 use App\Models\Expense;
 use App\Models\Income;
-use App\Models\Invoice;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -30,36 +29,17 @@ class FinancialReportExport implements FromCollection, WithHeadings, WithMapping
         // Combine all financial data
         $data = collect();
 
-        // Incomes from Invoices
-        // Include both 'paid' and 'delivered' status (delivered means already paid)
-        // Use paid_date instead of invoice_date for revenue recognition
-        $invoices = Invoice::whereIn('status', ['paid', 'delivered'])
-            ->whereNotNull('paid_date')
-            ->whereMonth('paid_date', $this->month)
-            ->whereYear('paid_date', $this->year)
-            ->get();
-
-        foreach ($invoices as $invoice) {
-            $data->push([
-                'type' => 'Pemasukan',
-                'category' => 'Invoice',
-                'date' => \Carbon\Carbon::parse($invoice->paid_date),
-                'description' => 'Invoice #' . $invoice->invoice_number . ' - ' . $invoice->client_name,
-                'amount' => $invoice->total_amount,
-                'debit' => $invoice->total_amount,
-                'credit' => 0,
-            ]);
-        }
-
-        // Manual Incomes
-        $incomes = Income::whereMonth('income_date', $this->month)
+        // Incomes (single source: invoice-linked + manual)
+        $incomes = Income::query()
+            ->with('invoice')
+            ->whereMonth('income_date', $this->month)
             ->whereYear('income_date', $this->year)
             ->get();
 
         foreach ($incomes as $income) {
             $data->push([
                 'type' => 'Pemasukan',
-                'category' => 'Manual',
+                'category' => $income->invoice_id ? 'Invoice' : 'Manual',
                 'date' => \Carbon\Carbon::parse($income->income_date),
                 'description' => $income->description,
                 'amount' => $income->amount,

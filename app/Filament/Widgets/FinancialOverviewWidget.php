@@ -4,7 +4,6 @@ namespace App\Filament\Widgets;
 
 use App\Models\Expense;
 use App\Models\Income;
-use App\Models\Invoice;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -16,43 +15,40 @@ class FinancialOverviewWidget extends BaseWidget
         $month = $now->month;
         $year = $now->year;
 
-        // Pemasukan dari Invoice Paid dan Delivered
-        // Include both 'paid' and 'delivered' status (delivered means already paid)
-        // Use paid_date instead of invoice_date for revenue recognition
-        $invoiceIncome = Invoice::whereIn('status', ['paid', 'delivered'])
-            ->whereNotNull('paid_date')
-            ->whereMonth('paid_date', $month)
-            ->whereYear('paid_date', $year)
-            ->sum('total_amount');
-
-        // Pemasukan Manual
-        $manualIncome = Income::whereMonth('income_date', $month)
+        // Pemasukan: single source = incomes
+        // (invoice paid/delivered auto-post + manual incomes)
+        $invoiceIncome = Income::query()
+            ->whereNotNull('invoice_id')
+            ->whereMonth('income_date', $month)
             ->whereYear('income_date', $year)
             ->sum('amount');
 
-        // Total Pemasukan
+        $manualIncome = Income::query()
+            ->whereNull('invoice_id')
+            ->whereMonth('income_date', $month)
+            ->whereYear('income_date', $year)
+            ->sum('amount');
+
         $totalIncome = $invoiceIncome + $manualIncome;
 
-        // Pengeluaran: single source of truth = expenses
-        // (cashbon, budget, reimbursement, salary, manual)
+        // Pengeluaran: single source = expenses
         $totalExpense = Expense::whereMonth('expense_date', $month)
             ->whereYear('expense_date', $year)
             ->sum('amount');
 
-        // Laba/Rugi
         $profit = $totalIncome - $totalExpense;
 
         return [
-            Stat::make('Total Pemasukan Bulan Ini', 'Rp ' . number_format($totalIncome, 0, ',', '.'))
-                ->description('Invoice: ' . number_format($invoiceIncome, 0, ',', '.') . ' | Manual: ' . number_format($manualIncome, 0, ',', '.'))
+            Stat::make('Total Pemasukan Bulan Ini', 'Rp '.number_format($totalIncome, 0, ',', '.'))
+                ->description('Invoice: '.number_format($invoiceIncome, 0, ',', '.').' | Manual: '.number_format($manualIncome, 0, ',', '.'))
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('success'),
 
-            Stat::make('Total Pengeluaran Bulan Ini', 'Rp ' . number_format($totalExpense, 0, ',', '.'))
+            Stat::make('Total Pengeluaran Bulan Ini', 'Rp '.number_format($totalExpense, 0, ',', '.'))
                 ->descriptionIcon('heroicon-m-arrow-trending-down')
                 ->color('danger'),
 
-            Stat::make('Laba/Rugi Bulan Ini', 'Rp ' . number_format($profit, 0, ',', '.'))
+            Stat::make('Laba/Rugi Bulan Ini', 'Rp '.number_format($profit, 0, ',', '.'))
                 ->description($profit >= 0 ? 'Laba' : 'Rugi')
                 ->descriptionIcon($profit >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
                 ->color($profit >= 0 ? 'success' : 'danger'),

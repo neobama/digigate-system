@@ -59,12 +59,30 @@ class IncomeResource extends Resource
                     ->label('Deskripsi')
                     ->limit(50)
                     ->searchable(),
+                Tables\Columns\TextColumn::make('source')
+                    ->label('Sumber')
+                    ->badge()
+                    ->getStateUsing(fn (Income $record): string => $record->invoice_id ? 'Invoice' : 'Manual')
+                    ->color(fn (string $state): string => $state === 'Invoice' ? 'success' : 'gray'),
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Nominal')
                     ->money('IDR')
                     ->sortable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('source')
+                    ->label('Sumber')
+                    ->options([
+                        'invoice' => 'Invoice',
+                        'manual' => 'Manual',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return match ($data['value'] ?? null) {
+                            'invoice' => $query->whereNotNull('invoice_id'),
+                            'manual' => $query->whereNull('invoice_id'),
+                            default => $query,
+                        };
+                    }),
                 Tables\Filters\Filter::make('income_date')
                     ->form([
                         Forms\Components\DatePicker::make('date_from')
@@ -86,12 +104,17 @@ class IncomeResource extends Resource
             ])
             ->defaultSort('income_date', 'desc')
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->visible(fn (Income $record): bool => ! $record->invoice_id),
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn (Income $record): bool => ! $record->invoice_id),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->action(function ($records) {
+                            $records->filter(fn (Income $r) => ! $r->invoice_id)->each->delete();
+                        }),
                 ]),
             ]);
     }

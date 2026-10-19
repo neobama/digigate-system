@@ -66,7 +66,7 @@ Ringkas modul:
 - Cashbon: pinjaman/uang muka; ada jatah bulanan per karyawan (di employee: Request Cashbon Baru dari halaman Cashbon).
 - Budget Request: pengajuan anggaran; saat admin set Paid, pengeluaran otomatis tercatat di laporan. Karyawan wajib input realisasi (nominal aktual + bukti) untuk memperbarui nominal/bukti pengeluaran tersebut.
 - Reimbursement: klaim penggantian biaya (ada upload bon di alur admin).
-- Keuangan (admin): Pemasukan (Income), Pengeluaran (Expense), Laporan Keuangan.
+- Keuangan (admin): Pemasukan (Income), Pengeluaran (Expense), Laporan Keuangan. Invoice paid/delivered otomatis jadi Pemasukan — P&L hanya dari Income + Expense (jangan hitung invoice dua kali).
 - Penjualan/operasional (admin): Invoice, Dokumen.
 - Inventori/produksi (admin): Komponen, Assembly; Warranty Claim untuk garansi.
 - HR (admin): Data Karyawan, Pembayaran Gaji (Salary Payment).
