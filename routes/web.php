@@ -40,9 +40,6 @@ $repairPortalRoutes = function () {
     Route::get('/', [RepairPortalController::class, 'create'])
         ->middleware('throttle:30,1')
         ->name('create');
-    Route::get('/captcha', [RepairPortalController::class, 'captcha'])
-        ->middleware('throttle:20,1')
-        ->name('captcha');
     Route::post('/', [RepairPortalController::class, 'store'])
         ->middleware('throttle:5,1')
         ->name('store');

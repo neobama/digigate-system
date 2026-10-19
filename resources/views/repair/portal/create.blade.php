@@ -65,7 +65,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('repair.portal.store') }}" class="relative space-y-5 rounded-2xl bg-white/95 p-6 shadow-sm ring-1 ring-brand-200/70 backdrop-blur sm:p-8">
+        <form method="POST" action="{{ route('repair.portal.store') }}" class="space-y-5 rounded-2xl bg-white/95 p-6 shadow-sm ring-1 ring-brand-200/70 backdrop-blur sm:p-8">
             @csrf
 
             <div class="grid gap-5 sm:grid-cols-2">
@@ -129,32 +129,6 @@
                     placeholder="Jelaskan keluhan atau kerusakan perangkat...">{{ old('complaint') }}</textarea>
             </div>
 
-            {{-- Honeypot anti-bot --}}
-            <div class="absolute -left-[9999px] top-auto h-0 w-0 overflow-hidden" aria-hidden="true">
-                <label for="company_website">Website</label>
-                <input type="text" name="company_website" id="company_website" value="" tabindex="-1" autocomplete="off">
-            </div>
-
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-slate-700">Kode Keamanan (Captcha) *</label>
-                <div class="flex flex-wrap items-center gap-3">
-                    <div class="overflow-hidden rounded-lg ring-1 ring-brand-200 bg-brand-50">
-                        {!! $captchaSvg !!}
-                    </div>
-                    <a href="{{ route('repair.portal.captcha') }}"
-                        id="refresh-captcha"
-                        class="text-sm font-medium text-brand-500 hover:text-brand-600 underline-offset-2 hover:underline">
-                        Ganti kode
-                    </a>
-                </div>
-                <input type="text" name="captcha" value="" required autocomplete="off" maxlength="10"
-                    class="mt-3 w-full rounded-lg border-slate-300 px-3 py-2 uppercase shadow-sm focus:border-brand-400 focus:ring-brand-400 @error('captcha') border-red-400 @enderror"
-                    placeholder="Ketik kode di gambar">
-                @error('captcha')
-                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
-
             <button type="submit"
                 class="w-full rounded-xl bg-brand-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2">
                 Kirim Pengajuan
@@ -166,45 +140,26 @@
         (function () {
             const input = document.getElementById('invoice_date');
             const notice = document.getElementById('warranty-notice');
-            if (input && notice) {
-                function isOutOfWarranty(dateValue) {
-                    if (!dateValue) return false;
-                    const invoice = new Date(dateValue + 'T00:00:00');
-                    if (Number.isNaN(invoice.getTime())) return false;
-                    const expires = new Date(invoice);
-                    expires.setFullYear(expires.getFullYear() + 1);
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    return today > expires;
-                }
+            if (!input || !notice) return;
 
-                function refreshNotice() {
-                    notice.classList.toggle('hidden', !isOutOfWarranty(input.value));
-                }
-
-                input.addEventListener('change', refreshNotice);
-                input.addEventListener('input', refreshNotice);
-                refreshNotice();
+            function isOutOfWarranty(dateValue) {
+                if (!dateValue) return false;
+                const invoice = new Date(dateValue + 'T00:00:00');
+                if (Number.isNaN(invoice.getTime())) return false;
+                const expires = new Date(invoice);
+                expires.setFullYear(expires.getFullYear() + 1);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return today > expires;
             }
 
-            const refreshCaptcha = document.getElementById('refresh-captcha');
-            if (refreshCaptcha) {
-                refreshCaptcha.addEventListener('click', async function (event) {
-                    event.preventDefault();
-                    try {
-                        const response = await fetch(refreshCaptcha.href, {
-                            headers: { 'Accept': 'image/svg+xml' },
-                            credentials: 'same-origin',
-                        });
-                        if (!response.ok) return;
-                        const svg = await response.text();
-                        const holder = refreshCaptcha.previousElementSibling;
-                        if (holder) holder.innerHTML = svg;
-                    } catch (e) {
-                        window.location.reload();
-                    }
-                });
+            function refreshNotice() {
+                notice.classList.toggle('hidden', !isOutOfWarranty(input.value));
             }
+
+            input.addEventListener('change', refreshNotice);
+            input.addEventListener('input', refreshNotice);
+            refreshNotice();
         })();
     </script>
 </body>
