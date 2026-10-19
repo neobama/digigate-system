@@ -50,4 +50,46 @@ class Invoice extends Model
     {
         return $this->hasMany(Assembly::class);
     }
+
+    public function expectedAssemblyCount(): int
+    {
+        $total = collect($this->items ?? [])
+            ->sum(fn (array $item) => max(1, (int) ($item['quantity'] ?? 1)));
+
+        return max(1, $total);
+    }
+
+    public function assemblyCount(): int
+    {
+        if (isset($this->assemblies_count)) {
+            return (int) $this->assemblies_count;
+        }
+
+        return $this->assemblies()->count();
+    }
+
+    public function remainingAssemblySlots(): int
+    {
+        return max(0, $this->expectedAssemblyCount() - $this->assemblyCount());
+    }
+
+    public function canCreateMoreAssemblies(): bool
+    {
+        return $this->remainingAssemblySlots() > 0;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function idsWithAssemblySlotsRemaining(): array
+    {
+        return static::query()
+            ->where('status', 'paid')
+            ->withCount('assemblies')
+            ->orderByDesc('invoice_date')
+            ->get()
+            ->filter(fn (self $invoice) => $invoice->canCreateMoreAssemblies())
+            ->pluck('id')
+            ->all();
+    }
 }

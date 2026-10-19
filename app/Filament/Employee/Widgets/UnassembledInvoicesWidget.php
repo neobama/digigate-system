@@ -21,7 +21,8 @@ class UnassembledInvoicesWidget extends BaseWidget
             ->query(
                 Invoice::query()
                     ->where('status', 'paid')
-                    ->whereDoesntHave('assemblies')
+                    ->whereIn('id', Invoice::idsWithAssemblySlotsRemaining())
+                    ->withCount('assemblies')
                     ->orderBy('invoice_date', 'desc')
             )
             ->columns([
@@ -46,6 +47,11 @@ class UnassembledInvoicesWidget extends BaseWidget
                     ->label('Total')
                     ->money('IDR')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('assembly_progress')
+                    ->label('Progress Assembly')
+                    ->state(fn (Invoice $record) => $record->assemblyCount().' / '.$record->expectedAssemblyCount())
+                    ->badge()
+                    ->color('warning'),
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Status')
                     ->colors([

@@ -4,6 +4,9 @@ namespace App\Filament\Employee\Pages;
 
 use App\Models\Assembly;
 use App\Models\Component;
+use App\Models\Invoice;
+use App\Services\AssemblyInvoiceValidator;
+use App\Support\AssemblySerialNumberGenerator;
 use Filament\Forms;
 use Filament\Pages\Page;
 use Filament\Tables;
@@ -54,12 +57,24 @@ class MyAssembly extends Page implements Tables\Contracts\HasTable
                             ->relationship(
                                 name: 'invoice',
                                 titleAttribute: 'invoice_number',
-                                modifyQueryUsing: fn (Builder $query) => $query->where('status', 'paid')
+                                modifyQueryUsing: fn (Builder $query) => $query
+                                    ->where('status', 'paid')
+                                    ->withCount('assemblies')
                             )
                             ->label('Pilih Invoice (Paid)')
                             ->preload()
                             ->searchable()
-                            ->required(),
+                            ->required()
+                            ->disableOptionWhen(function ($value): bool {
+                                if (! $value) {
+                                    return false;
+                                }
+
+                                $invoice = Invoice::withCount('assemblies')->find($value);
+
+                                return $invoice && ! $invoice->canCreateMoreAssemblies();
+                            })
+                            ->helperText('Invoice yang sudah selesai dirakit tidak bisa dipilih lagi.'),
                         
                         Forms\Components\Select::make('product_type')
                             ->label('Produk Yang Dirakit')
@@ -131,22 +146,12 @@ class MyAssembly extends Page implements Tables\Contracts\HasTable
                             })->columns(2)
                     ])
                     ->mutateFormDataUsing(function (array $data): array {
-                        // Generate Serial Number dengan format DG(YYYY)(MM)(XXX)
-                        $assemblyDate = $data['assembly_date'] ?? now();
-                        $year = date('Y', strtotime($assemblyDate));
-                        $month = date('m', strtotime($assemblyDate));
-                        
-                        // Hitung jumlah assembly di bulan ini berdasarkan assembly_date
-                        $countThisMonth = Assembly::whereYear('assembly_date', $year)
-                            ->whereMonth('assembly_date', (int)$month)
-                            ->count();
-                        
-                        // Nomor urut = count + 1 (karena ini akan jadi assembly berikutnya)
-                        $sequence = $countThisMonth + 1;
-                        
-                        // Format: DG202512001 (DG + YYYY + MM + XXX dengan padding 3 digit)
-                        $data['serial_number'] = 'DG' . $year . $month . str_pad($sequence, 3, '0', STR_PAD_LEFT);
-                        
+                        AssemblyInvoiceValidator::ensureCanCreateAssembly($data['invoice_id']);
+
+                        $data['serial_number'] = AssemblySerialNumberGenerator::nextForDate(
+                            $data['assembly_date'] ?? now()
+                        );
+
                         return $data;
                     })
                     ->after(function (Assembly $record) {

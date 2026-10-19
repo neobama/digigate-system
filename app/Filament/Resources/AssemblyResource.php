@@ -5,14 +5,18 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\AssemblyResource\Pages;
 use App\Filament\Resources\AssemblyResource\RelationManagers;
 use App\Models\Assembly;
+use App\Models\Invoice;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
+use Filament\Resources\Pages\CreateRecord;
+use Filament\Resources\Pages\EditRecord;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\Rules\Unique;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class AssemblyResource extends Resource
@@ -31,12 +35,32 @@ class AssemblyResource extends Resource
                     ->relationship(
                         name: 'invoice',
                         titleAttribute: 'invoice_number',
-                        modifyQueryUsing: fn (Builder $query) => $query->where('status', 'paid')
+                        modifyQueryUsing: fn (Builder $query) => $query
+                            ->where('status', 'paid')
+                            ->withCount('assemblies')
                     )
                     ->label('Pilih Invoice (Paid)')
                     ->preload()
                     ->searchable()
-                    ->required(),
+                    ->required()
+                    ->disableOptionWhen(function ($value, Forms\Get $get, $livewire): bool {
+                        if (! $value) {
+                            return false;
+                        }
+
+                        $invoice = Invoice::withCount('assemblies')->find($value);
+
+                        if (! $invoice) {
+                            return false;
+                        }
+
+                        if ($livewire instanceof EditRecord && $livewire->record?->invoice_id === $value) {
+                            return false;
+                        }
+
+                        return ! $invoice->canCreateMoreAssemblies();
+                    })
+                    ->helperText('Invoice yang sudah selesai dirakit tidak bisa dipilih lagi.'),
                 
                 Forms\Components\Select::make('product_type')
                     ->label('Produk Yang Dirakit')
@@ -54,10 +78,19 @@ class AssemblyResource extends Resource
                     ->required(),
                 
                 Forms\Components\TextInput::make('serial_number')
-                    ->label('Serial Number')
-                    ->disabled()
-                    ->dehydrated()
-                    ->placeholder('Akan di-generate otomatis saat disimpan'),
+                    ->label('Serial Number Perangkat')
+                    ->placeholder('Kosongkan untuk auto-generate (DGYYYYMM001)')
+                    ->helperText('Admin bisa override SN. Nomor urut bulan tetap increment dari 001 berdasarkan SN yang sudah ada di bulan tersebut.')
+                    ->nullable()
+                    ->regex('/^DG\d{4}(0[1-9]|1[0-2])\d{3}$/')
+                    ->unique(
+                        table: Assembly::class,
+                        column: 'serial_number',
+                        ignoreRecord: true,
+                        modifyRuleUsing: fn (Unique $rule, $livewire) => $livewire instanceof EditRecord
+                            ? $rule->ignore($livewire->record)
+                            : $rule
+                    ),
 
                 Forms\Components\Section::make('Pilih Serial Number Komponen')
                     ->description('Hanya menampilkan SN yang tersedia di stok')
