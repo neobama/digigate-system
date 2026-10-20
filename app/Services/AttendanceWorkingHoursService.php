@@ -141,6 +141,10 @@ class AttendanceWorkingHoursService
 
         $time = $attendance->recorded_at->format('H:i');
 
+        if ($attendance->hasPendingChangeRequest()) {
+            return $time.' (koreksi menunggu)';
+        }
+
         $statusSuffix = match ($attendance->status) {
             'pending' => ' (menunggu)',
             'rejected' => ' (ditolak)',
@@ -148,6 +152,55 @@ class AttendanceWorkingHoursService
         };
 
         return $time.$statusSuffix;
+    }
+
+    /**
+     * Hari hadir = jumlah tanggal unik dengan tap-in berstatus approved di bulan tersebut.
+     */
+    public function countPresentDays(Employee $employee, int $month, int $year): int
+    {
+        $tz = $this->timezone();
+        $start = Carbon::create($year, $month, 1, 0, 0, 0, $tz)->startOfMonth();
+        $end = $start->copy()->endOfMonth();
+
+        $dates = Attendance::query()
+            ->where('employee_id', $employee->id)
+            ->where('type', AttendanceType::TapIn)
+            ->where('status', 'approved')
+            ->whereBetween('recorded_at', [$start, $end])
+            ->pluck('recorded_at');
+
+        return $dates
+            ->map(fn ($at) => Carbon::parse($at)->timezone($tz)->toDateString())
+            ->unique()
+            ->count();
+    }
+
+    /**
+     * @return array{
+     *     min_days: int,
+     *     days_present: int,
+     *     missing_days: int,
+     *     daily_rate: float,
+     *     deduction: float
+     * }
+     */
+    public function attendanceDeductionFor(Employee $employee, int $month, int $year): array
+    {
+        $minDays = max(1, (int) config('attendance.min_present_days', 24));
+        $daysPresent = $this->countPresentDays($employee, $month, $year);
+        $missingDays = max(0, $minDays - $daysPresent);
+        $baseSalary = (float) $employee->base_salary;
+        $dailyRate = $baseSalary / $minDays;
+        $deduction = round($dailyRate * $missingDays, 2);
+
+        return [
+            'min_days' => $minDays,
+            'days_present' => $daysPresent,
+            'missing_days' => $missingDays,
+            'daily_rate' => round($dailyRate, 2),
+            'deduction' => $deduction,
+        ];
     }
 
     /**

@@ -23,6 +23,8 @@ class Attendance extends Model
         'recorded_at',
         'status',
         'admin_notes',
+        'change_request_note',
+        'proposed_recorded_at',
         'verified_by',
         'verified_at',
     ];
@@ -34,8 +36,19 @@ class Attendance extends Model
         'distance_meters' => 'decimal:2',
         'is_within_radius' => 'boolean',
         'recorded_at' => 'datetime',
+        'proposed_recorded_at' => 'datetime',
         'verified_at' => 'datetime',
     ];
+
+    public function hasPendingChangeRequest(): bool
+    {
+        return filled($this->change_request_note) || filled($this->proposed_recorded_at);
+    }
+
+    public function isValidForPresence(): bool
+    {
+        return $this->status === 'approved';
+    }
 
     public function employee(): BelongsTo
     {

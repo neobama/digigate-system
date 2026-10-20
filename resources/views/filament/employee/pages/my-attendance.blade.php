@@ -30,7 +30,7 @@
                     </p>
                 </div>
                 <div class="rounded-xl bg-white p-4 ring-1 ring-gray-950/5 dark:bg-white/5 dark:ring-white/10">
-                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Jam Kerja (disetujui)</p>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Jam Kerja</p>
                     <p class="mt-1 text-lg font-semibold text-gray-950 dark:text-white">
                         {{ $workingHoursService::formatMinutes($todayMinutes) }}
                     </p>

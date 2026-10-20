@@ -33,7 +33,7 @@ final class DonoPromptCache
 
     public static function knowledgeBase(): string
     {
-        return Cache::rememberForever('dono.knowledge_base.v2', fn () => DonoApplicationCatalog::knowledgeBaseForPrompt());
+        return Cache::rememberForever('dono.knowledge_base.v3', fn () => DonoApplicationCatalog::knowledgeBaseForPrompt());
     }
 
     public static function jsonSchema(): string

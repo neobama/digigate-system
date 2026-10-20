@@ -6,6 +6,7 @@ use App\Filament\Resources\SalaryPaymentResource\Pages;
 use App\Models\Cashbon;
 use App\Models\Employee;
 use App\Models\SalaryPayment;
+use App\Services\AttendanceWorkingHoursService;
 use App\Services\ExpenseRecognitionService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -148,6 +149,42 @@ class SalaryPaymentResource extends Resource
                                 return new HtmlString($html);
                             })
                             ->columnSpanFull(),
+                        Forms\Components\Placeholder::make('attendance_preview')
+                            ->label('Potongan Kehadiran (Auto)')
+                            ->content(function (Forms\Get $get): HtmlString {
+                                $employeeId = $get('employee_id');
+                                $month = (int) ($get('month') ?? now()->month);
+                                $year = (int) ($get('year') ?? now()->year);
+
+                                if (! $employeeId) {
+                                    return new HtmlString('<span style="color:#6b7280;">Pilih karyawan untuk melihat potongan kehadiran.</span>');
+                                }
+
+                                $employee = Employee::find($employeeId);
+                                if (! $employee) {
+                                    return new HtmlString('<span style="color:#dc2626;">Data karyawan tidak ditemukan.</span>');
+                                }
+
+                                $att = self::calculateAttendanceDeduction($employee, $month, $year);
+
+                                if ($att['missing_days'] === 0) {
+                                    return new HtmlString(sprintf(
+                                        '<span style="color:#16a34a;">Hadir %d hari (minimal %d). Tidak ada potongan kehadiran.</span>',
+                                        $att['days_present'],
+                                        $att['min_days']
+                                    ));
+                                }
+
+                                return new HtmlString(sprintf(
+                                    '<span style="color:#b45309;">Hadir <strong>%d</strong> hari (minimal %d). Kurang %d hari × Rp %s = potongan <strong>Rp %s</strong>.</span>',
+                                    $att['days_present'],
+                                    $att['min_days'],
+                                    $att['missing_days'],
+                                    number_format($att['daily_rate'], 0, ',', '.'),
+                                    number_format($att['deduction'], 0, ',', '.')
+                                ));
+                            })
+                            ->columnSpanFull(),
                         Forms\Components\TextInput::make('base_salary')
                             ->label('Gaji Pokok (Auto)')
                             ->prefix('Rp')
@@ -160,6 +197,11 @@ class SalaryPaymentResource extends Resource
                             ->dehydrated(false),
                         Forms\Components\TextInput::make('bpjs_allowance')
                             ->label('Potongan BPJS (Auto)')
+                            ->prefix('Rp')
+                            ->disabled()
+                            ->dehydrated(false),
+                        Forms\Components\TextInput::make('attendance_deduction')
+                            ->label('Potongan Kehadiran (Auto)')
                             ->prefix('Rp')
                             ->disabled()
                             ->dehydrated(false),
@@ -268,6 +310,21 @@ class SalaryPaymentResource extends Resource
             'create' => Pages\CreateSalaryPayment::route('/create'),
             'edit' => Pages\EditSalaryPayment::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * @return array{
+     *     min_days: int,
+     *     days_present: int,
+     *     missing_days: int,
+     *     daily_rate: float,
+     *     deduction: float
+     * }
+     */
+    public static function calculateAttendanceDeduction(Employee $employee, int $month, int $year): array
+    {
+        return app(AttendanceWorkingHoursService::class)
+            ->attendanceDeductionFor($employee, $month, $year);
     }
 
     public static function calculateMonthlyCashbon(Employee $employee, int $month, int $year): float

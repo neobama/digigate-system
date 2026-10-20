@@ -144,18 +144,19 @@ class MyAttendance extends Page implements HasTable
             'distance_meters' => $evaluation['distance_meters'],
             'is_within_radius' => $evaluation['is_within_radius'],
             'recorded_at' => $recordedAt,
-            'status' => 'pending',
+            'status' => 'approved',
+            'verified_at' => $recordedAt,
         ]);
 
         $this->reset(['latitude', 'longitude', 'photo_base64', 'description']);
 
         $typeLabel = $attendanceType->label();
         $message = $evaluation['is_within_radius']
-            ? "{$typeLabel} berhasil dikirim. Menunggu verifikasi admin."
-            : "{$typeLabel} dikirim di luar wilayah kantor (".number_format($evaluation['distance_meters'], 0, ',', '.').' m). Menunggu verifikasi admin.';
+            ? "{$typeLabel} berhasil tercatat dan langsung sah."
+            : "{$typeLabel} tercatat di luar wilayah kantor (".number_format($evaluation['distance_meters'], 0, ',', '.').' m) dan langsung sah. Ajukan koreksi jika perlu.';
 
         Notification::make()
-            ->title('Absensi tercatat')
+            ->title('Absensi sah')
             ->body($message)
             ->success()
             ->send();
@@ -200,15 +201,24 @@ class MyAttendance extends Page implements HasTable
                     ->limit(40)
                     ->placeholder('-'),
                 Tables\Columns\TextColumn::make('status')
+                    ->label('Status')
                     ->badge()
+                    ->getStateUsing(function (Attendance $record): string {
+                        if ($record->hasPendingChangeRequest()) {
+                            return 'change_pending';
+                        }
+
+                        return $record->status;
+                    })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'change_pending' => 'Koreksi menunggu',
                         'pending' => 'Menunggu',
-                        'approved' => 'Diterima',
+                        'approved' => 'Sah',
                         'rejected' => 'Ditolak',
                         default => $state,
                     })
                     ->color(fn (string $state): string => match ($state) {
-                        'pending' => 'warning',
+                        'change_pending', 'pending' => 'warning',
                         'approved' => 'success',
                         'rejected' => 'danger',
                         default => 'gray',
@@ -217,9 +227,41 @@ class MyAttendance extends Page implements HasTable
                     ->label('Catatan Admin')
                     ->limit(30)
                     ->placeholder('-')
-                    ->visible(fn (?Attendance $record) => $record?->status === 'rejected'),
+                    ->toggleable(),
             ])
             ->defaultSort('recorded_at', 'desc')
+            ->actions([
+                Tables\Actions\Action::make('requestCorrection')
+                    ->label('Ajukan Koreksi')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('warning')
+                    ->visible(fn (Attendance $record): bool => $record->status === 'approved' && ! $record->hasPendingChangeRequest())
+                    ->form([
+                        \Filament\Forms\Components\DateTimePicker::make('proposed_recorded_at')
+                            ->label('Waktu yang benar')
+                            ->seconds(false)
+                            ->required()
+                            ->default(fn (Attendance $record) => $record->recorded_at),
+                        \Filament\Forms\Components\Textarea::make('change_request_note')
+                            ->label('Alasan koreksi')
+                            ->required()
+                            ->rows(3)
+                            ->placeholder('Contoh: Salah jam karena GPS lambat / lupa tap out tepat waktu'),
+                    ])
+                    ->action(function (Attendance $record, array $data): void {
+                        $record->update([
+                            'proposed_recorded_at' => $data['proposed_recorded_at'],
+                            'change_request_note' => $data['change_request_note'],
+                        ]);
+
+                        Notification::make()
+                            ->title('Pengajuan koreksi terkirim')
+                            ->body('Absensi tetap sah. Admin akan meninjau perubahan waktu.')
+                            ->success()
+                            ->send();
+                    })
+                    ->successNotificationTitle(null),
+            ])
             ->emptyStateHeading('Belum ada riwayat absensi')
             ->emptyStateDescription('Kirim absensi pertama Anda menggunakan form di atas.');
     }

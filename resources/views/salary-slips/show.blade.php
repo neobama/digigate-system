@@ -196,6 +196,10 @@
                 <td>Rp {{ number_format($bpjs_allowance, 0, ',', '.') }}</td>
             </tr>
             <tr>
+                <td>Kehadiran ({{ $days_present ?? 0 }}/{{ $min_present_days ?? 24 }} hari)</td>
+                <td>Rp {{ number_format($attendance_deduction ?? 0, 0, ',', '.') }}</td>
+            </tr>
+            <tr>
                 <td>Total Tambahan</td>
                 <td>Rp {{ number_format($adjustment_addition ?? 0, 0, ',', '.') }}</td>
             </tr>

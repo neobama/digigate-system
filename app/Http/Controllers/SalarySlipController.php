@@ -59,8 +59,12 @@ class SalarySlipController extends Controller
         $cashbonDetails = SalaryPaymentResource::getCashbonDetailsForPeriod($employee, $month, $year);
         $totalCashbon = SalaryPaymentResource::calculateMonthlyCashbon($employee, $month, $year);
 
+        $attendance = SalaryPaymentResource::calculateAttendanceDeduction($employee, $month, $year);
+        $attendanceDeduction = (float) $attendance['deduction'];
+        $daysPresent = (int) $attendance['days_present'];
+
         // Hitung gaji bersih
-        $gajiBersih = $employee->base_salary - $totalCashbon - $employee->bpjs_allowance;
+        $gajiBersih = (float) $employee->base_salary - $totalCashbon - (float) $employee->bpjs_allowance - $attendanceDeduction;
         $adjustmentItems = [];
         $adjustmentAddition = 0;
         $adjustmentDeduction = 0;
@@ -69,6 +73,8 @@ class SalarySlipController extends Controller
             $adjustmentItems = $salaryPayment->adjustments->toArray();
             $adjustmentAddition = (float) $salaryPayment->adjustment_addition;
             $adjustmentDeduction = (float) $salaryPayment->adjustment_deduction;
+            $attendanceDeduction = (float) $salaryPayment->attendance_deduction;
+            $daysPresent = (int) $salaryPayment->days_present;
             $gajiBersih = (float) $salaryPayment->net_salary;
         }
 
@@ -80,6 +86,9 @@ class SalarySlipController extends Controller
             'base_salary' => $employee->base_salary,
             'total_cashbon' => $totalCashbon,
             'bpjs_allowance' => $employee->bpjs_allowance,
+            'days_present' => $daysPresent,
+            'min_present_days' => $attendance['min_days'],
+            'attendance_deduction' => $attendanceDeduction,
             'gaji_bersih' => $gajiBersih,
             'cashbon_details' => $cashbonDetails,
             'adjustment_items' => $adjustmentItems,
