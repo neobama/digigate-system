@@ -47,7 +47,12 @@ class TelegramService
 
             $response = Http::timeout(12)->post($this->apiUrl('sendMessage'), $payload);
 
-            if ($response->successful()) {
+            if ($response->successful() && ($response->json('ok') ?? false)) {
+                Log::info('Telegram sendMessage ok', [
+                    'chat_id' => $chatId,
+                    'message_id' => $response->json('result.message_id'),
+                ]);
+
                 return true;
             }
 

@@ -17,20 +17,27 @@ class BudgetRequestObserver
     public function created(BudgetRequest $budgetRequest): void
     {
         try {
-            ActivityLogService::logCreate($budgetRequest);
-        } catch (\Exception $e) {
-            \Log::error('Failed to log activity for budget request creation', [
+            $this->telegramNotifier->paymentRequestCreated($budgetRequest);
+        } catch (\Throwable $e) {
+            \Log::error('Telegram notify gagal (budget request created)', [
                 'budget_request_id' => $budgetRequest->id,
                 'error' => $e->getMessage(),
             ]);
         }
 
-        $this->expenseRecognition->ensureForBudgetRequest($budgetRequest);
+        try {
+            ActivityLogService::logCreate($budgetRequest);
+        } catch (\Throwable $e) {
+            \Log::error('Activity log gagal (budget request created)', [
+                'budget_request_id' => $budgetRequest->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         try {
-            $this->telegramNotifier->paymentRequestCreated($budgetRequest);
+            $this->expenseRecognition->ensureForBudgetRequest($budgetRequest);
         } catch (\Throwable $e) {
-            \Log::error('Telegram notify gagal (budget request created)', [
+            \Log::error('Expense recognition gagal (budget request created)', [
                 'budget_request_id' => $budgetRequest->id,
                 'error' => $e->getMessage(),
             ]);
@@ -47,8 +54,8 @@ class BudgetRequestObserver
             if (! empty($newValues)) {
                 ActivityLogService::logUpdate($budgetRequest, $oldValues, $newValues);
             }
-        } catch (\Exception $e) {
-            \Log::error('Failed to log activity for budget request update', [
+        } catch (\Throwable $e) {
+            \Log::error('Activity log gagal (budget request updated)', [
                 'budget_request_id' => $budgetRequest->id,
                 'error' => $e->getMessage(),
             ]);
@@ -64,11 +71,25 @@ class BudgetRequestObserver
             'realization_submitted_at',
             'realization_proof_images',
         ])) {
-            $this->expenseRecognition->ensureForBudgetRequest($budgetRequest);
+            try {
+                $this->expenseRecognition->ensureForBudgetRequest($budgetRequest);
+            } catch (\Throwable $e) {
+                \Log::error('Expense recognition gagal (budget request updated)', [
+                    'budget_request_id' => $budgetRequest->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         if ($budgetRequest->wasChanged('status')) {
-            $this->telegramNotifier->paymentRequestStatusChanged($budgetRequest, $budgetRequest->status);
+            try {
+                $this->telegramNotifier->paymentRequestStatusChanged($budgetRequest, $budgetRequest->status);
+            } catch (\Throwable $e) {
+                \Log::error('Telegram notify gagal (budget request updated)', [
+                    'budget_request_id' => $budgetRequest->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 
@@ -76,8 +97,8 @@ class BudgetRequestObserver
     {
         try {
             ActivityLogService::logDelete($budgetRequest);
-        } catch (\Exception $e) {
-            \Log::error('Failed to log activity for budget request deletion', [
+        } catch (\Throwable $e) {
+            \Log::error('Activity log gagal (budget request deleted)', [
                 'budget_request_id' => $budgetRequest->id,
                 'error' => $e->getMessage(),
             ]);
