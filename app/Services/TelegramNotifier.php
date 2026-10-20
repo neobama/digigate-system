@@ -12,7 +12,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class TelegramNotifier
 {
-    public function __construct(private TelegramService $telegram) {}
+    public function __construct(
+        private TelegramService $telegram,
+        private SalarySlipService $salarySlips,
+    ) {}
 
     public function paymentRequestCreated(Model $request): void
     {
@@ -144,7 +147,7 @@ class TelegramNotifier
             return;
         }
 
-        $salaryPayment->loadMissing('employee');
+        $salaryPayment->loadMissing('employee', 'adjustments');
         $employee = $salaryPayment->employee;
         if (! $employee) {
             return;
@@ -152,13 +155,27 @@ class TelegramNotifier
 
         $period = str_pad((string) $salaryPayment->month, 2, '0', STR_PAD_LEFT).'/'.$salaryPayment->year;
         $net = number_format((float) $salaryPayment->net_salary, 0, ',', '.');
-
-        $text = "💰 <b>Gaji Sudah Dibayar</b>\n\n"
+        $caption = "💰 <b>Gaji Sudah Dibayar</b>\n\n"
+            .'Karyawan: '.e($employee->name)."\n"
             ."Periode: {$period}\n"
             ."Jumlah: Rp {$net}\n\n"
-            .'Slip gaji bisa dilihat di panel karyawan DigiGate.';
+            .'Slip gaji terlampir.';
 
-        $this->telegram->sendToEmployee($employee, $text);
+        try {
+            $pdf = $this->salarySlips->generatePdfBinary($salaryPayment);
+            $filename = $this->salarySlips->filename($salaryPayment);
+
+            if (! $this->telegram->sendDocumentToEmployee($employee, $pdf, $filename, $caption)) {
+                // Fallback teks jika kirim PDF gagal / belum link
+                $this->telegram->sendToEmployee($employee, $caption."\n\n(Slip PDF gagal dikirim; cek di panel karyawan.)");
+            }
+        } catch (\Throwable $e) {
+            \Log::error('Gagal generate/kirim slip gaji Telegram', [
+                'salary_payment_id' => $salaryPayment->id,
+                'error' => $e->getMessage(),
+            ]);
+            $this->telegram->sendToEmployee($employee, $caption."\n\n(Slip PDF gagal dibuat; cek di panel karyawan.)");
+        }
     }
 
     public function approvalKeyboard(string $type, string $id, string $status): array

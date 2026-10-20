@@ -108,7 +108,7 @@ class TelegramService
         }
     }
 
-    public function sendToEmployee(Employee $employee, string $text, array $replyMarkup = []): bool
+    public function resolveEmployeeChatId(Employee $employee): ?string
     {
         $chatId = $employee->telegram_chat_id;
         if (blank($chatId) && filled($employee->phone_number)) {
@@ -117,7 +117,14 @@ class TelegramService
                 ->value('chat_id');
         }
 
-        if (blank($chatId)) {
+        return filled($chatId) ? (string) $chatId : null;
+    }
+
+    public function sendToEmployee(Employee $employee, string $text, array $replyMarkup = [], bool $defer = true): bool
+    {
+        $chatId = $this->resolveEmployeeChatId($employee);
+
+        if (! $chatId) {
             Log::info('Telegram: employee belum link chat', [
                 'employee_id' => $employee->id,
                 'phone' => $employee->phone_number,
@@ -126,7 +133,79 @@ class TelegramService
             return false;
         }
 
-        return $this->sendMessage((string) $chatId, $text, $replyMarkup);
+        return $this->sendMessage($chatId, $text, $replyMarkup, $defer);
+    }
+
+    public function sendDocument(
+        string $chatId,
+        string $fileContents,
+        string $filename,
+        ?string $caption = null,
+        string $mime = 'application/pdf',
+        bool $defer = true,
+    ): bool {
+        if (! $this->enabled() || blank($chatId) || $fileContents === '') {
+            return false;
+        }
+
+        if ($defer && ! app()->runningInConsole()) {
+            Defer::afterResponse(fn () => $this->sendDocument($chatId, $fileContents, $filename, $caption, $mime, false));
+
+            return true;
+        }
+
+        try {
+            $request = Http::timeout(60)
+                ->attach('document', $fileContents, $filename, ['Content-Type' => $mime]);
+
+            $payload = ['chat_id' => $chatId];
+            if (filled($caption)) {
+                $payload['caption'] = $caption;
+                $payload['parse_mode'] = 'HTML';
+            }
+
+            $response = $request->post($this->apiUrl('sendDocument'), $payload);
+
+            if ($response->successful() && ($response->json('ok') ?? false)) {
+                return true;
+            }
+
+            Log::warning('Telegram sendDocument failed', [
+                'chat_id' => $chatId,
+                'filename' => $filename,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Telegram sendDocument exception', [
+                'chat_id' => $chatId,
+                'filename' => $filename,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return false;
+    }
+
+    public function sendDocumentToEmployee(
+        Employee $employee,
+        string $fileContents,
+        string $filename,
+        ?string $caption = null,
+        string $mime = 'application/pdf',
+        bool $defer = true,
+    ): bool {
+        $chatId = $this->resolveEmployeeChatId($employee);
+        if (! $chatId) {
+            Log::info('Telegram: employee belum link chat (document)', [
+                'employee_id' => $employee->id,
+                'phone' => $employee->phone_number,
+            ]);
+
+            return false;
+        }
+
+        return $this->sendDocument($chatId, $fileContents, $filename, $caption, $mime, $defer);
     }
 
     /** @return list<string> */
