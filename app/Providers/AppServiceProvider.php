@@ -72,6 +72,21 @@ class AppServiceProvider extends ServiceProvider
         $this->app->booted(function () {
             $schedule = $this->app->make(Schedule::class);
             $schedule->command('tasks:check-failed')->hourly();
+
+            $tz = config('app.timezone', 'Asia/Jakarta');
+
+            // Pengingat absensi hari kerja (Senin–Jumat)
+            $schedule->command('attendance:remind tap_in')
+                ->weekdays()
+                ->at('10:00')
+                ->timezone($tz)
+                ->withoutOverlapping();
+
+            $schedule->command('attendance:remind tap_out')
+                ->weekdays()
+                ->at('18:00')
+                ->timezone($tz)
+                ->withoutOverlapping();
         });
     }
 }
