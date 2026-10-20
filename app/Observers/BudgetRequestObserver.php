@@ -26,7 +26,15 @@ class BudgetRequestObserver
         }
 
         $this->expenseRecognition->ensureForBudgetRequest($budgetRequest);
-        $this->telegramNotifier->paymentRequestCreated($budgetRequest);
+
+        try {
+            $this->telegramNotifier->paymentRequestCreated($budgetRequest);
+        } catch (\Throwable $e) {
+            \Log::error('Telegram notify gagal (budget request created)', [
+                'budget_request_id' => $budgetRequest->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     public function updated(BudgetRequest $budgetRequest): void

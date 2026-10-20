@@ -221,7 +221,7 @@ class TelegramService
         return array_values(array_unique([...$fromDb, ...$fromConfig]));
     }
 
-    public function sendToAdmins(string $text, array $replyMarkup = []): void
+    public function sendToAdmins(string $text, array $replyMarkup = [], bool $defer = false): void
     {
         $ids = $this->adminChatIds();
         if ($ids === []) {
@@ -231,7 +231,8 @@ class TelegramService
         }
 
         foreach ($ids as $chatId) {
-            $this->sendMessage((string) $chatId, $text, $replyMarkup);
+            // Default sync: notifikasi approval harus sampai, jangan andalkan afterResponse Livewire.
+            $this->sendMessage((string) $chatId, $text, $replyMarkup, $defer);
         }
     }
 

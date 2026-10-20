@@ -18,7 +18,15 @@ class CashbonObserver
     {
         ActivityLogService::logCreate($cashbon);
         $this->expenseRecognition->ensureForCashbon($cashbon);
-        $this->telegramNotifier->paymentRequestCreated($cashbon);
+
+        try {
+            $this->telegramNotifier->paymentRequestCreated($cashbon);
+        } catch (\Throwable $e) {
+            \Log::error('Telegram notify gagal (cashbon created)', [
+                'cashbon_id' => $cashbon->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     public function updated(Cashbon $cashbon): void

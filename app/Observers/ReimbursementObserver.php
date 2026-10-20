@@ -18,7 +18,15 @@ class ReimbursementObserver
     {
         ActivityLogService::logCreate($reimbursement);
         $this->expenseRecognition->ensureForReimbursement($reimbursement);
-        $this->telegramNotifier->paymentRequestCreated($reimbursement);
+
+        try {
+            $this->telegramNotifier->paymentRequestCreated($reimbursement);
+        } catch (\Throwable $e) {
+            \Log::error('Telegram notify gagal (reimbursement created)', [
+                'reimbursement_id' => $reimbursement->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     public function updated(Reimbursement $reimbursement): void
