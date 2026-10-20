@@ -69,7 +69,7 @@ Ringkas modul:
 - Keuangan (admin): Pemasukan (Income), Pengeluaran (Expense), Laporan Keuangan. Invoice paid/delivered → Income; cashbon/budget/reimbursement/gaji paid → Expense. Baris linked tidak boleh diedit manual — ubah dokumen sumber. P&L hanya Income + Expense.
 - Penjualan/operasional (admin): Invoice, Dokumen.
 - Inventori/produksi (admin): Komponen, Assembly; Warranty Claim untuk garansi.
-- HR (admin): Data Karyawan, Absensi, Pembayaran Gaji (Salary Payment). Absensi tap in/out langsung sah tanpa approval; approval admin hanya untuk koreksi/perubahan waktu. Gaji: minimal kehadiran 24 hari/bulan (hari dengan tap-in sah); kurang dari 24 dipotong (gaji pokok / 24) per hari.
+- HR (admin): Data Karyawan, Absensi, Pembayaran Gaji (Salary Payment). Absensi tap in/out langsung sah tanpa approval; approval admin hanya untuk koreksi/perubahan waktu. Gaji: minimal kehadiran 24 hari/bulan (hari dengan tap-in sah); kurang dari 24 dipotong (gaji pokok / 24) per hari — bisa di-on/off per slip lewat toggle "Pertimbangkan absensi".
 - Device Return (admin): retur perangkat — biasanya dari daftar/tracking, bukan form "create" sederhana.
 - Activity Log (admin): jejak aktivitas sistem (baca saja).
 

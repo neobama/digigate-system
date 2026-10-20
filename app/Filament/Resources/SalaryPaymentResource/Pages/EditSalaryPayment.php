@@ -36,6 +36,7 @@ class EditSalaryPayment extends EditRecord
         $month = (int) $data['month'];
         $year = (int) $data['year'];
 
+        $applyAttendance = (bool) ($data['apply_attendance_deduction'] ?? true);
         $totalCashbon = SalaryPaymentResource::calculateMonthlyCashbon($employee, $month, $year);
         $attendance = SalaryPaymentResource::calculateAttendanceDeduction($employee, $month, $year);
         $baseSalary = (float) $employee->base_salary;
@@ -43,13 +44,14 @@ class EditSalaryPayment extends EditRecord
         $adjustments = $data['adjustments'] ?? [];
         $addition = (float) collect($adjustments)->where('type', 'addition')->sum('amount');
         $deduction = (float) collect($adjustments)->where('type', 'deduction')->sum('amount');
-        $attendanceDeduction = (float) $attendance['deduction'];
+        $attendanceDeduction = $applyAttendance ? (float) $attendance['deduction'] : 0.0;
 
         $data['base_salary'] = $baseSalary;
         $data['total_cashbon'] = $totalCashbon;
         $data['bpjs_allowance'] = $bpjs;
         $data['days_present'] = $attendance['days_present'];
         $data['attendance_deduction'] = $attendanceDeduction;
+        $data['apply_attendance_deduction'] = $applyAttendance;
         $data['adjustment_addition'] = $addition;
         $data['adjustment_deduction'] = $deduction;
         $data['adjustment_note'] = null;

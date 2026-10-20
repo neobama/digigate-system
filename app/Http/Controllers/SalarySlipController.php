@@ -60,7 +60,10 @@ class SalarySlipController extends Controller
         $totalCashbon = SalaryPaymentResource::calculateMonthlyCashbon($employee, $month, $year);
 
         $attendance = SalaryPaymentResource::calculateAttendanceDeduction($employee, $month, $year);
-        $attendanceDeduction = (float) $attendance['deduction'];
+        $applyAttendance = $salaryPayment
+            ? (bool) $salaryPayment->apply_attendance_deduction
+            : true;
+        $attendanceDeduction = $applyAttendance ? (float) $attendance['deduction'] : 0.0;
         $daysPresent = (int) $attendance['days_present'];
 
         // Hitung gaji bersih
@@ -75,6 +78,7 @@ class SalarySlipController extends Controller
             $adjustmentDeduction = (float) $salaryPayment->adjustment_deduction;
             $attendanceDeduction = (float) $salaryPayment->attendance_deduction;
             $daysPresent = (int) $salaryPayment->days_present;
+            $applyAttendance = (bool) $salaryPayment->apply_attendance_deduction;
             $gajiBersih = (float) $salaryPayment->net_salary;
         }
 
@@ -88,6 +92,7 @@ class SalarySlipController extends Controller
             'bpjs_allowance' => $employee->bpjs_allowance,
             'days_present' => $daysPresent,
             'min_present_days' => $attendance['min_days'],
+            'apply_attendance_deduction' => $applyAttendance,
             'attendance_deduction' => $attendanceDeduction,
             'gaji_bersih' => $gajiBersih,
             'cashbon_details' => $cashbonDetails,

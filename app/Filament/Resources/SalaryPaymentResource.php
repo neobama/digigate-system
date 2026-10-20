@@ -149,8 +149,15 @@ class SalaryPaymentResource extends Resource
                                 return new HtmlString($html);
                             })
                             ->columnSpanFull(),
+                        Forms\Components\Toggle::make('apply_attendance_deduction')
+                            ->label('Pertimbangkan absensi')
+                            ->helperText('Jika aktif, kehadiran di bawah 24 hari memotong gaji pokok / 24 per hari. Matikan jika slip ini tidak memakai aturan absensi.')
+                            ->default(true)
+                            ->live()
+                            ->columnSpanFull(),
                         Forms\Components\Placeholder::make('attendance_preview')
                             ->label('Potongan Kehadiran (Auto)')
+                            ->visible(fn (Forms\Get $get): bool => (bool) $get('apply_attendance_deduction'))
                             ->content(function (Forms\Get $get): HtmlString {
                                 $employeeId = $get('employee_id');
                                 $month = (int) ($get('month') ?? now()->month);
@@ -204,7 +211,8 @@ class SalaryPaymentResource extends Resource
                             ->label('Potongan Kehadiran (Auto)')
                             ->prefix('Rp')
                             ->disabled()
-                            ->dehydrated(false),
+                            ->dehydrated(false)
+                            ->visible(fn (Forms\Get $get): bool => (bool) $get('apply_attendance_deduction')),
                         Forms\Components\TextInput::make('net_salary')
                             ->label('Gaji Bersih (Auto)')
                             ->prefix('Rp')

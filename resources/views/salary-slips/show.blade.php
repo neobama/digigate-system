@@ -195,10 +195,12 @@
                 <td>Potongan BPJS</td>
                 <td>Rp {{ number_format($bpjs_allowance, 0, ',', '.') }}</td>
             </tr>
+            @if($apply_attendance_deduction ?? true)
             <tr>
                 <td>Kehadiran ({{ $days_present ?? 0 }}/{{ $min_present_days ?? 24 }} hari)</td>
                 <td>Rp {{ number_format($attendance_deduction ?? 0, 0, ',', '.') }}</td>
             </tr>
+            @endif
             <tr>
                 <td>Total Tambahan</td>
                 <td>Rp {{ number_format($adjustment_addition ?? 0, 0, ',', '.') }}</td>
