@@ -5,11 +5,13 @@ namespace App\Observers;
 use App\Models\BudgetRequest;
 use App\Services\ActivityLogService;
 use App\Services\ExpenseRecognitionService;
+use App\Services\TelegramNotifier;
 
 class BudgetRequestObserver
 {
     public function __construct(
         private ExpenseRecognitionService $expenseRecognition,
+        private TelegramNotifier $telegramNotifier,
     ) {}
 
     public function created(BudgetRequest $budgetRequest): void
@@ -24,6 +26,7 @@ class BudgetRequestObserver
         }
 
         $this->expenseRecognition->ensureForBudgetRequest($budgetRequest);
+        $this->telegramNotifier->paymentRequestCreated($budgetRequest);
     }
 
     public function updated(BudgetRequest $budgetRequest): void
@@ -55,6 +58,10 @@ class BudgetRequestObserver
         ])) {
             $this->expenseRecognition->ensureForBudgetRequest($budgetRequest);
         }
+
+        if ($budgetRequest->wasChanged('status')) {
+            $this->telegramNotifier->paymentRequestStatusChanged($budgetRequest, $budgetRequest->status);
+        }
     }
 
     public function deleted(BudgetRequest $budgetRequest): void
@@ -67,6 +74,5 @@ class BudgetRequestObserver
                 'error' => $e->getMessage(),
             ]);
         }
-        // expenses.budget_request_id cascades on delete
     }
 }

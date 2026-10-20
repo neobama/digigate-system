@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    'telegram' => [
+        'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+        'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
+        // Nomor admin (format 08...), bisa lebih dari satu dipisah koma
+        'admin_phones' => env('TELEGRAM_ADMIN_PHONES', '081511207866'),
+        // Opsional: hardcode chat_id admin (setelah /start), dipisah koma
+        'admin_chat_ids' => env('TELEGRAM_ADMIN_CHAT_IDS', ''),
+    ],
+
 ];

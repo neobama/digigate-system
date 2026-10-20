@@ -15,7 +15,7 @@ class Employee extends Model
 {
     use HasUuids, LogsActivity;
 
-    protected $fillable = ['user_id', 'nik', 'name', 'birth_date', 'position', 'role', 'phone_number', 'base_salary', 'bpjs_allowance', 'is_active'];
+    protected $fillable = ['user_id', 'nik', 'name', 'birth_date', 'position', 'role', 'phone_number', 'telegram_chat_id', 'base_salary', 'bpjs_allowance', 'is_active'];
 
     protected $casts = [
         'birth_date' => 'date',

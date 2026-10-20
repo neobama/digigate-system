@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\SalaryPayment;
 use App\Services\AttendanceWorkingHoursService;
 use App\Services\ExpenseRecognitionService;
+use App\Services\TelegramNotifier;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -287,6 +288,7 @@ class SalaryPaymentResource extends Resource
                         ]);
 
                         app(ExpenseRecognitionService::class)->ensureForSalaryPayment($record);
+                        app(TelegramNotifier::class)->salaryPaid($record);
 
                         Notification::make()
                             ->title('Gaji ditandai sudah dibayar')

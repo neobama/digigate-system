@@ -52,8 +52,13 @@ class EmployeeResource extends Resource
                         ->label('Nomor HP')
                         ->tel()
                         ->placeholder('081234567890')
-                        ->helperText('Format: 081234567890 (disimpan untuk notifikasi Telegram nanti)')
+                        ->helperText('Format: 081234567890 — dipakai untuk link bot Telegram (/start + Share Contact di t.me/DigGateBot)')
                         ->maxLength(20),
+                    Forms\Components\Placeholder::make('telegram_link_status')
+                        ->label('Telegram')
+                        ->content(fn (?\App\Models\Employee $record): string => filled($record?->telegram_chat_id)
+                            ? 'Sudah terhubung ke bot'
+                            : 'Belum link — karyawan/admin harus /start di bot lalu Share Contact'),
                     Forms\Components\TextInput::make('base_salary')
                         ->label('Gaji')
                         ->numeric()
