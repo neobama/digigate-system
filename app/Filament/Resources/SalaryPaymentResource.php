@@ -369,32 +369,20 @@ class SalaryPaymentResource extends Resource
                 continue;
             }
 
+            // Nomor cicilan dari selisih bulan kalender (hindari Carbon diffInMonths bertanda negatif).
             $startDate = \Carbon\Carbon::create($requestDate->year, $requestDate->month, 1);
-            $endDate = $startDate->copy()->addMonths($installmentMonths - 1)->endOfMonth();
+            $installmentNumber = (($year - $startDate->year) * 12) + ($month - $startDate->month) + 1;
 
-            if ($currentDate->year == $startDate->year && $currentDate->month == $startDate->month) {
+            if ($installmentNumber >= 1 && $installmentNumber <= (int) $installmentMonths) {
                 $details[] = [
                     'cashbon' => $cashbon,
                     'amount' => ((float) $cashbon->amount / (int) $installmentMonths),
                     'reason' => $cashbon->reason,
                     'date' => $requestDate->format('d/m/Y'),
                     'type' => 'cicilan',
-                    'installment_number' => 1,
+                    'installment_number' => $installmentNumber,
                     'total_installments' => (int) $installmentMonths,
                 ];
-            } elseif ($currentDate->greaterThan($startDate) && $currentDate->lessThanOrEqualTo($endDate)) {
-                $monthsDiff = $currentDate->diffInMonths($startDate);
-                if ($monthsDiff < $installmentMonths) {
-                    $details[] = [
-                        'cashbon' => $cashbon,
-                        'amount' => ((float) $cashbon->amount / (int) $installmentMonths),
-                        'reason' => $cashbon->reason,
-                        'date' => $requestDate->format('d/m/Y'),
-                        'type' => 'cicilan',
-                        'installment_number' => $monthsDiff + 1,
-                        'total_installments' => (int) $installmentMonths,
-                    ];
-                }
             }
         }
 
