@@ -5,8 +5,6 @@ use App\Http\Controllers\DonoAssistantController;
 use App\Http\Controllers\InvoicePdfController;
 use App\Http\Controllers\RepairPortalController;
 use App\Http\Controllers\SalarySlipController;
-use App\Http\Controllers\TelegramWebhookController;
-
 // Root route now handled by Filament admin panel
 // Route::get('/', function () {
 //     return view('welcome');
@@ -35,10 +33,6 @@ Route::get('/dono/chat/{jobId}', [DonoAssistantController::class, 'status'])
     ->middleware('auth')
     ->whereUuid('jobId')
     ->name('dono.chat.status');
-
-Route::post('/telegram/webhook', TelegramWebhookController::class)
-    ->middleware('throttle:120,1')
-    ->name('telegram.webhook');
 
 // Device Return portal dinonaktifkan permanen — diganti portal garansi/service.
 $repairPortalRoutes = function () {

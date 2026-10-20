@@ -45,13 +45,18 @@ class TelegramService
                 $payload['reply_markup'] = $replyMarkup;
             }
 
-            $response = Http::timeout(12)->post($this->apiUrl('sendMessage'), $payload);
+            $response = Http::timeout(12)->asJson()->post($this->apiUrl('sendMessage'), $payload);
 
             if ($response->successful() && ($response->json('ok') ?? false)) {
                 Log::info('Telegram sendMessage ok', [
                     'chat_id' => $chatId,
                     'message_id' => $response->json('result.message_id'),
                 ]);
+                @file_put_contents(
+                    storage_path('logs/telegram-debug.log'),
+                    date('c')." send_ok chat={$chatId} mid=".$response->json('result.message_id').PHP_EOL,
+                    FILE_APPEND | LOCK_EX
+                );
 
                 return true;
             }

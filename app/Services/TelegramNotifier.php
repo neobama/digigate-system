@@ -19,6 +19,12 @@ class TelegramNotifier
 
     public function paymentRequestCreated(Model $request): void
     {
+        @file_put_contents(
+            storage_path('logs/telegram-debug.log'),
+            date('c').' paymentRequestCreated '.class_basename($request).' '.$request->getKey().PHP_EOL,
+            FILE_APPEND | LOCK_EX
+        );
+
         if (! $this->telegram->enabled()) {
             return;
         }

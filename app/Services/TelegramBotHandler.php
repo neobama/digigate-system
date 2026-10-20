@@ -41,9 +41,10 @@ class TelegramBotHandler
         }
 
         $text = trim((string) ($message['text'] ?? ''));
-        $command = strtolower(strtok($text, ' ') ?: '');
+        // Ambil command sebelum spasi / mention bot (@DigGateBot)
+        $command = strtolower(preg_replace('/@[\w_]+$/', '', explode(' ', $text, 2)[0] ?? ''));
 
-        if (in_array($command, ['/start', '/start@diggatebot', '/link', '/link@diggatebot'], true)) {
+        if (in_array($command, ['/start', '/link'], true)) {
             $this->telegram->sendMessage($chatId, "Halo! Untuk menerima notifikasi DigiGate, bagikan nomor HP yang terdaftar di sistem.\n\nTekan tombol di bawah, lalu pilih <b>Share Contact</b>.", [
                 'keyboard' => [[
                     ['text' => '📱 Share Contact', 'request_contact' => true],
@@ -55,7 +56,7 @@ class TelegramBotHandler
             return;
         }
 
-        if (in_array($command, ['/status', '/status@diggatebot'], true)) {
+        if ($command === '/status') {
             $link = TelegramChat::query()->where('chat_id', $chatId)->first();
             if (! $link) {
                 $this->telegram->sendMessage($chatId, 'Belum terhubung. Ketik /start lalu share contact.', [], false);
@@ -75,7 +76,7 @@ class TelegramBotHandler
             return;
         }
 
-        if (in_array($command, ['/unlink', '/unlink@diggatebot'], true)) {
+        if ($command === '/unlink') {
             $link = TelegramChat::query()->where('chat_id', $chatId)->first();
             if ($link?->employee_id) {
                 Employee::query()->where('id', $link->employee_id)->update(['telegram_chat_id' => null]);
