@@ -87,6 +87,11 @@ class AppServiceProvider extends ServiceProvider
                 ->at('18:00')
                 ->timezone($tz)
                 ->withoutOverlapping();
+
+            $schedule->command('attendance:daily-summary')
+                ->dailyAt('21:00')
+                ->timezone($tz)
+                ->withoutOverlapping();
         });
     }
 }

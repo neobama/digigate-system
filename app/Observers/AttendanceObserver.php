@@ -13,7 +13,6 @@ class AttendanceObserver
     public function created(Attendance $attendance): void
     {
         ActivityLogService::logCreate($attendance);
-        $this->telegramNotifier->attendanceCreated($attendance);
     }
 
     public function updated(Attendance $attendance): void

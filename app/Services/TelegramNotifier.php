@@ -79,37 +79,72 @@ class TelegramNotifier
         }
     }
 
-    public function attendanceCreated(Attendance $attendance): void
+    public function sendDailyAttendanceSummary(\Carbon\Carbon $date): void
     {
         if (! $this->telegram->enabled()) {
             return;
         }
 
-        $attendance->loadMissing('employee');
-        $employee = $attendance->employee;
-        if (! $employee) {
-            return;
+        $service = app(AttendanceWorkingHoursService::class);
+        $summaries = $service->summariesForDate($date);
+        $dateLabel = $date->copy()->timezone($service->timezone())->translatedFormat('l, d M Y');
+
+        $complete = [];
+        $incomplete = [];
+        $absent = [];
+
+        foreach ($summaries as $row) {
+            $name = htmlspecialchars((string) $row['employee']->name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $tapIn = $row['tap_in'];
+            $tapOut = $row['tap_out'];
+
+            if (! $tapIn && ! $tapOut) {
+                $absent[] = "• {$name}";
+
+                continue;
+            }
+
+            $in = $tapIn?->recorded_at?->timezone($service->timezone())->format('H:i') ?? '—';
+            $out = $tapOut?->recorded_at?->timezone($service->timezone())->format('H:i') ?? '—';
+            $flags = [];
+            foreach ([$tapIn, $tapOut] as $tap) {
+                if ($tap && ! $tap->is_within_radius) {
+                    $flags[] = 'luar radius';
+                    break;
+                }
+            }
+            $flag = $flags !== [] ? ' (luar radius)' : '';
+            $line = "• {$name} — {$in} → {$out}{$flag}";
+
+            if ($tapIn && $tapOut) {
+                $complete[] = $line;
+            } else {
+                $incomplete[] = $line;
+            }
         }
 
-        $recordedAt = $attendance->recorded_at?->format('d/m/Y H:i') ?? '-';
-        $typeLabel = $attendance->type?->label() ?? 'Absensi';
-        $locationNote = $attendance->is_within_radius
-            ? 'Dalam radius kantor'
-            : 'Di luar radius ('.number_format((float) $attendance->distance_meters, 0, ',', '.').' m)';
+        $text = "📋 <b>Ringkasan Absensi</b>\n{$dateLabel}\n\n"
+            .'<b>Lengkap ('.count($complete).")</b>\n"
+            .($complete !== [] ? implode("\n", $complete) : '—')
+            ."\n\n<b>Belum lengkap (".count($incomplete).")</b>\n"
+            .($incomplete !== [] ? implode("\n", $incomplete) : '—')
+            ."\n\n<b>Tidak absen (".count($absent).")</b>\n"
+            .($absent !== [] ? implode("\n", $absent) : '—');
 
-        $text = "📸 <b>Absensi Baru</b>\n\n"
-            ."Karyawan: {$employee->name}\n"
-            ."Jenis: {$typeLabel}\n"
-            ."Waktu: {$recordedAt}\n"
-            ."Lokasi: {$locationNote}\n"
-            ."Koordinat: {$attendance->latitude}, {$attendance->longitude}\n"
-            .'Status: Menunggu verifikasi';
-
-        if ($attendance->description) {
-            $text .= "\nKeterangan: {$attendance->description}";
+        $chunk = '';
+        foreach (preg_split("/\n/", $text) ?: [] as $line) {
+            $next = $chunk === '' ? $line : $chunk."\n".$line;
+            if (mb_strlen($next) > 3800) {
+                $this->telegram->sendToAdmins($chunk);
+                $chunk = $line;
+            } else {
+                $chunk = $next;
+            }
         }
 
-        $this->telegram->sendToAdmins($text);
+        if ($chunk !== '') {
+            $this->telegram->sendToAdmins($chunk);
+        }
     }
 
     public function attendanceStatusChanged(Attendance $attendance): void
