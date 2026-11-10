@@ -10,6 +10,7 @@ use App\Filament\Employee\Pages\MyAssembly;
 use App\Filament\Employee\Pages\MyBudgetRequest;
 use App\Filament\Employee\Pages\MyCashbon;
 use App\Filament\Employee\Pages\MyComponent;
+use App\Filament\Employee\Pages\MyLeaveRequest;
 use App\Filament\Employee\Pages\MyLogbook;
 use App\Filament\Employee\Pages\MyReimbursement;
 use App\Filament\Employee\Pages\MyTasks;
@@ -28,6 +29,7 @@ use App\Filament\Resources\EmployeeResource;
 use App\Filament\Resources\ExpenseResource;
 use App\Filament\Resources\IncomeResource;
 use App\Filament\Resources\InvoiceResource;
+use App\Filament\Resources\LeaveRequestResource;
 use App\Filament\Resources\LogbookResource;
 use App\Filament\Resources\ReimbursementResource;
 use App\Filament\Resources\SalaryPaymentResource;
@@ -58,18 +60,20 @@ final class DonoApplicationCatalog
         return <<<'TXT'
 DigiGate adalah ERP internal. Ada dua panel:
 1) Panel Admin (URL path biasanya "/", bukan diawali /employee): akses penuh ke HR, keuangan, penjualan, inventori, dokumen, dll.
-2) Panel Karyawan (/employee): self-service — task/kalender sendiri, cashbon, budget request, reimbursement, warranty claim, komponen, assembly, logbook.
+2) Panel Karyawan (/employee): self-service — task/kalender sendiri, cashbon, budget request, reimbursement, warranty claim, komponen, assembly, logbook, izin/cuti/lembur.
 3) Role Finance (tetap login di /employee): selain fitur karyawan biasa, bisa akses Pemasukan, Pengeluaran, dan Invoice di grup menu Keuangan.
+4) Role Supervisor (tetap login di /employee): pantau kalender/logbook/absen seluruh tim (baca), rekap absen harian, approve pengajuan izin/sakit/cuti/lembur anggota.
 
 Ringkas modul:
-- Kalender Pekerjaan / Task: assign pekerjaan ke karyawan, status, upload bukti per karyawan (pivot). Admin: buat/mengelola semua task. Karyawan: lihat task yang di-assign ke mereka, upload bukti, ubah status sesuai alur.
+- Kalender Pekerjaan / Task: assign pekerjaan ke karyawan, kategori (Pemasangan FTTH / Komplain FTTH / DigiGate / Internal), status, upload bukti per karyawan (pivot). Admin: buat/mengelola semua task. Karyawan: lihat task yang di-assign ke mereka. Supervisor: lihat semua task tim. is_self_assigned=true hanya jika penugasan ke diri sendiri saja; false jika menugaskan orang lain.
 - Cashbon: pinjaman/uang muka; ada jatah bulanan per karyawan (di employee: Request Cashbon Baru dari halaman Cashbon). Status hanya lewat Approve/Reject/Set Paid (bukan form). Saat Paid, expense otomatis; un-pay menghapus expense.
 - Budget Request: pengajuan anggaran; saat admin set Paid, pengeluaran otomatis tercatat di laporan. Karyawan wajib input realisasi (nominal aktual + bukti) untuk memperbarui nominal/bukti pengeluaran tersebut. Status hanya lewat tombol approval.
 - Reimbursement: klaim penggantian biaya (ada upload bon di alur admin). Status hanya lewat tombol approval; Paid → expense otomatis.
 - Keuangan (admin): Pemasukan (Income), Pengeluaran (Expense), Laporan Keuangan. Invoice paid/delivered → Income; cashbon/budget/reimbursement/gaji paid → Expense. Baris linked tidak boleh diedit manual — ubah dokumen sumber. P&L hanya Income + Expense.
 - Penjualan/operasional (admin): Invoice, Dokumen.
 - Inventori/produksi (admin): Komponen, Assembly; Warranty Claim untuk garansi.
-- HR (admin): Data Karyawan, Absensi, Pembayaran Gaji (Salary Payment). Absensi tap in/out langsung sah tanpa approval; approval admin hanya untuk koreksi/perubahan waktu. Gaji: minimal kehadiran 24 hari/bulan (hari dengan tap-in sah); kurang dari 24 dipotong (gaji pokok / 24) per hari — bisa di-on/off per slip lewat toggle "Pertimbangkan absensi".
+- HR (admin): Data Karyawan, Absensi, Izin/Cuti/Lembur, Pembayaran Gaji (Salary Payment). Absensi tap in/out langsung sah tanpa approval; approval admin hanya untuk koreksi/perubahan waktu. Pengajuan izin/sakit/cuti yang disetujui dihitung sebagai hari sah (bersama tap-in) untuk minimal 24 hari/bulan; kurang dari 24 dipotong (gaji pokok / 24) per hari — bisa di-on/off per slip. Lembur dicatat terpisah dan tidak mengganti hari hadir.
+- Invoice flow: Proforma → Paid → Generate Surat Jalan (status tetap Paid) → Set Delivered. Surat jalan tidak boleh digenerate hanya setelah Delivered, dan generate surat jalan tidak mengubah status ke Delivered.
 - Device Return (admin): retur perangkat — biasanya dari daftar/tracking, bukan form "create" sederhana.
 - Activity Log (admin): jejak aktivitas sistem (baca saja).
 
@@ -108,6 +112,7 @@ Aturan KHUSUS intent create_task:
 - start_date dan end_date: isi dengan YYYY-MM-DD sesuai blok "KONTEKS TANGGAL SERVER" di atas. Untuk "hari ini" gunakan tanggal Hari ini persis. Jangan mengisi tahun 2023/2024 kecuali user menyebut tahun itu eksplisit.
 - title: judul singkat (maks ~100 karakter), **Title Case** (setiap kata penting kapital), ringkas dari maksud user. Contoh: "Assembling 2 Unit Maleo (Tanpa License)" — bukan kalimat panjang penuh.
 - description: **wajib berbeda** dari title. Tulis 2–4 kalimat: apa yang dikerjakan, ruang lingkup, catatan teknis/operasional (mis. tanpa license, jumlah unit), dan apa yang harus dicek. Jangan copy-paste title ke description.
+- category: salah satu pemasangan_ftth | komplain_ftth | digigate | internal sesuai konteks (pemasangan/instalasi FTTH, komplain/gangguan FTTH, produk DigiGate, atau pekerjaan internal).
 TXT;
     }
 
@@ -121,13 +126,14 @@ Output HANYA JSON valid (tanpa markdown), schema:
   "fields": {
     "title": "string atau kosong",
     "description": "string atau kosong",
+    "category": "pemasangan_ftth|komplain_ftth|digigate|internal atau kosong",
     "start_date": "YYYY-MM-DD atau null",
     "end_date": "YYYY-MM-DD atau null",
     "start_time": "HH:mm atau null (jika task satu hari)",
     "end_time": "HH:mm atau null",
     "employee_names": ["nama karyawan yang disebut user"],
     "amount": number atau null,
-    "feature_key": "untuk intent open_feature: dashboard|tasks|task_calendar|cashbon|budget_requests|reimbursement|financial_report|invoices|expenses|income|employees|warranty|components|assembly|logbook|device_returns|documents|salary_payments|activity_logs|backup"
+    "feature_key": "untuk intent open_feature: dashboard|tasks|task_calendar|cashbon|budget_requests|reimbursement|leave_requests|financial_report|invoices|expenses|income|employees|warranty|components|assembly|logbook|device_returns|documents|salary_payments|activity_logs|backup"
   }
 }
 
@@ -323,6 +329,7 @@ TXT;
         $prefill = array_filter([
             'title' => $fields['title'] ?? null,
             'description' => $fields['description'] ?? null,
+            'category' => $fields['category'] ?? null,
             'start_date' => $fields['start_date'] ?? null,
             'end_date' => $fields['end_date'] ?? null,
             'employees' => $employeeIds,
@@ -332,6 +339,7 @@ TXT;
             $payload = array_filter([
                 'title' => $fields['title'] ?? '',
                 'description' => $fields['description'] ?? '',
+                'category' => $fields['category'] ?? null,
                 'start_date' => $fields['start_date'] ?? null,
                 'end_date' => $fields['end_date'] ?? null,
                 'employees' => $employeeIds,
@@ -377,6 +385,10 @@ TXT;
                 'components' => ['label' => 'Komponen', 'url' => MyComponent::getUrl([], true, 'employee')],
                 'assembly' => ['label' => 'Assembly', 'url' => MyAssembly::getUrl([], true, 'employee')],
                 'logbook' => ['label' => 'Logbook', 'url' => MyLogbook::getUrl([], true, 'employee')],
+                'leave_requests', 'izin', 'cuti', 'lembur' => [
+                    'label' => 'Izin / Cuti / Lembur',
+                    'url' => MyLeaveRequest::getUrl([], true, 'employee'),
+                ],
                 default => null,
             };
 
@@ -430,6 +442,10 @@ TXT;
             'components' => ['label' => 'Komponen', 'url' => ComponentResource::getUrl('index', [], true, 'admin')],
             'assembly' => ['label' => 'Assembly', 'url' => AssemblyResource::getUrl('index', [], true, 'admin')],
             'logbook' => ['label' => 'Logbook', 'url' => LogbookResource::getUrl('index', [], true, 'admin')],
+            'leave_requests', 'izin', 'cuti', 'lembur' => [
+                'label' => 'Izin / Cuti / Lembur',
+                'url' => LeaveRequestResource::getUrl('index', [], true, 'admin'),
+            ],
             'device_returns' => ['label' => 'Device Return', 'url' => DeviceReturnResource::getUrl('index', [], true, 'admin')],
             'documents' => ['label' => 'Dokumen', 'url' => DocumentResource::getUrl('index', [], true, 'admin')],
             'salary_payments' => ['label' => 'Pembayaran Gaji', 'url' => SalaryPaymentResource::getUrl('index', [], true, 'admin')],

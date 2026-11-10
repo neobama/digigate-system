@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TaskCategory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,6 +16,7 @@ class Task extends Model
     protected $fillable = [
         'title',
         'description',
+        'category',
         'start_date',
         'end_date',
         'start_time',
@@ -31,6 +33,7 @@ class Task extends Model
         'end_date' => 'date',
         'is_self_assigned' => 'boolean',
         'proof_images' => 'array',
+        'category' => TaskCategory::class,
     ];
 
     public function employees(): BelongsToMany

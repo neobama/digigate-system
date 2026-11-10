@@ -53,6 +53,11 @@ class Employee extends Model
         return $this->belongsToMany(Task::class, 'task_employee');
     }
 
+    public function leaveRequests(): HasMany
+    {
+        return $this->hasMany(LeaveRequest::class);
+    }
+
     /**
      * Get maximum cashbon allowance per month (35% of base salary)
      */
@@ -101,5 +106,28 @@ class Employee extends Model
     public function isFinance(): bool
     {
         return $this->role === EmployeeRole::Finance;
+    }
+
+    public function isSupervisor(): bool
+    {
+        return $this->role === EmployeeRole::Supervisor;
+    }
+
+    /**
+     * Supervisor memantau seluruh karyawan aktif (tim lapangan).
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, Employee>
+     */
+    public function supervisedEmployees()
+    {
+        if (! $this->isSupervisor()) {
+            return collect();
+        }
+
+        return static::query()
+            ->where('is_active', true)
+            ->where('id', '!=', $this->id)
+            ->orderBy('name')
+            ->get();
     }
 }

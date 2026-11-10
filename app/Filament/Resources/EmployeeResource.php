@@ -47,7 +47,7 @@ class EmployeeResource extends Resource
                         ->options(\App\Enums\EmployeeRole::options())
                         ->default(\App\Enums\EmployeeRole::Employee->value)
                         ->required()
-                        ->helperText('Finance: akses pemasukan, pengeluaran, invoice + fitur karyawan biasa'),
+                        ->helperText('Supervisor: pantau kalender/logbook/absen tim + approve izin. Finance: pemasukan/pengeluaran/invoice + fitur karyawan.'),
                     Forms\Components\TextInput::make('phone_number')
                         ->label('Nomor HP')
                         ->tel()
@@ -134,7 +134,11 @@ class EmployeeResource extends Resource
                     ->label('Role')
                     ->badge()
                     ->formatStateUsing(fn ($state) => $state?->label() ?? '-')
-                    ->color(fn ($state) => $state === \App\Enums\EmployeeRole::Finance ? 'success' : 'gray')
+                    ->color(fn ($state) => match ($state) {
+                        \App\Enums\EmployeeRole::Finance => 'success',
+                        \App\Enums\EmployeeRole::Supervisor => 'info',
+                        default => 'gray',
+                    })
                     ->sortable(),
                 Tables\Columns\TextColumn::make('phone_number')
                     ->label('Nomor HP')

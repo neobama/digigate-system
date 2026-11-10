@@ -78,7 +78,8 @@ class InvoiceResource extends Resource
                             'cancelled' => 'Dibatalkan',
                         ])
                         ->default('proforma')
-                        ->required(),
+                        ->required()
+                        ->helperText('Alur: Proforma → Paid → Generate Surat Jalan (tetap Paid) → Set Delivered. Jangan set Delivered sebelum surat jalan.'),
                 ])->columns(2)
             ]);
     }
@@ -154,9 +155,20 @@ class InvoiceResource extends Resource
                     ->label('Set Delivered')
                     ->icon('heroicon-o-truck')
                     ->color('info')
-                    ->hidden(fn (Invoice $record) => $record->status !== 'paid')
+                    ->hidden(function (Invoice $record) {
+                        if ($record->status !== 'paid') {
+                            return true;
+                        }
+
+                        // Surat jalan harus ada dulu sebelum status Delivered
+                        return ! \App\Models\Document::where('related_invoice_id', $record->id)
+                            ->where('category', 'surat_jalan')
+                            ->exists();
+                    })
+                    ->requiresConfirmation()
+                    ->modalHeading('Set Delivered')
+                    ->modalDescription('Pastikan barang sudah dikirim. Status akan diubah ke Delivered (surat jalan sudah digenerate).')
                     ->action(function (Invoice $record) {
-                        // If paid_date is not set, set it now (in case status changed directly)
                         $updateData = ['status' => 'delivered'];
                         if (!$record->paid_date) {
                             $updateData['paid_date'] = now();
@@ -312,16 +324,17 @@ class InvoiceResource extends Resource
                     }),
                 Tables\Actions\Action::make('generateSuratJalan')
                     ->label('Generate Surat Jalan')
-                    ->icon('heroicon-o-truck')
-                    ->color('info')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('warning')
                     ->url(fn (Invoice $record) => route('invoices.surat-jalan.pdf', $record))
                     ->openUrlInNewTab()
                     ->hidden(function (Invoice $record) {
                         try {
-                            if ($record->status !== 'delivered') {
+                            // Surat jalan digenerate saat Paid (sebelum Delivered), status tidak berubah otomatis
+                            if (! in_array($record->status, ['paid', 'delivered'], true)) {
                                 return true;
                             }
-                            // Hide if document already exists
+
                             return \App\Models\Document::where('related_invoice_id', $record->id)
                                 ->where('category', 'surat_jalan')
                                 ->exists();
@@ -354,10 +367,10 @@ class InvoiceResource extends Resource
                     ->modalCancelActionLabel('Tutup')
                     ->hidden(function (Invoice $record) {
                         try {
-                            if ($record->status !== 'delivered') {
+                            if (! in_array($record->status, ['paid', 'delivered'], true)) {
                                 return true;
                             }
-                            // Show only if document exists
+
                             return !\App\Models\Document::where('related_invoice_id', $record->id)
                                 ->where('category', 'surat_jalan')
                                 ->exists();

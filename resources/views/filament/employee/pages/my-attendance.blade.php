@@ -8,6 +8,57 @@
     @endphp
 
     <div class="space-y-8">
+        @if ($this->isSupervisorViewer())
+            <x-filament::section>
+                <x-slot name="heading">
+                    Rekap Absen Tim Hari Ini
+                </x-slot>
+                <x-slot name="description">
+                    Ringkasan kehadiran seluruh karyawan aktif (juga dikirim ke Telegram supervisor setiap malam).
+                </x-slot>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-xs uppercase text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-white/10">
+                            <tr>
+                                <th class="py-2 pr-4">Karyawan</th>
+                                <th class="py-2 pr-4">Tap In</th>
+                                <th class="py-2 pr-4">Tap Out</th>
+                                <th class="py-2">Jam Kerja</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-white/5">
+                            @forelse ($this->teamDailySummaries as $row)
+                                <tr>
+                                    <td class="py-2 pr-4 font-medium text-gray-950 dark:text-white">{{ $row['employee']->name }}</td>
+                                    <td class="py-2 pr-4">{{ $workingHoursService::formatAttendanceTime($row['tap_in']) }}</td>
+                                    <td class="py-2 pr-4">{{ $workingHoursService::formatAttendanceTime($row['tap_out']) }}</td>
+                                    <td class="py-2">{{ $row['working_hours_label'] }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="py-4 text-gray-500">Belum ada data karyawan aktif.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-4">
+                    <label class="text-sm font-medium text-gray-950 dark:text-white">Filter riwayat absensi</label>
+                    <select
+                        wire:model.live="filterEmployeeId"
+                        class="fi-input mt-2 block w-full max-w-md rounded-lg border-none bg-white px-3 py-2 text-sm text-gray-950 shadow-sm ring-1 ring-gray-950/10 dark:bg-white/5 dark:text-white dark:ring-white/10"
+                    >
+                        <option value="">Semua karyawan</option>
+                        @foreach ($this->teamEmployees as $emp)
+                            <option value="{{ $emp->id }}">{{ $emp->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </x-filament::section>
+        @endif
+
         <x-filament::section>
             <x-slot name="heading">
                 Status Hari Ini

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\TaskCategory;
 use App\Filament\Resources\TaskResource\Pages;
 use App\Models\Task;
 use App\Models\Employee;
@@ -35,6 +36,11 @@ class TaskResource extends Resource
                     Forms\Components\Textarea::make('description')
                         ->label('Deskripsi')
                         ->rows(3),
+                    Forms\Components\Select::make('category')
+                        ->label('Kategori')
+                        ->options(TaskCategory::options())
+                        ->required()
+                        ->searchable(),
                     Forms\Components\DatePicker::make('start_date')
                         ->label('Tanggal Mulai')
                         ->required()
@@ -74,6 +80,11 @@ class TaskResource extends Resource
                 Tables\Columns\TextColumn::make('title')
                     ->label('Judul')
                     ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('category')
+                    ->label('Kategori')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => $state instanceof TaskCategory ? $state->label() : ($state ?? '-'))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('employees.name')
                     ->label('Karyawan')
@@ -116,6 +127,9 @@ class TaskResource extends Resource
                         'completed' => 'Completed',
                         'cancelled' => 'Cancelled',
                     ]),
+                Tables\Filters\SelectFilter::make('category')
+                    ->label('Kategori')
+                    ->options(TaskCategory::options()),
                 Tables\Filters\SelectFilter::make('employees')
                     ->label('Karyawan')
                     ->relationship('employees', 'name')
@@ -163,6 +177,10 @@ class TaskResource extends Resource
                         Infolists\Components\TextEntry::make('description')
                             ->label('Deskripsi')
                             ->columnSpanFull(),
+                        Infolists\Components\TextEntry::make('category')
+                            ->label('Kategori')
+                            ->badge()
+                            ->formatStateUsing(fn ($state) => $state instanceof TaskCategory ? $state->label() : ($state ?? '-')),
                         Infolists\Components\TextEntry::make('employees.name')
                             ->label('Karyawan')
                             ->badge()

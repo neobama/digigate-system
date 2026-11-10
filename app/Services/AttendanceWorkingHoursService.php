@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\AttendanceType;
 use App\Models\Attendance;
 use App\Models\Employee;
+use App\Models\LeaveRequest;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -155,7 +156,7 @@ class AttendanceWorkingHoursService
     }
 
     /**
-     * Hari hadir = jumlah tanggal unik dengan tap-in berstatus approved di bulan tersebut.
+     * Hari hadir = tanggal unik tap-in approved + hari izin/sakit/cuti yang disetujui.
      */
     public function countPresentDays(Employee $employee, int $month, int $year): int
     {
@@ -163,15 +164,24 @@ class AttendanceWorkingHoursService
         $start = Carbon::create($year, $month, 1, 0, 0, 0, $tz)->startOfMonth();
         $end = $start->copy()->endOfMonth();
 
-        $dates = Attendance::query()
+        $tapDates = Attendance::query()
             ->where('employee_id', $employee->id)
             ->where('type', AttendanceType::TapIn)
             ->where('status', 'approved')
             ->whereBetween('recorded_at', [$start, $end])
-            ->pluck('recorded_at');
+            ->pluck('recorded_at')
+            ->map(fn ($at) => Carbon::parse($at)->timezone($tz)->toDateString());
 
-        return $dates
-            ->map(fn ($at) => Carbon::parse($at)->timezone($tz)->toDateString())
+        $leaveDates = LeaveRequest::query()
+            ->where('employee_id', $employee->id)
+            ->where('status', 'approved')
+            ->whereDate('start_date', '<=', $end->toDateString())
+            ->whereDate('end_date', '>=', $start->toDateString())
+            ->get()
+            ->flatMap(fn (LeaveRequest $leave) => $leave->datesInMonth($month, $year));
+
+        return $tapDates
+            ->merge($leaveDates)
             ->unique()
             ->count();
     }

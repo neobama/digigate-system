@@ -4,6 +4,7 @@ namespace App\Filament\Employee\Pages;
 
 use App\Enums\AttendanceType;
 use App\Models\Attendance;
+use App\Models\Employee;
 use App\Services\AttendanceLocationService;
 use App\Services\AttendancePhotoService;
 use App\Services\AttendanceWorkingHoursService;
@@ -13,6 +14,7 @@ use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class MyAttendance extends Page implements HasTable
 {
@@ -33,6 +35,42 @@ class MyAttendance extends Page implements HasTable
     public ?string $photo_base64 = null;
 
     public ?string $description = null;
+
+    /** Filter riwayat untuk supervisor (null = semua / diri sendiri) */
+    public ?string $filterEmployeeId = null;
+
+    public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
+    {
+        return Auth::user()?->employee?->isSupervisor()
+            ? 'Absensi Tim'
+            : 'Absensi';
+    }
+
+    public function isSupervisorViewer(): bool
+    {
+        return Auth::user()?->employee?->isSupervisor() ?? false;
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    public function getTeamDailySummariesProperty()
+    {
+        if (! $this->isSupervisorViewer()) {
+            return collect();
+        }
+
+        return app(AttendanceWorkingHoursService::class)->summariesForDate(now());
+    }
+
+    public function getTeamEmployeesProperty()
+    {
+        if (! $this->isSupervisorViewer()) {
+            return collect();
+        }
+
+        return Employee::query()->where('is_active', true)->orderBy('name')->get();
+    }
 
     public function getTodayTapInProperty(): ?Attendance
     {
@@ -166,13 +204,31 @@ class MyAttendance extends Page implements HasTable
 
     public function table(Table $table): Table
     {
+        $employee = Auth::user()?->employee;
+        $isSupervisor = $employee?->isSupervisor() ?? false;
+        $ownId = $employee?->id;
+
         return $table
             ->query(
                 Attendance::query()
-                    ->where('employee_id', auth()->user()->employee?->id)
+                    ->with('employee')
+                    ->when(
+                        $isSupervisor,
+                        function ($query) use ($ownId) {
+                            if ($this->filterEmployeeId) {
+                                $query->where('employee_id', $this->filterEmployeeId);
+                            }
+                        },
+                        fn ($query) => $query->where('employee_id', $ownId)
+                    )
                     ->latest('recorded_at')
             )
             ->columns([
+                Tables\Columns\TextColumn::make('employee.name')
+                    ->label('Karyawan')
+                    ->searchable()
+                    ->sortable()
+                    ->visible($isSupervisor),
                 Tables\Columns\TextColumn::make('recorded_at')
                     ->label('Waktu')
                     ->dateTime('d/m/Y H:i')
@@ -235,7 +291,9 @@ class MyAttendance extends Page implements HasTable
                     ->label('Ajukan Koreksi')
                     ->icon('heroicon-o-pencil-square')
                     ->color('warning')
-                    ->visible(fn (Attendance $record): bool => $record->status === 'approved' && ! $record->hasPendingChangeRequest())
+                    ->visible(fn (Attendance $record): bool => $record->employee_id === $ownId
+                        && $record->status === 'approved'
+                        && ! $record->hasPendingChangeRequest())
                     ->form([
                         \Filament\Forms\Components\DateTimePicker::make('proposed_recorded_at')
                             ->label('Waktu yang benar')

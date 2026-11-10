@@ -12,7 +12,7 @@ class SendAttendanceDailySummaryCommand extends Command
 {
     protected $signature = 'attendance:daily-summary {--date= : Tanggal Y-m-d, default hari ini}';
 
-    protected $description = 'Kirim ringkasan absensi harian ke admin via Telegram';
+    protected $description = 'Kirim ringkasan absensi harian ke admin dan supervisor via Telegram';
 
     public function handle(
         TelegramService $telegram,

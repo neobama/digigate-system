@@ -6,12 +6,14 @@ enum EmployeeRole: string
 {
     case Employee = 'employee';
     case Finance = 'finance';
+    case Supervisor = 'supervisor';
 
     public function label(): string
     {
         return match ($this) {
             self::Employee => 'Karyawan',
             self::Finance => 'Finance',
+            self::Supervisor => 'Supervisor',
         };
     }
 

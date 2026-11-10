@@ -61,7 +61,14 @@ class TaskCalendarLoader
 
             foreach ($extraKeys as $key) {
                 $value = $task->{$key};
-                $row[$key] = $key === 'proof_images' ? ($value ?? []) : $value;
+                if ($key === 'proof_images') {
+                    $row[$key] = $value ?? [];
+                } elseif ($key === 'category') {
+                    $row[$key] = $value instanceof \App\Enums\TaskCategory ? $value->value : $value;
+                    $row['category_label'] = $value instanceof \App\Enums\TaskCategory ? $value->label() : null;
+                } else {
+                    $row[$key] = $value;
+                }
             }
 
             return $row;

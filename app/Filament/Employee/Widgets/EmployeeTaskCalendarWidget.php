@@ -26,20 +26,25 @@ class EmployeeTaskCalendarWidget extends Widget
 
     public function loadTasks(): void
     {
-        $employeeId = Auth::user()->employee?->id;
-        if (! $employeeId) {
+        $employee = Auth::user()->employee;
+        if (! $employee) {
             $this->tasks = [];
 
             return;
         }
 
+        $employeeId = $employee->id;
+        $isSupervisor = $employee->isSupervisor();
+
         $tasks = TaskCalendarLoader::forMonth(
             (int) $this->currentYear,
             (int) $this->currentMonth,
-            fn ($query) => $query->whereHas('employees', fn ($q) => $q->where('employees.id', $employeeId)),
+            $isSupervisor
+                ? null
+                : fn ($query) => $query->whereHas('employees', fn ($q) => $q->where('employees.id', $employeeId)),
         );
 
-        $this->tasks = TaskCalendarLoader::toCalendarRows($tasks, ['proof_images']);
+        $this->tasks = TaskCalendarLoader::toCalendarRows($tasks, ['proof_images', 'category']);
     }
 
     public function previousMonth(): void

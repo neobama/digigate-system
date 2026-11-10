@@ -6,8 +6,10 @@ use App\Models\Attendance;
 use App\Models\BudgetRequest;
 use App\Models\Cashbon;
 use App\Models\Employee;
+use App\Models\LeaveRequest;
 use App\Models\Reimbursement;
 use App\Models\SalaryPayment;
+use App\Models\Task;
 use Illuminate\Database\Eloquent\Model;
 
 class TelegramNotifier
@@ -135,7 +137,7 @@ class TelegramNotifier
         foreach (preg_split("/\n/", $text) ?: [] as $line) {
             $next = $chunk === '' ? $line : $chunk."\n".$line;
             if (mb_strlen($next) > 3800) {
-                $this->telegram->sendToAdmins($chunk);
+                $this->sendAttendanceSummaryChunk($chunk);
                 $chunk = $line;
             } else {
                 $chunk = $next;
@@ -143,8 +145,122 @@ class TelegramNotifier
         }
 
         if ($chunk !== '') {
-            $this->telegram->sendToAdmins($chunk);
+            $this->sendAttendanceSummaryChunk($chunk);
         }
+    }
+
+    private function sendAttendanceSummaryChunk(string $chunk): void
+    {
+        $this->telegram->sendToAdmins($chunk);
+        $this->telegram->sendToSupervisors($chunk);
+    }
+
+    /**
+     * Notifikasi ke teknisi saat ditugaskan pekerjaan baru.
+     *
+     * @param  iterable<int, Employee>|null  $onlyEmployees  Jika diisi, hanya karyawan ini (mis. penambahan assignee)
+     */
+    public function taskAssigned(Task $task, ?iterable $onlyEmployees = null): void
+    {
+        if (! $this->telegram->enabled()) {
+            return;
+        }
+
+        $task->loadMissing('employees', 'creator');
+        $assignees = $onlyEmployees !== null
+            ? collect($onlyEmployees)
+            : $task->employees;
+
+        $category = $task->category?->label() ?? '-';
+        $start = $task->start_date?->format('d/m/Y') ?? '-';
+        $end = $task->end_date?->format('d/m/Y') ?? '-';
+        $time = '';
+        if ($task->start_time && $task->end_time) {
+            $time = "\nJam: {$task->start_time} – {$task->end_time}";
+        }
+
+        $title = htmlspecialchars((string) $task->title, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $desc = $task->description
+            ? "\n".htmlspecialchars((string) $task->description, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+            : '';
+
+        foreach ($assignees as $employee) {
+            if (! $employee instanceof Employee) {
+                continue;
+            }
+
+            $text = "🛠 <b>Pekerjaan Baru Ditugaskan</b>\n\n"
+                ."Judul: {$title}\n"
+                ."Kategori: {$category}\n"
+                ."Tanggal: {$start} – {$end}{$time}"
+                .$desc
+                ."\n\nCek detail di Kalender Pekerjaan panel karyawan.";
+
+            $this->telegram->sendToEmployee($employee, $text);
+        }
+    }
+
+    public function leaveRequestCreated(LeaveRequest $request): void
+    {
+        if (! $this->telegram->enabled()) {
+            return;
+        }
+
+        $request->loadMissing('employee');
+        $employee = $request->employee;
+        if (! $employee) {
+            return;
+        }
+
+        $type = $request->type?->label() ?? '-';
+        $name = htmlspecialchars((string) $employee->name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $start = $request->start_date?->format('d/m/Y') ?? '-';
+        $end = $request->end_date?->format('d/m/Y') ?? '-';
+        $reason = htmlspecialchars((string) $request->reason, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $hours = $request->type === \App\Enums\LeaveRequestType::Lembur && $request->hours
+            ? "\nJam lembur: {$request->hours}"
+            : '';
+
+        $text = "📝 <b>Pengajuan {$type} Baru</b>\n\n"
+            ."Karyawan: {$name}\n"
+            ."Tanggal: {$start} – {$end}{$hours}\n"
+            ."Alasan: {$reason}\n"
+            .'Status: Pending';
+
+        $this->telegram->sendToAdmins($text);
+        $this->telegram->sendToSupervisors($text);
+    }
+
+    public function leaveRequestStatusChanged(LeaveRequest $request): void
+    {
+        if (! $this->telegram->enabled()) {
+            return;
+        }
+
+        if (! in_array($request->status, ['approved', 'rejected'], true)) {
+            return;
+        }
+
+        $request->loadMissing('employee');
+        $employee = $request->employee;
+        if (! $employee) {
+            return;
+        }
+
+        $type = $request->type?->label() ?? '-';
+        $start = $request->start_date?->format('d/m/Y') ?? '-';
+        $end = $request->end_date?->format('d/m/Y') ?? '-';
+        $statusLabel = $request->status === 'approved' ? 'Disetujui' : 'Ditolak';
+        $icon = $request->status === 'approved' ? '✅' : '❌';
+        $notes = $request->review_notes
+            ? "\nCatatan: ".htmlspecialchars((string) $request->review_notes, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+            : '';
+
+        $text = "{$icon} <b>Update Pengajuan {$type}</b>\n\n"
+            ."Tanggal: {$start} – {$end}\n"
+            ."Status: <b>{$statusLabel}</b>{$notes}";
+
+        $this->telegram->sendToEmployee($employee, $text);
     }
 
     public function attendanceStatusChanged(Attendance $attendance): void

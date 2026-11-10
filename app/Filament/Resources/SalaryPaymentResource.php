@@ -152,7 +152,7 @@ class SalaryPaymentResource extends Resource
                             ->columnSpanFull(),
                         Forms\Components\Toggle::make('apply_attendance_deduction')
                             ->label('Pertimbangkan absensi')
-                            ->helperText('Jika aktif, kehadiran di bawah 24 hari memotong gaji pokok / 24 per hari. Matikan jika slip ini tidak memakai aturan absensi.')
+                            ->helperText('Jika aktif, kehadiran di bawah 24 hari (tap-in + izin/sakit/cuti disetujui) memotong gaji pokok / 24 per hari. Matikan jika slip ini tidak memakai aturan absensi.')
                             ->default(true)
                             ->live()
                             ->columnSpanFull(),

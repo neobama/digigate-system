@@ -289,6 +289,10 @@ class InvoicePdfController extends Controller
 
     public function suratJalan(Invoice $invoice)
     {
+        if (! in_array($invoice->status, ['paid', 'delivered'], true)) {
+            return redirect()->back()->with('error', 'Surat jalan hanya bisa digenerate setelah invoice berstatus Paid. Status tidak diubah otomatis ke Delivered.');
+        }
+
         // Check if invoice has assemblies
         if ($invoice->assemblies->isEmpty()) {
             return redirect()->back()->with('error', 'Invoice belum memiliki assembly. Silakan buat assembly terlebih dahulu.');

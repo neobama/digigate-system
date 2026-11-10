@@ -2,8 +2,10 @@
 
 namespace App\Filament\Employee\Pages;
 
+use App\Enums\TaskCategory;
 use App\Models\Task;
 use App\Services\TaskCalendarLoader;
+use App\Services\TelegramNotifier;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -22,7 +24,7 @@ class MyTasks extends Page implements HasForms
 
     protected static ?string $navigationLabel = 'Kalender Pekerjaan';
 
-    protected static ?string $title = 'Kalender Pekerjaan Saya';
+    protected static ?string $title = 'Kalender Pekerjaan';
 
     public $currentMonth;
 
@@ -49,6 +51,8 @@ class MyTasks extends Page implements HasForms
 
     public $newTaskDescription = '';
 
+    public $newTaskCategory = '';
+
     public $newTaskStartDate = '';
 
     public $newTaskEndDate = '';
@@ -58,6 +62,13 @@ class MyTasks extends Page implements HasForms
     public $newTaskEndTime = '';
 
     public $newTaskEmployees = []; // Selected employees for new task
+
+    public function getTitle(): string|\Illuminate\Contracts\Support\Htmlable
+    {
+        return Auth::user()?->employee?->isSupervisor()
+            ? 'Kalender Pekerjaan Tim'
+            : 'Kalender Pekerjaan Saya';
+    }
 
     public function mount(): void
     {
@@ -98,7 +109,10 @@ class MyTasks extends Page implements HasForms
             $this->newTaskEndTime = $decoded['end_time'];
         }
         if (! empty($decoded['employees']) && is_array($decoded['employees'])) {
-            $this->newTaskEmployees = array_values(array_map('intval', $decoded['employees']));
+            $this->newTaskEmployees = array_values(array_map('strval', $decoded['employees']));
+        }
+        if (! empty($decoded['category']) && is_string($decoded['category'])) {
+            $this->newTaskCategory = $decoded['category'];
         }
 
         $this->showCreateModal = true;
@@ -106,20 +120,25 @@ class MyTasks extends Page implements HasForms
 
     public function loadTasks(): void
     {
-        $employeeId = Auth::user()->employee?->id;
-        if (! $employeeId) {
+        $employee = Auth::user()->employee;
+        if (! $employee) {
             $this->tasks = [];
 
             return;
         }
 
+        $employeeId = $employee->id;
+        $isSupervisor = $employee->isSupervisor();
+
         $tasks = TaskCalendarLoader::forMonth(
             (int) $this->currentYear,
             (int) $this->currentMonth,
-            fn ($query) => $query->whereHas('employees', fn ($q) => $q->where('employees.id', $employeeId)),
+            $isSupervisor
+                ? null
+                : fn ($query) => $query->whereHas('employees', fn ($q) => $q->where('employees.id', $employeeId)),
         );
 
-        $this->tasks = TaskCalendarLoader::toCalendarRows($tasks, ['proof_images', 'notes']);
+        $this->tasks = TaskCalendarLoader::toCalendarRows($tasks, ['proof_images', 'notes', 'category']);
     }
 
     public function previousMonth(): void
@@ -455,6 +474,7 @@ class MyTasks extends Page implements HasForms
             $rules['newTaskEndTime'] = 'required|date_format:H:i';
         }
 
+        $rules['newTaskCategory'] = 'required|in:'.implode(',', array_column(TaskCategory::cases(), 'value'));
         $this->validate($rules);
 
         // Custom validation: end time must be after start time for same day tasks
@@ -491,14 +511,18 @@ class MyTasks extends Page implements HasForms
             return;
         }
 
+        $employeeIds = array_values(array_unique(array_map('strval', $this->newTaskEmployees)));
+        $isSelfAssigned = count($employeeIds) === 1 && $employeeIds[0] === (string) $employee->id;
+
         $taskData = [
             'title' => $this->newTaskTitle,
             'description' => $this->newTaskDescription,
+            'category' => $this->newTaskCategory,
             'start_date' => $this->newTaskStartDate,
             'end_date' => $this->newTaskEndDate,
             'status' => 'pending',
             'created_by' => Auth::id(),
-            'is_self_assigned' => true,
+            'is_self_assigned' => $isSelfAssigned,
         ];
 
         // Add time if same day
@@ -510,10 +534,11 @@ class MyTasks extends Page implements HasForms
         $task = Task::create($taskData);
 
         // Attach only selected employees (creator can be included or not)
-        $employeeIds = array_unique($this->newTaskEmployees);
         $task->employees()->attach($employeeIds);
+        $task->load('employees');
+        app(TelegramNotifier::class)->taskAssigned($task);
 
-        $this->reset(['newTaskTitle', 'newTaskDescription', 'newTaskStartDate', 'newTaskEndDate', 'newTaskStartTime', 'newTaskEndTime', 'newTaskEmployees', 'showCreateModal']);
+        $this->reset(['newTaskTitle', 'newTaskDescription', 'newTaskCategory', 'newTaskStartDate', 'newTaskEndDate', 'newTaskStartTime', 'newTaskEndTime', 'newTaskEmployees', 'showCreateModal']);
         $this->loadTasks();
 
         \Filament\Notifications\Notification::make()
@@ -525,7 +550,12 @@ class MyTasks extends Page implements HasForms
     public function closeCreateModal(): void
     {
         $this->showCreateModal = false;
-        $this->reset(['newTaskTitle', 'newTaskDescription', 'newTaskStartDate', 'newTaskEndDate', 'newTaskStartTime', 'newTaskEndTime', 'newTaskEmployees']);
+        $this->reset(['newTaskTitle', 'newTaskDescription', 'newTaskCategory', 'newTaskStartDate', 'newTaskEndDate', 'newTaskStartTime', 'newTaskEndTime', 'newTaskEmployees']);
+    }
+
+    public function getTaskCategoryOptions(): array
+    {
+        return TaskCategory::options();
     }
 
     public function updatedNewTaskStartDate(): void
@@ -565,10 +595,8 @@ class MyTasks extends Page implements HasForms
             return false;
         }
 
-        // Check if task is self assigned and created by current user
-        // Creator can manage even if not assigned to the task
-        return $this->selectedTask->is_self_assigned
-            && $this->selectedTask->created_by === Auth::id();
+        // Pembuat tugas (termasuk supervisor yang menugaskan orang lain) bisa kelola assignee
+        return $this->selectedTask->created_by === Auth::id();
     }
 
     public function addEmployees(): void
@@ -608,6 +636,10 @@ class MyTasks extends Page implements HasForms
 
         // Reload task with employees
         $this->selectedTask->load('employees');
+        $this->syncSelfAssignedFlag($this->selectedTask);
+
+        $added = $this->selectedTask->employees->whereIn('id', $newEmployeeIds);
+        app(TelegramNotifier::class)->taskAssigned($this->selectedTask, $added);
 
         $this->loadTasks();
         $this->selectedEmployees = [];
@@ -659,12 +691,27 @@ class MyTasks extends Page implements HasForms
 
         // Reload task with employees
         $this->selectedTask->load('employees');
+        $this->syncSelfAssignedFlag($this->selectedTask);
         $this->loadTasks();
 
         \Filament\Notifications\Notification::make()
             ->title('Karyawan berhasil dihapus dari task')
             ->success()
             ->send();
+    }
+
+    protected function syncSelfAssignedFlag(Task $task): void
+    {
+        $creatorEmployeeId = Auth::user()?->employee?->id;
+        $assigneeIds = $task->employees->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $isSelfAssigned = $creatorEmployeeId
+            && count($assigneeIds) === 1
+            && $assigneeIds[0] === (string) $creatorEmployeeId
+            && $task->created_by === Auth::id();
+
+        if ((bool) $task->is_self_assigned !== $isSelfAssigned) {
+            $task->update(['is_self_assigned' => $isSelfAssigned]);
+        }
     }
 
     public function getCalendarDays(): array

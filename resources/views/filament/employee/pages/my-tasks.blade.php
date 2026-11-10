@@ -462,6 +462,22 @@
                                     ></textarea>
                                 </div>
 
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Kategori <span class="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        wire:model="newTaskCategory"
+                                        class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                                    >
+                                        <option value="">Pilih kategori</option>
+                                        @foreach($this->getTaskCategoryOptions() as $value => $label)
+                                            <option value="{{ $value }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('newTaskCategory') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                </div>
+
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

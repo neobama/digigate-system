@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\TaskResource\Pages;
 
 use App\Filament\Resources\TaskResource;
+use App\Services\TelegramNotifier;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
 
@@ -27,6 +28,7 @@ class CreateTask extends CreateRecord
         $allowed = array_intersect_key($decoded, array_flip([
             'title',
             'description',
+            'category',
             'start_date',
             'end_date',
             'employees',
@@ -43,5 +45,11 @@ class CreateTask extends CreateRecord
         $data['is_self_assigned'] = false;
 
         return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        $this->record->load('employees');
+        app(TelegramNotifier::class)->taskAssigned($this->record);
     }
 }

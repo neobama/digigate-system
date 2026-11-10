@@ -246,6 +246,30 @@ class TelegramService
         }
     }
 
+    /** @return list<string> */
+    public function supervisorChatIds(): array
+    {
+        $adminIds = $this->adminChatIds();
+
+        return Employee::query()
+            ->where('is_active', true)
+            ->where('role', \App\Enums\EmployeeRole::Supervisor)
+            ->whereNotNull('telegram_chat_id')
+            ->pluck('telegram_chat_id')
+            ->map(fn ($id) => (string) $id)
+            ->reject(fn (string $id) => $id === '' || in_array($id, $adminIds, true))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    public function sendToSupervisors(string $text, array $replyMarkup = [], bool $defer = false): void
+    {
+        foreach ($this->supervisorChatIds() as $chatId) {
+            $this->sendMessage((string) $chatId, $text, $replyMarkup, $defer);
+        }
+    }
+
     public function isAdminPhone(string $phone): bool
     {
         $adminPhones = array_filter(array_map('trim', explode(',', (string) config('services.telegram.admin_phones', ''))));
