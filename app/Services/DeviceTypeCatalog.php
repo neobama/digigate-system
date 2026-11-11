@@ -206,9 +206,7 @@ class DeviceTypeCatalog
 
                     return self::slotsForDeviceType((string) $type)
                         ->contains(fn (DeviceTypeComponent $slot) => $slot->slot_key === $slotKey);
-                })
-                ->searchable()
-                ->native(false);
+                });
         }
 
         return [
