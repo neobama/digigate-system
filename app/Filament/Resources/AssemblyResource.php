@@ -121,12 +121,7 @@ class AssemblyResource extends Resource
                             ->color('info'),
                         Infolists\Components\TextEntry::make('product_type')
                             ->label('Produk')
-                            ->formatStateUsing(fn ($state) => match($state) {
-                                'Macan' => 'DigiGate Macan (i7 11700K)',
-                                'Maleo' => 'DigiGate Maleo (i7 8700K)',
-                                'Komodo' => 'DigiGate Komodo (i7 14700K)',
-                                default => $state,
-                            })
+                            ->formatStateUsing(fn ($state) => \App\Services\DeviceTypeCatalog::deviceTypeOptions(false)[$state] ?? $state)
                             ->badge()
                             ->color('success'),
                         Infolists\Components\TextEntry::make('assembly_date')
