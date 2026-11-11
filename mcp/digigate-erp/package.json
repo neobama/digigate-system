@@ -1,0 +1,19 @@
+{
+  "name": "digigate-erp-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server so Claude Code / Virtual Employee can read DigiGate ERP data",
+  "bin": {
+    "digigate-erp-mcp": "./index.mjs"
+  },
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  }
+}
