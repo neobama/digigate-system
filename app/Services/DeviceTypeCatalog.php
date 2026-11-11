@@ -143,76 +143,32 @@ class DeviceTypeCatalog
     }
 
     /**
-     * Stable Filament selects for assembly sn_details.
-     *
-     * Field names are ALWAYS the same (chassis/processor/ram_1/ram_2/ssd) so Livewire
-     * keeps wire:model identity across product_type changes. Labels, options, required,
-     * and visibility come from the device-type BOM via Get closures.
-     *
-     * Returning brand-new Select instances from a schema(fn) based on product_type
-     * remounts inputs and causes "required" errors even when the UI shows values.
+     * Dynamic Filament selects for assembly sn_details based on device type BOM.
      *
      * @return array<int, Forms\Components\Component>
      */
-    public static function assemblySnDetailFields(): array
+    public static function assemblySnDetailFields(string $productTypeCode): array
     {
-        $fields = [];
-
-        foreach (array_keys(self::SLOT_OPTIONS) as $slotKey) {
-            $fields[] = Forms\Components\Select::make($slotKey)
-                ->label(function (Forms\Get $get) use ($slotKey) {
-                    $type = $get('../product_type');
-                    if (! filled($type)) {
-                        return 'SN '.self::slotLabel($slotKey);
-                    }
-
-                    $slot = self::slotsForDeviceType((string) $type)->firstWhere('slot_key', $slotKey);
-
-                    return 'SN '.($slot?->displayLabel() ?? self::slotLabel($slotKey));
-                })
-                ->options(function (Forms\Get $get) use ($slotKey) {
-                    $type = $get('../product_type');
-                    if (! filled($type)) {
-                        return [];
-                    }
-
-                    $names = self::componentNamesForSlot($slotKey, (string) $type);
-                    if ($names === []) {
-                        return [];
-                    }
-
-                    return Component::query()
-                        ->whereIn('name', $names)
-                        ->where('status', 'available')
-                        ->orderBy('sn')
-                        ->pluck('sn', 'sn')
-                        ->all();
-                })
-                ->required(function (Forms\Get $get) use ($slotKey): bool {
-                    $type = $get('../product_type');
-                    if (! filled($type)) {
-                        return false;
-                    }
-
-                    $slot = self::slotsForDeviceType((string) $type)->firstWhere('slot_key', $slotKey);
-
-                    return $slot ? (bool) $slot->is_required : false;
-                })
-                ->visible(function (Forms\Get $get) use ($slotKey): bool {
-                    $type = $get('../product_type');
-                    if (! filled($type)) {
-                        return false;
-                    }
-
-                    return self::slotsForDeviceType((string) $type)
-                        ->contains(fn (DeviceTypeComponent $slot) => $slot->slot_key === $slotKey);
-                });
+        $slots = self::slotsForDeviceType($productTypeCode);
+        if ($slots->isEmpty()) {
+            return [];
         }
 
-        return [
-            Forms\Components\Group::make($fields)
-                ->statePath('sn_details')
-                ->columns(2),
-        ];
+        $fields = [];
+        foreach ($slots as $slot) {
+            $componentName = $slot->component_name;
+            $label = 'SN '.$slot->displayLabel();
+
+            $fields[] = Forms\Components\Select::make('sn_details.'.$slot->slot_key)
+                ->label($label)
+                ->options(fn () => Component::query()
+                    ->where('name', $componentName)
+                    ->where('status', 'available')
+                    ->pluck('sn', 'sn'))
+                ->required($slot->is_required)
+                ->searchable();
+        }
+
+        return $fields;
     }
 }
