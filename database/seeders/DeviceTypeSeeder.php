@@ -20,7 +20,7 @@ class DeviceTypeSeeder extends Seeder
                     ['slot_key' => 'chassis', 'component_name' => 'Chassis Macan', 'sort_order' => 1],
                     ['slot_key' => 'processor', 'component_name' => 'Processor i7 11700K', 'sort_order' => 2],
                     ['slot_key' => 'ram_1', 'component_name' => 'RAM DDR4', 'label' => 'RAM DDR4 (Slot 1)', 'sort_order' => 3],
-                    ['slot_key' => 'ram_2', 'component_name' => 'RAM DDR4', 'label' => 'RAM DDR4 (Slot 2)', 'sort_order' => 4],
+                    ['slot_key' => 'ram_2', 'component_name' => 'RAM DDR4', 'label' => 'RAM DDR4 (Slot 2)', 'sort_order' => 4, 'is_required' => false],
                     ['slot_key' => 'ssd', 'component_name' => 'SSD', 'sort_order' => 5],
                 ],
             ],
@@ -33,7 +33,7 @@ class DeviceTypeSeeder extends Seeder
                     ['slot_key' => 'chassis', 'component_name' => 'Chassis Maleo', 'sort_order' => 1],
                     ['slot_key' => 'processor', 'component_name' => 'Processor i7 8700K', 'sort_order' => 2],
                     ['slot_key' => 'ram_1', 'component_name' => 'RAM DDR4', 'label' => 'RAM DDR4 (Slot 1)', 'sort_order' => 3],
-                    ['slot_key' => 'ram_2', 'component_name' => 'RAM DDR4', 'label' => 'RAM DDR4 (Slot 2)', 'sort_order' => 4],
+                    ['slot_key' => 'ram_2', 'component_name' => 'RAM DDR4', 'label' => 'RAM DDR4 (Slot 2)', 'sort_order' => 4, 'is_required' => false],
                     ['slot_key' => 'ssd', 'component_name' => 'SSD', 'sort_order' => 5],
                 ],
             ],
@@ -46,7 +46,7 @@ class DeviceTypeSeeder extends Seeder
                     ['slot_key' => 'chassis', 'component_name' => 'Chassis Komodo', 'sort_order' => 1],
                     ['slot_key' => 'processor', 'component_name' => 'Processor i7 14700K', 'sort_order' => 2],
                     ['slot_key' => 'ram_1', 'component_name' => 'RAM DDR5', 'label' => 'RAM DDR5 (Slot 1)', 'sort_order' => 3],
-                    ['slot_key' => 'ram_2', 'component_name' => 'RAM DDR5', 'label' => 'RAM DDR5 (Slot 2)', 'sort_order' => 4],
+                    ['slot_key' => 'ram_2', 'component_name' => 'RAM DDR5', 'label' => 'RAM DDR5 (Slot 2)', 'sort_order' => 4, 'is_required' => false],
                     ['slot_key' => 'ssd', 'component_name' => 'SSD', 'sort_order' => 5],
                 ],
             ],
@@ -72,7 +72,7 @@ class DeviceTypeSeeder extends Seeder
                     [
                         'component_name' => $component['component_name'],
                         'label' => $component['label'] ?? null,
-                        'is_required' => true,
+                        'is_required' => $component['is_required'] ?? true,
                         'sort_order' => $component['sort_order'],
                     ]
                 );

@@ -166,6 +166,8 @@ class DeviceTypeCatalog
                     ->where('status', 'available')
                     ->pluck('sn', 'sn'))
                 ->required($slot->is_required)
+                ->nullable(! $slot->is_required)
+                ->placeholder($slot->is_required ? null : 'Opsional')
                 ->searchable();
         }
 
