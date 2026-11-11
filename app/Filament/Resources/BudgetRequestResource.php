@@ -226,6 +226,10 @@ class BudgetRequestResource extends Resource
                         Infolists\Components\TextEntry::make('amount')
                             ->label('Nominal Anggaran')
                             ->money('IDR'),
+                        Infolists\Components\TextEntry::make('account_code')
+                            ->label('Kode Akun')
+                            ->formatStateUsing(fn (?string $state) => AccountCodeCatalog::label($state))
+                            ->placeholder('—'),
                         Infolists\Components\TextEntry::make('request_date')
                             ->label('Tanggal Request')
                             ->date('d/m/Y'),
