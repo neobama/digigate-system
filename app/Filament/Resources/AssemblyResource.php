@@ -66,6 +66,7 @@ class AssemblyResource extends Resource
                     ->label('Produk Yang Dirakit')
                     ->options(fn () => \App\Services\DeviceTypeCatalog::productTypeOptions())
                     ->live()
+                    ->afterStateUpdated(fn (Forms\Set $set) => $set('sn_details', []))
                     ->required()
                     ->helperText('Daftar dari menu Tipe Perangkat'),
                 
@@ -90,15 +91,9 @@ class AssemblyResource extends Resource
                     ),
 
                 Forms\Components\Section::make('Pilih Serial Number Komponen')
-                    ->description('Slot mengikuti BOM tipe perangkat yang didefinisikan admin')
-                    ->schema(function (Forms\Get $get) {
-                        $type = $get('product_type');
-                        if (! $type) {
-                            return [];
-                        }
-
-                        return \App\Services\DeviceTypeCatalog::assemblySnDetailFields((string) $type);
-                    })->columns(2)
+                    ->description('Slot mengikuti BOM tipe perangkat yang didefinisikan admin. Pilih produk dulu.')
+                    ->schema(\App\Services\DeviceTypeCatalog::assemblySnDetailFields())
+                    ->visible(fn (Forms\Get $get) => filled($get('product_type')))
             ])
         ]);
     }

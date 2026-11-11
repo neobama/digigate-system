@@ -76,6 +76,7 @@ class MyAssembly extends Page implements Tables\Contracts\HasTable
                             ->label('Produk Yang Dirakit')
                             ->options(fn () => \App\Services\DeviceTypeCatalog::productTypeOptions())
                             ->live()
+                            ->afterStateUpdated(fn (Forms\Set $set) => $set('sn_details', []))
                             ->required()
                             ->helperText('Daftar dari tipe perangkat yang didefinisikan admin'),
                         
@@ -85,15 +86,9 @@ class MyAssembly extends Page implements Tables\Contracts\HasTable
                             ->required(),
 
                         Forms\Components\Section::make('Pilih Serial Number Komponen')
-                            ->description('Slot mengikuti BOM tipe perangkat yang didefinisikan admin')
-                            ->schema(function (Forms\Get $get) {
-                                $type = $get('product_type');
-                                if (! $type) {
-                                    return [];
-                                }
-
-                                return \App\Services\DeviceTypeCatalog::assemblySnDetailFields((string) $type);
-                            })->columns(2)
+                            ->description('Slot mengikuti BOM tipe perangkat yang didefinisikan admin. Pilih produk dulu.')
+                            ->schema(\App\Services\DeviceTypeCatalog::assemblySnDetailFields())
+                            ->visible(fn (Forms\Get $get) => filled($get('product_type')))
                     ])
                     ->mutateFormDataUsing(function (array $data): array {
                         AssemblyInvoiceValidator::ensureCanCreateAssembly($data['invoice_id']);
@@ -102,13 +97,20 @@ class MyAssembly extends Page implements Tables\Contracts\HasTable
                             $data['assembly_date'] ?? now()
                         );
 
+                        if (isset($data['sn_details']) && is_array($data['sn_details'])) {
+                            $data['sn_details'] = array_filter(
+                                $data['sn_details'],
+                                fn ($sn) => filled($sn)
+                            );
+                        }
+
                         return $data;
                     })
                     ->after(function (Assembly $record) {
-                        // Update component status to 'used'
-                        $data = $record->sn_details;
-                        $serialNumbers = array_values($data);
-                        Component::whereIn('sn', $serialNumbers)->update(['status' => 'used']);
+                        $serialNumbers = array_values(array_filter($record->sn_details ?? []));
+                        if ($serialNumbers !== []) {
+                            Component::whereIn('sn', $serialNumbers)->update(['status' => 'used']);
+                        }
                     }),
             ])
             ->actions([
