@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "digigate-erp": {
+      "command": "node",
+      "args": [
+        "/Users/neorafa/Documents/projects/digigate-system/mcp/digigate-erp/index.mjs"
+      ],
+      "env": {
+        "DIGIGATE_API_URL": "https://erp.digigate.id",
+        "DIGIGATE_API_TOKEN": "REPLACE_WITH_AGENT_API_TOKEN"
+      }
+    }
+  }
+}

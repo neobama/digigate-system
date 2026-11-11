@@ -41,6 +41,17 @@ class AgentApiController extends Controller
                 ['method' => 'GET', 'path' => '/api/agent/v1/leave-requests', 'tool' => 'list_leave_requests'],
                 ['method' => 'GET', 'path' => '/api/agent/v1/device-types', 'tool' => 'list_device_types'],
                 ['method' => 'GET', 'path' => '/api/agent/v1/logbooks', 'tool' => 'list_logbooks'],
+                ['method' => 'GET', 'path' => '/api/agent/v1/expenses', 'tool' => 'list_expenses'],
+                ['method' => 'GET', 'path' => '/api/agent/v1/incomes', 'tool' => 'list_incomes'],
+                ['method' => 'GET', 'path' => '/api/agent/v1/reimbursements', 'tool' => 'list_reimbursements'],
+                ['method' => 'GET', 'path' => '/api/agent/v1/cashbons', 'tool' => 'list_cashbons'],
+                ['method' => 'GET', 'path' => '/api/agent/v1/budget-requests', 'tool' => 'list_budget_requests'],
+                ['method' => 'GET', 'path' => '/api/agent/v1/salary-payments', 'tool' => 'list_salary_payments'],
+                ['method' => 'GET', 'path' => '/api/agent/v1/financial-summary', 'tool' => 'financial_summary'],
+                ['method' => 'GET', 'path' => '/api/agent/v1/warranty-claims', 'tool' => 'list_warranty_claims'],
+                ['method' => 'GET', 'path' => '/api/agent/v1/device-returns', 'tool' => 'list_device_returns'],
+                ['method' => 'GET', 'path' => '/api/agent/v1/documents', 'tool' => 'list_documents'],
+                ['method' => 'GET', 'path' => '/api/agent/v1/activity-logs', 'tool' => 'list_activity_logs'],
             ],
         ]);
     }
@@ -237,6 +248,203 @@ class AgentApiController extends Controller
                 $data['to'] ?? null,
                 $data['employee_id'] ?? null,
                 (int) ($data['limit'] ?? 50),
+            ),
+        ]);
+    }
+
+    public function expenses(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+            'fund_source' => ['nullable', 'string', 'max:50'],
+            'q' => ['nullable', 'string', 'max:100'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        return response()->json([
+            'data' => $this->agent->expenses(
+                $data['from'] ?? null,
+                $data['to'] ?? null,
+                $data['fund_source'] ?? null,
+                $data['q'] ?? null,
+                (int) ($data['limit'] ?? 100),
+            ),
+        ]);
+    }
+
+    public function incomes(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+            'q' => ['nullable', 'string', 'max:100'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        return response()->json([
+            'data' => $this->agent->incomes(
+                $data['from'] ?? null,
+                $data['to'] ?? null,
+                $data['q'] ?? null,
+                (int) ($data['limit'] ?? 100),
+            ),
+        ]);
+    }
+
+    public function reimbursements(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => ['nullable', 'string', 'max:50'],
+            'employee_id' => ['nullable', 'uuid'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        return response()->json([
+            'data' => $this->agent->reimbursements(
+                $data['status'] ?? null,
+                $data['employee_id'] ?? null,
+                (int) ($data['limit'] ?? 100),
+            ),
+        ]);
+    }
+
+    public function cashbons(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => ['nullable', 'string', 'max:50'],
+            'employee_id' => ['nullable', 'uuid'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        return response()->json([
+            'data' => $this->agent->cashbons(
+                $data['status'] ?? null,
+                $data['employee_id'] ?? null,
+                (int) ($data['limit'] ?? 100),
+            ),
+        ]);
+    }
+
+    public function budgetRequests(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => ['nullable', 'string', 'max:50'],
+            'employee_id' => ['nullable', 'uuid'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        return response()->json([
+            'data' => $this->agent->budgetRequests(
+                $data['status'] ?? null,
+                $data['employee_id'] ?? null,
+                (int) ($data['limit'] ?? 100),
+            ),
+        ]);
+    }
+
+    public function salaryPayments(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'month' => ['nullable', 'integer', 'min:1', 'max:12'],
+            'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
+            'employee_id' => ['nullable', 'uuid'],
+            'status' => ['nullable', 'string', 'max:50'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        return response()->json([
+            'data' => $this->agent->salaryPayments(
+                isset($data['month']) ? (int) $data['month'] : null,
+                isset($data['year']) ? (int) $data['year'] : null,
+                $data['employee_id'] ?? null,
+                $data['status'] ?? null,
+                (int) ($data['limit'] ?? 100),
+            ),
+        ]);
+    }
+
+    public function financialSummary(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'month' => ['nullable', 'integer', 'min:1', 'max:12'],
+            'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
+        ]);
+
+        return response()->json(
+            $this->agent->financialSummary(
+                isset($data['month']) ? (int) $data['month'] : null,
+                isset($data['year']) ? (int) $data['year'] : null,
+            )
+        );
+    }
+
+    public function warrantyClaims(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => ['nullable', 'string', 'max:50'],
+            'q' => ['nullable', 'string', 'max:100'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        return response()->json([
+            'data' => $this->agent->warrantyClaims(
+                $data['status'] ?? null,
+                $data['q'] ?? null,
+                (int) ($data['limit'] ?? 100),
+            ),
+        ]);
+    }
+
+    public function deviceReturns(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => ['nullable', 'string', 'max:50'],
+            'q' => ['nullable', 'string', 'max:100'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        return response()->json([
+            'data' => $this->agent->deviceReturns(
+                $data['status'] ?? null,
+                $data['q'] ?? null,
+                (int) ($data['limit'] ?? 100),
+            ),
+        ]);
+    }
+
+    public function documents(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'category' => ['nullable', 'string', 'max:50'],
+            'q' => ['nullable', 'string', 'max:100'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        return response()->json([
+            'data' => $this->agent->documents(
+                $data['category'] ?? null,
+                $data['q'] ?? null,
+                (int) ($data['limit'] ?? 100),
+            ),
+        ]);
+    }
+
+    public function activityLogs(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'action' => ['nullable', 'string', 'max:50'],
+            'model_type' => ['nullable', 'string', 'max:100'],
+            'q' => ['nullable', 'string', 'max:100'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        return response()->json([
+            'data' => $this->agent->activityLogs(
+                $data['action'] ?? null,
+                $data['model_type'] ?? null,
+                $data['q'] ?? null,
+                (int) ($data['limit'] ?? 100),
             ),
         ]);
     }

@@ -26,4 +26,15 @@ Route::prefix('agent/v1')
         Route::get('/leave-requests', [AgentApiController::class, 'leaveRequests']);
         Route::get('/device-types', [AgentApiController::class, 'deviceTypes']);
         Route::get('/logbooks', [AgentApiController::class, 'logbooks']);
+        Route::get('/expenses', [AgentApiController::class, 'expenses']);
+        Route::get('/incomes', [AgentApiController::class, 'incomes']);
+        Route::get('/reimbursements', [AgentApiController::class, 'reimbursements']);
+        Route::get('/cashbons', [AgentApiController::class, 'cashbons']);
+        Route::get('/budget-requests', [AgentApiController::class, 'budgetRequests']);
+        Route::get('/salary-payments', [AgentApiController::class, 'salaryPayments']);
+        Route::get('/financial-summary', [AgentApiController::class, 'financialSummary']);
+        Route::get('/warranty-claims', [AgentApiController::class, 'warrantyClaims']);
+        Route::get('/device-returns', [AgentApiController::class, 'deviceReturns']);
+        Route::get('/documents', [AgentApiController::class, 'documents']);
+        Route::get('/activity-logs', [AgentApiController::class, 'activityLogs']);
     });

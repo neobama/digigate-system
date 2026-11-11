@@ -1,6 +1,6 @@
 # DigiGate ERP MCP (Claude Code / Virtual Employee)
 
-Read-only bridge dari Claude Code ke DigiGate ERP.
+Read-only bridge dari Claude Code ke DigiGate ERP — akses penuh ke data operasional & keuangan (gaji, pengeluaran, reimburse, dll).
 
 ## Arsitektur
 
@@ -54,11 +54,19 @@ Tambahkan ke config Claude Code MCP (lihat `claude_mcp.example.json`):
 }
 ```
 
-Restart Claude Code. Tools yang muncul: `get_overview`, `search_erp`, `list_employees`, `list_tasks`, `attendance_summary`, `list_components`, `list_invoices`, dll.
+Restart Claude Code.
+
+## Tools (read-only)
+
+**Operasional:** `get_overview`, `search_erp`, `list_employees`, `get_employee`, `list_tasks`, `attendance_summary`, `list_attendance`, `list_components`, `component_stock_summary`, `list_assemblies`, `list_invoices`, `list_leave_requests`, `list_device_types`, `list_logbooks`
+
+**Keuangan:** `list_expenses`, `list_incomes`, `list_reimbursements`, `list_cashbons`, `list_budget_requests`, `list_salary_payments`, `financial_summary`
+
+**Lainnya:** `list_warranty_claims`, `list_device_returns`, `list_documents`, `list_activity_logs`
 
 ## Catatan keamanan
 
-- API **read-only**
-- **Gaji tidak diekspos**
+- API **read-only** (GET saja)
+- Token memberi akses penuh termasuk gaji & finance — jaga kerahasiaan token
 - Jangan commit token ke git
 - Rate limit default 120 req/menit

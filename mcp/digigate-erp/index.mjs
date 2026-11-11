@@ -71,7 +71,7 @@ function toolResult(data) {
 const TOOLS = [
   {
     name: 'get_overview',
-    description: 'Ringkasan ERP: jumlah karyawan, task terbuka, stok komponen, invoice, absensi hari ini.',
+    description: 'Ringkasan ERP: karyawan, task, stok, invoice, absensi, pending finance (reimburse/cashbon/gaji), expense & income bulan ini.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   },
   {
@@ -89,7 +89,7 @@ const TOOLS = [
   },
   {
     name: 'list_employees',
-    description: 'Daftar karyawan (tanpa data gaji).',
+    description: 'Daftar karyawan termasuk base_salary dan bpjs_allowance.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -102,7 +102,7 @@ const TOOLS = [
   },
   {
     name: 'get_employee',
-    description: 'Detail satu karyawan by UUID.',
+    description: 'Detail satu karyawan by UUID (termasuk gaji pokok & sisa plafon cashbon).',
     inputSchema: {
       type: 'object',
       properties: { id: { type: 'string' } },
@@ -229,10 +229,158 @@ const TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'list_expenses',
+    description: 'Daftar pengeluaran. Filter from/to, fund_source, q.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        from: { type: 'string' },
+        to: { type: 'string' },
+        fund_source: { type: 'string' },
+        q: { type: 'string' },
+        limit: { type: 'number' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'list_incomes',
+    description: 'Daftar pemasukan. Filter from/to, q.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        from: { type: 'string' },
+        to: { type: 'string' },
+        q: { type: 'string' },
+        limit: { type: 'number' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'list_reimbursements',
+    description: 'Reimbursement karyawan. Filter status, employee_id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string' },
+        employee_id: { type: 'string' },
+        limit: { type: 'number' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'list_cashbons',
+    description: 'Cashbon / pinjaman karyawan. Filter status, employee_id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string' },
+        employee_id: { type: 'string' },
+        limit: { type: 'number' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'list_budget_requests',
+    description: 'Pengajuan anggaran. Filter status, employee_id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string' },
+        employee_id: { type: 'string' },
+        limit: { type: 'number' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'list_salary_payments',
+    description: 'Slip / pembayaran gaji (base, potongan, net). Filter month, year, employee_id, status.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        month: { type: 'number' },
+        year: { type: 'number' },
+        employee_id: { type: 'string' },
+        status: { type: 'string' },
+        limit: { type: 'number' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'financial_summary',
+    description: 'Ringkasan keuangan bulanan: income, expense, net, reimburse/cashbon/gaji terbayar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        month: { type: 'number' },
+        year: { type: 'number' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'list_warranty_claims',
+    description: 'Klaim garansi. Filter status, q.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string' },
+        q: { type: 'string' },
+        limit: { type: 'number' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'list_device_returns',
+    description: 'Retur perangkat. Filter status, q.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string' },
+        q: { type: 'string' },
+        limit: { type: 'number' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'list_documents',
+    description: 'Metadata dokumen (nama, kategori, ukuran). Filter category, q.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        category: { type: 'string' },
+        q: { type: 'string' },
+        limit: { type: 'number' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'list_activity_logs',
+    description: 'Audit log aktivitas sistem. Filter action, model_type, q.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string' },
+        model_type: { type: 'string' },
+        q: { type: 'string' },
+        limit: { type: 'number' },
+      },
+      additionalProperties: false,
+    },
+  },
 ];
 
 const server = new Server(
-  { name: 'digigate-erp', version: '1.0.0' },
+  { name: 'digigate-erp', version: '1.1.0' },
   { capabilities: { tools: {} } },
 );
 
@@ -278,6 +426,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }));
       case 'list_logbooks':
         return toolResult(await apiGet('/logbooks', args));
+      case 'list_expenses':
+        return toolResult(await apiGet('/expenses', args));
+      case 'list_incomes':
+        return toolResult(await apiGet('/incomes', args));
+      case 'list_reimbursements':
+        return toolResult(await apiGet('/reimbursements', args));
+      case 'list_cashbons':
+        return toolResult(await apiGet('/cashbons', args));
+      case 'list_budget_requests':
+        return toolResult(await apiGet('/budget-requests', args));
+      case 'list_salary_payments':
+        return toolResult(await apiGet('/salary-payments', args));
+      case 'financial_summary':
+        return toolResult(await apiGet('/financial-summary', args));
+      case 'list_warranty_claims':
+        return toolResult(await apiGet('/warranty-claims', args));
+      case 'list_device_returns':
+        return toolResult(await apiGet('/device-returns', args));
+      case 'list_documents':
+        return toolResult(await apiGet('/documents', args));
+      case 'list_activity_logs':
+        return toolResult(await apiGet('/activity-logs', args));
       default:
         return {
           isError: true,
