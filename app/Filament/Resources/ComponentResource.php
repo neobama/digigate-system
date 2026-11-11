@@ -3,8 +3,8 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ComponentResource\Pages;
-use App\Filament\Resources\ComponentResource\RelationManagers;
 use App\Models\Component;
+use App\Services\DeviceTypeCatalog;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists;
@@ -12,8 +12,6 @@ use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ComponentResource extends Resource
 {
@@ -29,18 +27,10 @@ class ComponentResource extends Resource
             Forms\Components\Card::make()->schema([
                 Forms\Components\Select::make('name')
                     ->label('Tipe Komponen')
-                    ->options([
-                        'Processor i7 11700K' => 'Processor i7 11700K',
-                        'Processor i7 8700K' => 'Processor i7 8700K',
-                        'Processor i7 14700K' => 'Processor i7 14700K',
-                        'RAM DDR4' => 'RAM DDR4',
-                        'RAM DDR5' => 'RAM DDR5',
-                        'SSD' => 'SSD',
-                        'Chassis Macan' => 'Chassis Macan',
-                        'Chassis Maleo' => 'Chassis Maleo',
-                        'Chassis Komodo' => 'Chassis Komodo',
-                    ])
-                    ->required(),
+                    ->options(fn () => DeviceTypeCatalog::componentNameOptions())
+                    ->searchable()
+                    ->required()
+                    ->helperText('Daftar dari Tipe Perangkat yang didefinisikan admin. Tambah tipe/komponen baru di menu Tipe Perangkat.'),
                 Forms\Components\TextInput::make('sn')
                     ->label('Serial Number (SN)')
                     ->unique(ignoreRecord: true)
@@ -107,7 +97,10 @@ class ComponentResource extends Resource
                     'used' => 'Terpakai',
                     'damaged' => 'Rusak',
                     'warranty_claim' => 'Rusak (legacy)',
-                ])
+                ]),
+            Tables\Filters\SelectFilter::make('name')
+                ->label('Tipe Komponen')
+                ->options(fn () => DeviceTypeCatalog::componentNameOptions()),
         ])
         ->defaultSort('purchase_date', 'desc')
         ->headerActions([

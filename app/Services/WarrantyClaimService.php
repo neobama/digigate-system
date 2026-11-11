@@ -21,6 +21,7 @@ class WarrantyClaimService
         'repair' => 'Repair',
     ];
 
+    /** @deprecated Use DeviceTypeCatalog::deviceTypeOptions() */
     public const DEVICE_TYPES = [
         'Maleo' => 'DigiGate Maleo',
         'Macan' => 'DigiGate Macan',
@@ -34,6 +35,13 @@ class WarrantyClaimService
         'ram_2' => 'RAM Slot 2',
         'ssd' => 'SSD',
     ];
+
+    public static function deviceTypeOptions(): array
+    {
+        $fromCatalog = DeviceTypeCatalog::deviceTypeOptions(true);
+
+        return $fromCatalog !== [] ? $fromCatalog : self::DEVICE_TYPES;
+    }
 
     public static function generateTicketNumber(): string
     {
@@ -164,25 +172,11 @@ class WarrantyClaimService
 
     public static function availableComponentOptions(string $componentType, ?string $deviceType = null): array
     {
-        $names = match ($componentType) {
-            'chassis' => match ($deviceType) {
-                'Macan' => ['Chassis Macan'],
-                'Maleo' => ['Chassis Maleo'],
-                'Komodo' => ['Chassis Komodo'],
-                default => ['Chassis Macan', 'Chassis Maleo', 'Chassis Komodo'],
-            },
-            'processor' => match ($deviceType) {
-                'Macan' => ['Processor i7 11700K'],
-                'Maleo' => ['Processor i7 8700K'],
-                'Komodo' => ['Processor i7 14700K'],
-                default => ['Processor i7 11700K', 'Processor i7 8700K', 'Processor i7 14700K'],
-            },
-            'ram_1', 'ram_2' => $deviceType === 'Komodo'
-                ? ['RAM DDR5']
-                : ($deviceType ? ['RAM DDR4'] : ['RAM DDR4', 'RAM DDR5']),
-            'ssd' => ['SSD'],
-            default => [],
-        };
+        $names = DeviceTypeCatalog::componentNamesForSlot($componentType, $deviceType);
+
+        if ($names === []) {
+            return [];
+        }
 
         return Component::query()
             ->whereIn('name', $names)

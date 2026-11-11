@@ -26,7 +26,7 @@
         </div>
         <div>
             <p class="text-gray-500">Perangkat</p>
-            <p class="font-medium">{{ WarrantyClaimService::DEVICE_TYPES[$record->device_type] ?? ($record->device_type ?: '-') }}</p>
+            <p class="font-medium">{{ WarrantyClaimService::deviceTypeOptions()[$record->device_type] ?? ($record->device_type ?: '-') }}</p>
         </div>
         <div>
             <p class="text-gray-500">Serial Number</p>

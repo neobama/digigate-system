@@ -12,7 +12,7 @@ class RepairPortalController extends Controller
     public function create()
     {
         return view('repair.portal.create', [
-            'deviceTypes' => WarrantyClaimService::DEVICE_TYPES,
+            'deviceTypes' => WarrantyClaimService::deviceTypeOptions(),
         ]);
     }
 
@@ -23,7 +23,7 @@ class RepairPortalController extends Controller
             'invoice_date' => ['required', 'date', 'before_or_equal:today'],
             'client_name' => ['required', 'string', 'max:255'],
             'phone_number' => ['required', 'string', 'max:30'],
-            'device_type' => ['required', Rule::in(array_keys(WarrantyClaimService::DEVICE_TYPES))],
+            'device_type' => ['required', Rule::in(array_keys(WarrantyClaimService::deviceTypeOptions()))],
             'assembly_serial_number' => ['required', 'string', 'max:100'],
             'complaint' => ['required', 'string', 'max:5000'],
         ], [

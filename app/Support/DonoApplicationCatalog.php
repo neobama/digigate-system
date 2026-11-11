@@ -71,7 +71,7 @@ Ringkas modul:
 - Reimbursement: klaim penggantian biaya (ada upload bon di alur admin). Status hanya lewat tombol approval; Paid → expense otomatis.
 - Keuangan (admin): Pemasukan (Income), Pengeluaran (Expense), Laporan Keuangan. Invoice paid/delivered → Income; cashbon/budget/reimbursement/gaji paid → Expense. Baris linked tidak boleh diedit manual — ubah dokumen sumber. P&L hanya Income + Expense.
 - Penjualan/operasional (admin): Invoice, Dokumen.
-- Inventori/produksi (admin): Komponen, Assembly; Warranty Claim untuk garansi.
+- Inventori/produksi (admin): Tipe Perangkat (BOM: komponen wajib per produk), Komponen, Assembly; Warranty Claim untuk garansi. Karyawan hanya bisa menambah stok komponen yang tipenya sudah didefinisikan di Tipe Perangkat.
 - HR (admin): Data Karyawan, Absensi, Izin/Cuti/Lembur, Pembayaran Gaji (Salary Payment). Absensi tap in/out langsung sah tanpa approval; approval admin hanya untuk koreksi/perubahan waktu. Pengajuan izin/sakit/cuti yang disetujui dihitung sebagai hari sah (bersama tap-in) untuk minimal 24 hari/bulan; kurang dari 24 dipotong (gaji pokok / 24) per hari — bisa di-on/off per slip. Lembur dicatat terpisah dan tidak mengganti hari hadir.
 - Invoice flow: Proforma → Paid → Generate Surat Jalan (status tetap Paid) → Set Delivered. Surat jalan tidak boleh digenerate hanya setelah Delivered, dan generate surat jalan tidak mengubah status ke Delivered.
 - Device Return (admin): retur perangkat — biasanya dari daftar/tracking, bukan form "create" sederhana.

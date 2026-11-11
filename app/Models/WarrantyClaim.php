@@ -108,7 +108,7 @@ class WarrantyClaim extends Model
 
     public function deviceTypeLabel(): string
     {
-        return WarrantyClaimService::DEVICE_TYPES[$this->device_type] ?? ($this->device_type ?: '-');
+        return WarrantyClaimService::deviceTypeOptions()[$this->device_type] ?? ($this->device_type ?: '-');
     }
 
     public function sourceLabel(): string

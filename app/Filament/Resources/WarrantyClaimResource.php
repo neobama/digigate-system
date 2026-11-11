@@ -63,7 +63,7 @@ class WarrantyClaimResource extends Resource
                             ->maxLength(30),
                         Forms\Components\Select::make('device_type')
                             ->label('Nama Perangkat')
-                            ->options(WarrantyClaimService::DEVICE_TYPES),
+                            ->options(fn () => WarrantyClaimService::deviceTypeOptions()),
                         Forms\Components\Textarea::make('complaint')
                             ->label('Keluhan')
                             ->rows(3)
@@ -150,7 +150,7 @@ class WarrantyClaimResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('device_type')
                     ->label('Perangkat')
-                    ->formatStateUsing(fn (?string $state) => WarrantyClaimService::DEVICE_TYPES[$state] ?? $state)
+                    ->formatStateUsing(fn (?string $state) => WarrantyClaimService::deviceTypeOptions()[$state] ?? $state)
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('claim_category')
                     ->label('Kategori')
@@ -251,7 +251,7 @@ class WarrantyClaimResource extends Resource
                         Infolists\Components\TextEntry::make('phone_number')->label('Telepon')->placeholder('-'),
                         Infolists\Components\TextEntry::make('device_type')
                             ->label('Perangkat')
-                            ->formatStateUsing(fn (?string $state) => WarrantyClaimService::DEVICE_TYPES[$state] ?? $state)
+                            ->formatStateUsing(fn (?string $state) => WarrantyClaimService::deviceTypeOptions()[$state] ?? $state)
                             ->placeholder('-'),
                         Infolists\Components\TextEntry::make('source')
                             ->label('Sumber')

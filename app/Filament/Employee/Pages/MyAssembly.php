@@ -44,11 +44,7 @@ class MyAssembly extends Page implements Tables\Contracts\HasTable
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('product_type')
-                    ->options([
-                        'Macan' => 'DigiGate Macan',
-                        'Maleo' => 'DigiGate Maleo',
-                        'Komodo' => 'DigiGate Komodo',
-                    ]),
+                    ->options(fn () => \App\Services\DeviceTypeCatalog::deviceTypeOptions(false)),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
@@ -78,13 +74,10 @@ class MyAssembly extends Page implements Tables\Contracts\HasTable
                         
                         Forms\Components\Select::make('product_type')
                             ->label('Produk Yang Dirakit')
-                            ->options([
-                                'Macan' => 'DigiGate Macan (i7 11700K)',
-                                'Maleo' => 'DigiGate Maleo (i7 8700K)',
-                                'Komodo' => 'DigiGate Komodo (i7 14700K)',
-                            ])
+                            ->options(fn () => \App\Services\DeviceTypeCatalog::productTypeOptions())
                             ->live()
-                            ->required(),
+                            ->required()
+                            ->helperText('Daftar dari tipe perangkat yang didefinisikan admin'),
                         
                         Forms\Components\DatePicker::make('assembly_date')
                             ->label('Tanggal Assembly')
@@ -92,57 +85,14 @@ class MyAssembly extends Page implements Tables\Contracts\HasTable
                             ->required(),
 
                         Forms\Components\Section::make('Pilih Serial Number Komponen')
-                            ->description('Hanya menampilkan SN yang tersedia di stok')
+                            ->description('Slot mengikuti BOM tipe perangkat yang didefinisikan admin')
                             ->schema(function (Forms\Get $get) {
                                 $type = $get('product_type');
-                                if (!$type) return [];
+                                if (! $type) {
+                                    return [];
+                                }
 
-                                // Tentukan spek berdasarkan tipe
-                                $procModel = match($type) {
-                                    'Macan' => 'Processor i7 11700K',
-                                    'Maleo' => 'Processor i7 8700K',
-                                    'Komodo' => 'Processor i7 14700K',
-                                    default => 'Processor i7 8700K',
-                                };
-                                $chassisModel = match($type) {
-                                    'Macan' => 'Chassis Macan',
-                                    'Maleo' => 'Chassis Maleo',
-                                    'Komodo' => 'Chassis Komodo',
-                                    default => 'Chassis Maleo',
-                                };
-                                $ramModel = ($type === 'Komodo') ? 'RAM DDR5' : 'RAM DDR4';
-
-                                return [
-                                    // Dropdown Chassis
-                                    Forms\Components\Select::make('sn_details.chassis')
-                                        ->label("SN $chassisModel")
-                                        ->options(fn() => Component::where('name', $chassisModel)->where('status', 'available')->pluck('sn', 'sn'))
-                                        ->required(),
-                                    
-                                    // Dropdown Processor
-                                    Forms\Components\Select::make('sn_details.processor')
-                                        ->label("SN $procModel")
-                                        ->options(fn() => Component::where('name', $procModel)->where('status', 'available')->pluck('sn', 'sn'))
-                                        ->required(),
-                                    
-                                    // Dropdown RAM 1
-                                    Forms\Components\Select::make('sn_details.ram_1')
-                                        ->label("SN $ramModel (Slot 1)")
-                                        ->options(fn() => Component::where('name', $ramModel)->where('status', 'available')->pluck('sn', 'sn'))
-                                        ->required(),
-
-                                    // Dropdown RAM 2
-                                    Forms\Components\Select::make('sn_details.ram_2')
-                                        ->label("SN $ramModel (Slot 2)")
-                                        ->options(fn() => Component::where('name', $ramModel)->where('status', 'available')->pluck('sn', 'sn'))
-                                        ->required(),
-
-                                    // Dropdown SSD
-                                    Forms\Components\Select::make('sn_details.ssd')
-                                        ->label('SN SSD')
-                                        ->options(fn() => Component::where('name', 'SSD')->where('status', 'available')->pluck('sn', 'sn'))
-                                        ->required(),
-                                ];
+                                return \App\Services\DeviceTypeCatalog::assemblySnDetailFields((string) $type);
                             })->columns(2)
                     ])
                     ->mutateFormDataUsing(function (array $data): array {

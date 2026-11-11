@@ -49,7 +49,7 @@ class MyWarrantyClaim extends Page implements HasTable
                     ->sortable(),
                 Tables\Columns\TextColumn::make('device_type')
                     ->label('Perangkat')
-                    ->formatStateUsing(fn (?string $state) => WarrantyClaimService::DEVICE_TYPES[$state] ?? $state),
+                    ->formatStateUsing(fn (?string $state) => WarrantyClaimService::deviceTypeOptions()[$state] ?? $state),
                 Tables\Columns\TextColumn::make('claim_category')
                     ->label('Kategori')
                     ->badge()
@@ -119,7 +119,7 @@ class MyWarrantyClaim extends Page implements HasTable
                         Forms\Components\TextInput::make('phone_number')->label('Telepon')->tel(),
                         Forms\Components\Select::make('device_type')
                             ->label('Perangkat')
-                            ->options(WarrantyClaimService::DEVICE_TYPES),
+                            ->options(fn () => WarrantyClaimService::deviceTypeOptions()),
                         Forms\Components\TextInput::make('assembly_serial_number')
                             ->label('Serial Number')
                             ->required()

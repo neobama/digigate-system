@@ -3,6 +3,7 @@
 namespace App\Filament\Employee\Pages;
 
 use App\Models\Component;
+use App\Services\DeviceTypeCatalog;
 use App\Services\GeminiService;
 use Filament\Forms;
 use Filament\Pages\Page;
@@ -81,17 +82,7 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                     ]),
                 Tables\Filters\SelectFilter::make('name')
                     ->label('Tipe Komponen')
-                    ->options([
-                        'Processor i7 11700K' => 'Processor i7 11700K',
-                        'Processor i7 8700K' => 'Processor i7 8700K',
-                        'Processor i7 14700K' => 'Processor i7 14700K',
-                        'RAM DDR4' => 'RAM DDR4',
-                        'RAM DDR5' => 'RAM DDR5',
-                        'SSD' => 'SSD',
-                        'Chassis Macan' => 'Chassis Macan',
-                        'Chassis Maleo' => 'Chassis Maleo',
-                        'Chassis Komodo' => 'Chassis Komodo',
-                    ]),
+                    ->options(fn () => DeviceTypeCatalog::componentNameOptions()),
             ])
             ->headerActions([
                 Tables\Actions\Action::make('bulkAdd')
@@ -238,19 +229,10 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                             ->schema([
                                 Forms\Components\Select::make('name')
                                     ->label('Tipe Komponen')
-                                    ->options([
-                                        'Processor i7 11700K' => 'Processor i7 11700K',
-                                        'Processor i7 8700K' => 'Processor i7 8700K',
-                                        'Processor i7 14700K' => 'Processor i7 14700K',
-                                        'RAM DDR4' => 'RAM DDR4',
-                                        'RAM DDR5' => 'RAM DDR5',
-                                        'SSD' => 'SSD',
-                                        'Chassis Macan' => 'Chassis Macan',
-                                        'Chassis Maleo' => 'Chassis Maleo',
-                                        'Chassis Komodo' => 'Chassis Komodo',
-                                    ])
+                                    ->options(fn () => DeviceTypeCatalog::componentNameOptions())
                                     ->required()
-                                    ->searchable(),
+                                    ->searchable()
+                                    ->helperText('Hanya tipe yang sudah didefinisikan admin di Tipe Perangkat'),
                                 Forms\Components\TextInput::make('sn')
                                     ->label('Serial Number (SN)')
                                     ->required()
@@ -341,19 +323,10 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                     ->form([
                         Forms\Components\Select::make('name')
                             ->label('Tipe Komponen')
-                            ->options([
-                                'Processor i7 11700K' => 'Processor i7 11700K',
-                                'Processor i7 8700K' => 'Processor i7 8700K',
-                                'Processor i7 14700K' => 'Processor i7 14700K',
-                                'RAM DDR4' => 'RAM DDR4',
-                                'RAM DDR5' => 'RAM DDR5',
-                                'SSD' => 'SSD',
-                                'Chassis Macan' => 'Chassis Macan',
-                                'Chassis Maleo' => 'Chassis Maleo',
-                                'Chassis Komodo' => 'Chassis Komodo',
-                            ])
+                            ->options(fn () => DeviceTypeCatalog::componentNameOptions())
                             ->required()
-                            ->searchable(),
+                            ->searchable()
+                            ->helperText('Hanya tipe yang sudah didefinisikan admin di Tipe Perangkat'),
                         Forms\Components\TextInput::make('sn')
                             ->label('Serial Number (SN)')
                             ->unique(Component::class, 'sn', ignoreRecord: true)
@@ -404,19 +377,10 @@ class MyComponent extends Page implements Tables\Contracts\HasTable
                     ->form([
                         Forms\Components\Select::make('name')
                             ->label('Tipe Komponen')
-                            ->options([
-                                'Processor i7 11700K' => 'Processor i7 11700K',
-                                'Processor i7 8700K' => 'Processor i7 8700K',
-                                'Processor i7 14700K' => 'Processor i7 14700K',
-                                'RAM DDR4' => 'RAM DDR4',
-                                'RAM DDR5' => 'RAM DDR5',
-                                'SSD' => 'SSD',
-                                'Chassis Macan' => 'Chassis Macan',
-                                'Chassis Maleo' => 'Chassis Maleo',
-                                'Chassis Komodo' => 'Chassis Komodo',
-                            ])
+                            ->options(fn () => DeviceTypeCatalog::componentNameOptions())
                             ->required()
-                            ->searchable(),
+                            ->searchable()
+                            ->helperText('Hanya tipe yang sudah didefinisikan admin di Tipe Perangkat'),
                         Forms\Components\TextInput::make('sn')
                             ->label('Serial Number (SN)')
                             ->unique(Component::class, 'sn', ignoreRecord: true)
