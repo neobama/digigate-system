@@ -61,7 +61,7 @@ class FinancialReportExport implements FromCollection, WithHeadings, WithMapping
                 $category = 'Cashbon';
             } elseif ($expense->reimbursement_id) {
                 $category = 'Reimbursement';
-            } elseif ($expense->account_code === 'GAJI') {
+            } elseif (\App\Models\AccountCode::isSalaryCode($expense->account_code)) {
                 $category = 'Gaji';
             } else {
                 $category = 'Manual';

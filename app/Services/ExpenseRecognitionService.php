@@ -228,7 +228,7 @@ class ExpenseRecognitionService
                     ),
                     'fund_source' => $salaryPayment->fund_source,
                     'amount' => $salaryPayment->net_salary,
-                    'account_code' => 'GAJI',
+                    'account_code' => '6100',
                 ]);
 
                 return $linked->fresh();
@@ -260,7 +260,7 @@ class ExpenseRecognitionService
                     : now()->toDateString(),
                 'amount' => $salaryPayment->net_salary,
                 'vendor_invoice_number' => null,
-                'account_code' => 'GAJI',
+                'account_code' => '6100',
                 'proof_of_payment' => null,
             ]);
 

@@ -3,7 +3,9 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ExpenseResource\Pages;
+use App\Models\AccountCode;
 use App\Models\Expense;
+use App\Services\AccountCodeCatalog;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -36,10 +38,13 @@ class ExpenseResource extends Resource
                             ->required()
                             ->rows(3)
                             ->columnSpanFull(),
-                        Forms\Components\TextInput::make('account_code')
+                        Forms\Components\Select::make('account_code')
                             ->label('Kode Akun')
-                            ->maxLength(50)
-                            ->placeholder('Contoh: 5.1.01'),
+                            ->options(fn () => AccountCodeCatalog::expenseOptions())
+                            ->searchable()
+                            ->preload()
+                            ->nullable()
+                            ->helperText('Pilih dari daftar kode akun. Admin menambah kode baru di menu Kode Akun.'),
                         Forms\Components\Select::make('fund_source')
                             ->label('Sumber Dana')
                             ->options([
@@ -92,7 +97,9 @@ class ExpenseResource extends Resource
                     ->color(fn (string $state): string => $state === 'Manual' ? 'gray' : 'warning'),
                 Tables\Columns\TextColumn::make('account_code')
                     ->label('Kode Akun')
-                    ->searchable(),
+                    ->formatStateUsing(fn (?string $state) => AccountCodeCatalog::label($state))
+                    ->searchable()
+                    ->wrap(),
                 Tables\Columns\BadgeColumn::make('fund_source')
                     ->label('Sumber Dana')
                     ->formatStateUsing(fn ($state) => $state === 'kas_kecil' ? 'Kas Kecil' : 'Bank Perusahaan')
@@ -123,15 +130,19 @@ class ExpenseResource extends Resource
                             'cashbon' => $query->whereNotNull('cashbon_id'),
                             'budget' => $query->whereNotNull('budget_request_id'),
                             'reimbursement' => $query->whereNotNull('reimbursement_id'),
-                            'salary' => $query->where('account_code', 'GAJI'),
+                            'salary' => $query->whereIn('account_code', AccountCode::SALARY_CODES),
                             'manual' => $query
                                 ->whereNull('cashbon_id')
                                 ->whereNull('budget_request_id')
                                 ->whereNull('reimbursement_id')
-                                ->where(fn (Builder $q) => $q->whereNull('account_code')->orWhere('account_code', '!=', 'GAJI')),
+                                ->where(fn (Builder $q) => $q->whereNull('account_code')->orWhereNotIn('account_code', AccountCode::SALARY_CODES)),
                             default => $query,
                         };
                     }),
+                Tables\Filters\SelectFilter::make('account_code')
+                    ->label('Kode Akun')
+                    ->options(fn () => AccountCodeCatalog::expenseOptions())
+                    ->searchable(),
                 Tables\Filters\SelectFilter::make('fund_source')
                     ->label('Sumber Dana')
                     ->options([

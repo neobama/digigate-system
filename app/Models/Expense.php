@@ -48,7 +48,7 @@ class Expense extends Model
         return filled($this->cashbon_id)
             || filled($this->budget_request_id)
             || filled($this->reimbursement_id)
-            || $this->account_code === 'GAJI';
+            || AccountCode::isSalaryCode($this->account_code);
     }
 
     public function sourceLabel(): string
@@ -62,7 +62,7 @@ class Expense extends Model
         if ($this->reimbursement_id) {
             return 'Reimbursement';
         }
-        if ($this->account_code === 'GAJI') {
+        if (AccountCode::isSalaryCode($this->account_code)) {
             return 'Gaji';
         }
 

@@ -21,6 +21,7 @@ use App\Models\Reimbursement;
 use App\Models\SalaryPayment;
 use App\Models\Task;
 use App\Models\WarrantyClaim;
+use App\Services\AccountCodeCatalog;
 use Carbon\Carbon;
 
 class AgentApiService
@@ -853,6 +854,7 @@ class AgentApiService
             'description' => $expense->description,
             'vendor_invoice_number' => $expense->vendor_invoice_number,
             'account_code' => $expense->account_code,
+            'account_code_label' => AccountCodeCatalog::label($expense->account_code),
             'fund_source' => $expense->fund_source,
             'expense_date' => $expense->expense_date?->toDateString(),
             'amount' => (float) $expense->amount,
