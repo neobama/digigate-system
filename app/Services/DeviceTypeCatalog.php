@@ -145,30 +145,48 @@ class DeviceTypeCatalog
     /**
      * Dynamic Filament selects for assembly sn_details based on device type BOM.
      *
+     * Uses Group + statePath('sn_details') instead of dotted names (sn_details.chassis).
+     * Dotted names inside a live/dynamic schema break Livewire binding: UI shows a
+     * selected value but dehydrated state stays empty → false "required" errors.
+     *
      * @return array<int, Forms\Components\Component>
      */
     public static function assemblySnDetailFields(string $productTypeCode): array
     {
         $slots = self::slotsForDeviceType($productTypeCode);
         if ($slots->isEmpty()) {
-            return [];
+            return [
+                Forms\Components\Placeholder::make('no_bom')
+                    ->label('BOM belum diatur')
+                    ->content('Admin belum mendefinisikan komponen wajib untuk tipe perangkat ini di menu Tipe Perangkat.'),
+            ];
         }
 
         $fields = [];
         foreach ($slots as $slot) {
             $componentName = $slot->component_name;
+            $slotKey = $slot->slot_key;
             $label = 'SN '.$slot->displayLabel();
 
-            $fields[] = Forms\Components\Select::make('sn_details.'.$slot->slot_key)
+            $fields[] = Forms\Components\Select::make($slotKey)
                 ->label($label)
                 ->options(fn () => Component::query()
                     ->where('name', $componentName)
                     ->where('status', 'available')
-                    ->pluck('sn', 'sn'))
+                    ->orderBy('sn')
+                    ->pluck('sn', 'sn')
+                    ->all())
                 ->required($slot->is_required)
-                ->searchable();
+                ->searchable()
+                ->native(false)
+                ->validationAttribute($label);
         }
 
-        return $fields;
+        return [
+            Forms\Components\Group::make($fields)
+                ->statePath('sn_details')
+                ->columns(2)
+                ->key('sn-details-group-'.$productTypeCode),
+        ];
     }
 }

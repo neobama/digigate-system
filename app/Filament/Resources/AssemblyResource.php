@@ -66,6 +66,7 @@ class AssemblyResource extends Resource
                     ->label('Produk Yang Dirakit')
                     ->options(fn () => \App\Services\DeviceTypeCatalog::productTypeOptions())
                     ->live()
+                    ->afterStateUpdated(fn (Forms\Set $set) => $set('sn_details', []))
                     ->required()
                     ->helperText('Daftar dari menu Tipe Perangkat'),
                 
@@ -98,7 +99,8 @@ class AssemblyResource extends Resource
                         }
 
                         return \App\Services\DeviceTypeCatalog::assemblySnDetailFields((string) $type);
-                    })->columns(2)
+                    })
+                    ->key(fn (Forms\Get $get) => 'assembly-sn-section-'.($get('product_type') ?: 'none'))
             ])
         ]);
     }

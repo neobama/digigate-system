@@ -76,6 +76,7 @@ class MyAssembly extends Page implements Tables\Contracts\HasTable
                             ->label('Produk Yang Dirakit')
                             ->options(fn () => \App\Services\DeviceTypeCatalog::productTypeOptions())
                             ->live()
+                            ->afterStateUpdated(fn (Forms\Set $set) => $set('sn_details', []))
                             ->required()
                             ->helperText('Daftar dari tipe perangkat yang didefinisikan admin'),
                         
@@ -93,7 +94,8 @@ class MyAssembly extends Page implements Tables\Contracts\HasTable
                                 }
 
                                 return \App\Services\DeviceTypeCatalog::assemblySnDetailFields((string) $type);
-                            })->columns(2)
+                            })
+                            ->key(fn (Forms\Get $get) => 'assembly-sn-section-'.($get('product_type') ?: 'none'))
                     ])
                     ->mutateFormDataUsing(function (array $data): array {
                         AssemblyInvoiceValidator::ensureCanCreateAssembly($data['invoice_id']);
