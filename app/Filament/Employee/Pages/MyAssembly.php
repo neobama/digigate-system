@@ -86,16 +86,9 @@ class MyAssembly extends Page implements Tables\Contracts\HasTable
                             ->required(),
 
                         Forms\Components\Section::make('Pilih Serial Number Komponen')
-                            ->description('Slot mengikuti BOM tipe perangkat yang didefinisikan admin')
-                            ->schema(function (Forms\Get $get) {
-                                $type = $get('product_type');
-                                if (! $type) {
-                                    return [];
-                                }
-
-                                return \App\Services\DeviceTypeCatalog::assemblySnDetailFields((string) $type);
-                            })
-                            ->key(fn (Forms\Get $get) => 'assembly-sn-section-'.($get('product_type') ?: 'none'))
+                            ->description('Slot mengikuti BOM tipe perangkat yang didefinisikan admin. Pilih produk dulu.')
+                            ->schema(\App\Services\DeviceTypeCatalog::assemblySnDetailFields())
+                            ->visible(fn (Forms\Get $get) => filled($get('product_type')))
                     ])
                     ->mutateFormDataUsing(function (array $data): array {
                         AssemblyInvoiceValidator::ensureCanCreateAssembly($data['invoice_id']);
