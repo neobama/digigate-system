@@ -3,6 +3,7 @@
 namespace App\Filament\Employee\Pages;
 
 use App\Models\Reimbursement;
+use App\Services\AccountCodeCatalog;
 use App\Services\GeminiService;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -38,6 +39,11 @@ class MyReimbursement extends Page implements Tables\Contracts\HasTable
                     ->label('Jumlah')
                     ->money('IDR')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('account_code')
+                    ->label('Kode Akun')
+                    ->formatStateUsing(fn (?string $state) => AccountCodeCatalog::label($state))
+                    ->placeholder('—')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('proof_of_payment')
                     ->label('Bukti')
                     ->formatStateUsing(function ($state) {
@@ -228,6 +234,13 @@ class MyReimbursement extends Page implements Tables\Contracts\HasTable
                             ->prefix('Rp')
                             ->required()
                             ->minValue(1),
+                        Forms\Components\Select::make('account_code')
+                            ->label('Kode Akun')
+                            ->options(fn () => AccountCodeCatalog::expenseOptions())
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->helperText('Pilih kategori pengeluaran dari daftar kode akun.'),
                         Forms\Components\Textarea::make('description')
                             ->label('Keterangan')
                             ->rows(3)
@@ -299,6 +312,12 @@ class MyReimbursement extends Page implements Tables\Contracts\HasTable
                             ->prefix('Rp')
                             ->required()
                             ->minValue(1),
+                        Forms\Components\Select::make('account_code')
+                            ->label('Kode Akun')
+                            ->options(fn () => AccountCodeCatalog::expenseOptions())
+                            ->searchable()
+                            ->preload()
+                            ->required(),
                         Forms\Components\Textarea::make('description')
                             ->label('Keterangan')
                             ->rows(3),

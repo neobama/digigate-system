@@ -121,6 +121,7 @@ class ExpenseRecognitionService
             'expense_date' => $expenseDate,
             'amount' => $amount,
             'fund_source' => 'bank_perusahaan',
+            'account_code' => $budgetRequest->account_code,
             'proof_of_payment' => $proof,
             'vendor_invoice_number' => null,
         ];
@@ -182,6 +183,7 @@ class ExpenseRecognitionService
             'expense_date' => $reimbursement->expense_date,
             'amount' => $reimbursement->amount,
             'fund_source' => 'bank_perusahaan',
+            'account_code' => $reimbursement->account_code,
             'proof_of_payment' => $reimbursement->proof_of_payment,
             'vendor_invoice_number' => null,
         ];

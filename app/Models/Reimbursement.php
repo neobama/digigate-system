@@ -11,7 +11,7 @@ class Reimbursement extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['employee_id', 'purpose', 'expense_date', 'amount', 'proof_of_payment', 'description', 'status', 'paid_at'];
+    protected $fillable = ['employee_id', 'purpose', 'expense_date', 'amount', 'account_code', 'proof_of_payment', 'description', 'status', 'paid_at'];
 
     protected $casts = [
         'expense_date' => 'date',

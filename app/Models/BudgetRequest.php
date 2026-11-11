@@ -18,6 +18,7 @@ class BudgetRequest extends Model
         'invoice',
         'recipient_account',
         'amount',
+        'account_code',
         'status',
         'proof_of_payment',
         'request_date',

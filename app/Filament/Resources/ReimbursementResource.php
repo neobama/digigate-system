@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\ReimbursementResource\Pages;
 use App\Filament\Support\PaymentRequestApprovalActions;
 use App\Models\Reimbursement;
+use App\Services\AccountCodeCatalog;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists;
@@ -48,6 +49,12 @@ class ReimbursementResource extends Resource
                             ->label('Jumlah')
                             ->numeric()
                             ->prefix('Rp')
+                            ->required(),
+                        Forms\Components\Select::make('account_code')
+                            ->label('Kode Akun')
+                            ->options(fn () => AccountCodeCatalog::expenseOptions())
+                            ->searchable()
+                            ->preload()
                             ->required(),
                         Forms\Components\Textarea::make('description')
                             ->label('Keterangan')
@@ -100,6 +107,11 @@ class ReimbursementResource extends Resource
                     ->label('Jumlah')
                     ->money('IDR')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('account_code')
+                    ->label('Kode Akun')
+                    ->formatStateUsing(fn (?string $state) => AccountCodeCatalog::label($state))
+                    ->placeholder('—')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('proof_of_payment')
                     ->label('Bukti')
                     ->formatStateUsing(function ($state) {
@@ -183,6 +195,10 @@ class ReimbursementResource extends Resource
                         Infolists\Components\TextEntry::make('amount')
                             ->label('Jumlah')
                             ->money('IDR'),
+                        Infolists\Components\TextEntry::make('account_code')
+                            ->label('Kode Akun')
+                            ->formatStateUsing(fn (?string $state) => AccountCodeCatalog::label($state))
+                            ->placeholder('—'),
                         Infolists\Components\TextEntry::make('description')
                             ->label('Keterangan')
                             ->columnSpanFull(),

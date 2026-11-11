@@ -3,6 +3,7 @@
 namespace App\Filament\Employee\Pages;
 
 use App\Models\BudgetRequest;
+use App\Services\AccountCodeCatalog;
 use App\Services\BudgetRealizationService;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -40,6 +41,11 @@ class MyBudgetRequest extends Page implements Tables\Contracts\HasTable
                     ->label('Nominal')
                     ->money('IDR')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('account_code')
+                    ->label('Kode Akun')
+                    ->formatStateUsing(fn (?string $state) => AccountCodeCatalog::label($state))
+                    ->placeholder('—')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('request_date')
                     ->label('Tanggal Request')
                     ->date('d/m/Y')
@@ -146,6 +152,13 @@ class MyBudgetRequest extends Page implements Tables\Contracts\HasTable
                                     ->prefix('Rp')
                                     ->required()
                                     ->minValue(1),
+                                Forms\Components\Select::make('account_code')
+                                    ->label('Kode Akun')
+                                    ->options(fn () => AccountCodeCatalog::expenseOptions())
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->helperText('Pilih kategori anggaran dari daftar kode akun.'),
                                 Forms\Components\DatePicker::make('request_date')
                                     ->label('Tanggal Request')
                                     ->default(now())
@@ -234,6 +247,9 @@ class MyBudgetRequest extends Page implements Tables\Contracts\HasTable
                                     ->label('Nominal disetujui')
                                     ->disabled()
                                     ->prefix('Rp'),
+                                Forms\Components\Placeholder::make('account_code_ph')
+                                    ->label('Kode Akun')
+                                    ->content(fn () => AccountCodeCatalog::label($record->account_code) ?? '—'),
                                 Forms\Components\Placeholder::make('request_date_ph')
                                     ->label('Tanggal Request')
                                     ->content(fn () => $record->request_date?->format('d/m/Y') ?? '—'),

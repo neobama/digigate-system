@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\BudgetRequestResource\Pages;
 use App\Filament\Support\PaymentRequestApprovalActions;
 use App\Models\BudgetRequest;
+use App\Services\AccountCodeCatalog;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists;
@@ -64,6 +65,12 @@ class BudgetRequestResource extends Resource
                             ->prefix('Rp')
                             ->required()
                             ->minValue(1),
+                        Forms\Components\Select::make('account_code')
+                            ->label('Kode Akun')
+                            ->options(fn () => AccountCodeCatalog::expenseOptions())
+                            ->searchable()
+                            ->preload()
+                            ->required(),
                         Forms\Components\DatePicker::make('request_date')
                             ->label('Tanggal Request')
                             ->required()
@@ -117,6 +124,11 @@ class BudgetRequestResource extends Resource
                     ->label('Nominal')
                     ->money('IDR')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('account_code')
+                    ->label('Kode Akun')
+                    ->formatStateUsing(fn (?string $state) => AccountCodeCatalog::label($state))
+                    ->placeholder('—')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('request_date')
                     ->label('Tanggal Request')
                     ->date('d/m/Y')
