@@ -5,8 +5,10 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\InvoiceResource\Pages;
 use App\Filament\Resources\InvoiceResource\RelationManagers;
 use App\Models\Invoice;
+use App\Services\InvoicePaymentService;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -73,13 +75,30 @@ class InvoiceResource extends Resource
                     Forms\Components\Select::make('status')
                         ->options([
                             'proforma' => 'Proforma (Belum Bayar)',
+                            'partially_paid' => 'Partially Paid (DP/Cicilan)',
                             'paid' => 'Paid (Lunas)',
                             'delivered' => 'Delivered (Sudah Dikirim)',
                             'cancelled' => 'Dibatalkan',
                         ])
                         ->default('proforma')
                         ->required()
-                        ->helperText('Alur: Proforma → Paid → Generate Surat Jalan (tetap Paid) → Set Delivered. Jangan set Delivered sebelum surat jalan.'),
+                        ->disabled()
+                        ->dehydrated()
+                        ->helperText('Status pembayaran diubah lewat aksi Catat Pembayaran / Set Lunas. Alur: Proforma → Partially Paid → Paid → Surat Jalan → Delivered.'),
+                    Forms\Components\Placeholder::make('payment_summary')
+                        ->label('Ringkasan Pembayaran')
+                        ->content(function (?Invoice $record) {
+                            if (! $record) {
+                                return 'Belum ada pembayaran.';
+                            }
+
+                            return sprintf(
+                                'Dibayar: Rp %s | Sisa: Rp %s',
+                                number_format((float) $record->amount_paid, 0, ',', '.'),
+                                number_format($record->remainingAmount(), 0, ',', '.')
+                            );
+                        })
+                        ->visible(fn (?Invoice $record) => $record !== null),
                 ])->columns(2)
             ]);
     }
@@ -90,10 +109,24 @@ class InvoiceResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('invoice_number')->searchable(),
                 Tables\Columns\TextColumn::make('client_name')->searchable(),
-                Tables\Columns\TextColumn::make('total_amount')->money('IDR'),
+                Tables\Columns\TextColumn::make('total_amount')->label('Total')->money('IDR'),
+                Tables\Columns\TextColumn::make('amount_paid')->label('Dibayar')->money('IDR'),
+                Tables\Columns\TextColumn::make('remaining')
+                    ->label('Sisa')
+                    ->state(fn (Invoice $record) => $record->remainingAmount())
+                    ->money('IDR'),
                 Tables\Columns\BadgeColumn::make('status')
+                    ->formatStateUsing(fn (?string $state) => match ($state) {
+                        'proforma' => 'Proforma',
+                        'partially_paid' => 'Partial',
+                        'paid' => 'Paid',
+                        'delivered' => 'Delivered',
+                        'cancelled' => 'Cancelled',
+                        default => $state,
+                    })
                     ->colors([
                         'warning' => 'proforma',
+                        'primary' => 'partially_paid',
                         'success' => 'paid',
                         'info' => 'delivered',
                         'danger' => 'cancelled',
@@ -104,8 +137,10 @@ class InvoiceResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'proforma' => 'Proforma',
+                        'partially_paid' => 'Partially Paid',
                         'paid' => 'Paid',
                         'delivered' => 'Delivered',
+                        'cancelled' => 'Cancelled',
                     ]),
                 Tables\Filters\Filter::make('invoice_date')
                     ->form([
@@ -143,13 +178,67 @@ class InvoiceResource extends Resource
             ->defaultSort('invoice_date', 'desc')
             ->actions([
                 Tables\Actions\EditAction::make(),
-                // Action cepat untuk mengubah Proforma menjadi Paid
+                Tables\Actions\Action::make('recordPayment')
+                    ->label('Catat Bayar')
+                    ->icon('heroicon-o-banknotes')
+                    ->color('primary')
+                    ->visible(fn (Invoice $record) => in_array($record->status, ['proforma', 'partially_paid', 'paid'], true)
+                        && $record->remainingAmount() > 0.009)
+                    ->form([
+                        Forms\Components\Placeholder::make('remaining_info')
+                            ->label('Sisa tagihan')
+                            ->content(fn (Invoice $record) => 'Rp '.number_format($record->remainingAmount(), 0, ',', '.')),
+                        Forms\Components\TextInput::make('amount')
+                            ->label('Nominal dibayar')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->required()
+                            ->minValue(0.01)
+                            ->default(fn (Invoice $record) => $record->remainingAmount()),
+                        Forms\Components\DatePicker::make('paid_at')
+                            ->label('Tanggal bayar')
+                            ->default(now())
+                            ->required(),
+                        Forms\Components\Select::make('method')
+                            ->label('Metode')
+                            ->options([
+                                'transfer' => 'Transfer',
+                                'cash' => 'Tunai',
+                                'giro' => 'Giro/Cek',
+                                'other' => 'Lainnya',
+                            ]),
+                        Forms\Components\TextInput::make('reference')
+                            ->label('No. Referensi'),
+                        Forms\Components\Textarea::make('notes')
+                            ->label('Catatan')
+                            ->rows(2),
+                    ])
+                    ->action(function (array $data, Invoice $record) {
+                        try {
+                            app(InvoicePaymentService::class)->recordPayment($record, $data);
+                            Notification::make()->success()->title('Pembayaran tercatat')->send();
+                        } catch (\InvalidArgumentException $e) {
+                            Notification::make()->danger()->title($e->getMessage())->send();
+                        }
+                    })
+                    ->refreshAfter(),
                 Tables\Actions\Action::make('markAsPaid')
                     ->label('Set Lunas')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->hidden(fn (Invoice $record) => $record->status !== 'proforma')
-                    ->action(fn (Invoice $record) => $record->update(['status' => 'paid', 'paid_date' => now()]))
+                    ->visible(fn (Invoice $record) => in_array($record->status, ['proforma', 'partially_paid'], true)
+                        && $record->remainingAmount() > 0.009)
+                    ->requiresConfirmation()
+                    ->modalHeading('Set Lunas')
+                    ->modalDescription(fn (Invoice $record) => 'Catat pelunasan sisa Rp '.number_format($record->remainingAmount(), 0, ',', '.').'?')
+                    ->action(function (Invoice $record) {
+                        try {
+                            app(InvoicePaymentService::class)->markFullyPaid($record);
+                            Notification::make()->success()->title('Invoice lunas')->send();
+                        } catch (\InvalidArgumentException $e) {
+                            Notification::make()->danger()->title($e->getMessage())->send();
+                        }
+                    })
                     ->refreshAfter(),
                 Tables\Actions\Action::make('markAsDelivered')
                     ->label('Set Delivered')
@@ -184,7 +273,7 @@ class InvoiceResource extends Resource
                     ->openUrlInNewTab()
                     ->hidden(function (Invoice $record) {
                         try {
-                            if ($record->status !== 'proforma') {
+                            if (! in_array($record->status, ['proforma', 'partially_paid'], true)) {
                                 return true;
                             }
                             // Hide if document already exists
@@ -228,7 +317,7 @@ class InvoiceResource extends Resource
                     ->modalCancelActionLabel('Tutup')
                     ->hidden(function (Invoice $record) {
                         try {
-                            if ($record->status !== 'proforma') {
+                            if (! in_array($record->status, ['proforma', 'partially_paid'], true)) {
                                 return true;
                             }
                             // Show only if document exists
@@ -494,7 +583,7 @@ class InvoiceResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\PaymentsRelationManager::class,
         ];
     }
 

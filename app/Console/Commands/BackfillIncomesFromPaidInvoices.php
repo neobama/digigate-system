@@ -11,19 +11,22 @@ class BackfillIncomesFromPaidInvoices extends Command
 {
     protected $signature = 'incomes:backfill-from-paid-invoices';
 
-    protected $description = 'Create/sync Income rows for paid and delivered invoices';
+    protected $description = 'Create/sync Income rows for partially paid, paid, and delivered invoices';
 
     public function handle(IncomeRecognitionService $incomeRecognition): int
     {
+        $statuses = ['partially_paid', 'paid', 'delivered'];
+
         $invoices = Invoice::query()
-            ->whereIn('status', ['paid', 'delivered'])
+            ->whereIn('status', $statuses)
+            ->where('amount_paid', '>', 0)
             ->get();
 
         $created = 0;
         $updated = 0;
         $skipped = 0;
 
-        $this->info('Paid/delivered invoices: '.$invoices->count());
+        $this->info('Recognizable invoices: '.$invoices->count());
 
         foreach ($invoices as $invoice) {
             $hadIncome = Income::query()->where('invoice_id', $invoice->id)->exists();
@@ -42,16 +45,16 @@ class BackfillIncomesFromPaidInvoices extends Command
             }
         }
 
-        // Clean incomes linked to invoices that are no longer paid/delivered
+        // Clean incomes linked to invoices that are no longer recognized
         $orphaned = Income::query()
             ->whereNotNull('invoice_id')
-            ->whereDoesntHave('invoice', fn ($q) => $q->whereIn('status', ['paid', 'delivered']))
+            ->whereDoesntHave('invoice', fn ($q) => $q->whereIn('status', $statuses)->where('amount_paid', '>', 0))
             ->count();
 
         if ($orphaned > 0) {
             Income::query()
                 ->whereNotNull('invoice_id')
-                ->whereDoesntHave('invoice', fn ($q) => $q->whereIn('status', ['paid', 'delivered']))
+                ->whereDoesntHave('invoice', fn ($q) => $q->whereIn('status', $statuses)->where('amount_paid', '>', 0))
                 ->delete();
         }
 

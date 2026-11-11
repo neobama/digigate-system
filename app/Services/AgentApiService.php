@@ -38,6 +38,7 @@ class AgentApiService
                 'tasks_open' => Task::query()->whereIn('status', ['pending', 'in_progress', 'late'])->count(),
                 'components_available' => Component::query()->where('status', 'available')->count(),
                 'invoices_proforma' => Invoice::query()->where('status', 'proforma')->count(),
+                'invoices_partially_paid' => Invoice::query()->where('status', 'partially_paid')->count(),
                 'invoices_paid' => Invoice::query()->where('status', 'paid')->count(),
                 'leave_pending' => LeaveRequest::query()->where('status', 'pending')->count(),
                 'assemblies_total' => Assembly::query()->count(),
@@ -294,7 +295,7 @@ class AgentApiService
             });
         }
 
-        return $query->limit($limit)->get()->map(fn (Invoice $i) => [
+        return $query->limit($limit)->with('payments')->get()->map(fn (Invoice $i) => [
             'id' => $i->id,
             'invoice_number' => $i->invoice_number,
             'client_name' => $i->client_name,
@@ -302,7 +303,17 @@ class AgentApiService
             'invoice_date' => $i->invoice_date?->toDateString(),
             'paid_date' => $i->paid_date?->toDateString(),
             'total_amount' => (float) $i->total_amount,
+            'amount_paid' => (float) $i->amount_paid,
+            'remaining_amount' => $i->remainingAmount(),
             'status' => $i->status,
+            'payments' => $i->payments->map(fn ($p) => [
+                'id' => $p->id,
+                'amount' => (float) $p->amount,
+                'paid_at' => $p->paid_at?->toDateString(),
+                'method' => $p->method,
+                'reference' => $p->reference,
+                'notes' => $p->notes,
+            ])->values()->all(),
         ])->all();
     }
 

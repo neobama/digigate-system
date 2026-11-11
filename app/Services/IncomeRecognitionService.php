@@ -9,12 +9,14 @@ use Illuminate\Support\Facades\Log;
 class IncomeRecognitionService
 {
     /**
-     * Ensure a paid/delivered invoice has exactly one linked Income row.
-     * If invoice leaves paid/delivered, remove the linked Income.
+     * Sync linked Income to cash received (amount_paid).
+     * Recognized for partially_paid / paid / delivered when amount_paid > 0.
      */
     public function ensureForInvoice(Invoice $invoice): ?Income
     {
-        $isRecognized = in_array($invoice->status, ['paid', 'delivered'], true);
+        $amountPaid = round((float) $invoice->amount_paid, 2);
+        $isRecognized = $amountPaid > 0
+            && in_array($invoice->status, ['partially_paid', 'paid', 'delivered'], true);
 
         $existing = Income::query()->where('invoice_id', $invoice->id)->first();
 
@@ -27,16 +29,17 @@ class IncomeRecognitionService
         }
 
         $description = sprintf(
-            'Invoice #%s — %s',
+            'Invoice #%s — %s%s',
             $invoice->invoice_number,
-            $invoice->client_name
+            $invoice->client_name,
+            $invoice->status === 'partially_paid' ? ' (pembayaran sebagian)' : ''
         );
 
         $incomeDate = $invoice->paid_date
             ? $invoice->paid_date->toDateString()
             : now()->toDateString();
 
-        $amount = (float) $invoice->total_amount;
+        $amount = $amountPaid;
 
         try {
             if ($existing) {

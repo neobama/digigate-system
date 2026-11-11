@@ -5,18 +5,21 @@ namespace App\Observers;
 use App\Models\Invoice;
 use App\Services\ActivityLogService;
 use App\Services\IncomeRecognitionService;
+use App\Services\InvoicePaymentService;
 
 class InvoiceObserver
 {
     public function __construct(
         private IncomeRecognitionService $incomeRecognition,
+        private InvoicePaymentService $paymentService,
     ) {}
 
     public function created(Invoice $invoice): void
     {
         ActivityLogService::logCreate($invoice);
 
-        if (in_array($invoice->status, ['paid', 'delivered'], true)) {
+        if ((float) $invoice->amount_paid > 0
+            || in_array($invoice->status, ['partially_paid', 'paid', 'delivered'], true)) {
             $this->incomeRecognition->ensureForInvoice($invoice);
         }
     }
@@ -31,8 +34,14 @@ class InvoiceObserver
             ActivityLogService::logUpdate($invoice, $oldValues, $newValues);
         }
 
-        // Sync income when status, amount, paid_date, or identity fields change
-        if ($invoice->wasChanged(['status', 'total_amount', 'paid_date', 'invoice_number', 'client_name'])) {
+        if ($invoice->wasChanged('total_amount') && $invoice->payments()->exists() && $invoice->status !== 'cancelled') {
+            // Recalculate paid/partial status if line items change after payments exist.
+            $this->paymentService->syncInvoiceFromPayments($invoice);
+
+            return;
+        }
+
+        if ($invoice->wasChanged(['status', 'amount_paid', 'paid_date', 'invoice_number', 'client_name'])) {
             $this->incomeRecognition->ensureForInvoice($invoice);
         }
     }

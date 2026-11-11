@@ -39,11 +39,12 @@
                 <p class="text-gray-700 dark:text-gray-300">
                     <span class="px-2 py-1 rounded text-xs font-medium
                         @if($invoice->status === 'paid') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                        @elseif($invoice->status === 'partially_paid') bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200
                         @elseif($invoice->status === 'proforma') bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
                         @elseif($invoice->status === 'delivered') bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
                         @else bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200
                         @endif">
-                        {{ ucfirst($invoice->status) }}
+                        {{ str_replace('_', ' ', ucfirst($invoice->status)) }}
                     </span>
                 </p>
             </div>
